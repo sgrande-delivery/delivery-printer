@@ -4,6 +4,7 @@
  */
 import { app, ipcMain } from 'electron';
 import { onRawPrint } from './ipc-events/onRawPrint';
+import { onPDFPrint } from './ipc-events/onPDFPrint';
 import { TrayBuilder } from './tray';
 import { MainWindowBuilder } from './window';
 import { onWindowAllClosed } from './app-events/onWindowAllClosed';
@@ -18,6 +19,7 @@ import { onNotification } from './ipc-events/onNotification';
 const socket = io(constants.WS_BASE_URL);
 
 ipcMain.on('ipc-example', onIPCExample);
+ipcMain.handle('pdfPrint', onPDFPrint);
 ipcMain.handle('rawPrint', onRawPrint);
 ipcMain.handle('socket-register', (event, id: string) => onSocketRegister(event, socket, id));
 ipcMain.handle('notification', onNotification);

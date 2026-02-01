@@ -8,6 +8,7 @@ import { usePrintingOrder } from 'renderer/hooks/usePrintingOrder';
 import { usePrintingBoard } from 'renderer/hooks/usePrintingBoard';
 import { makeStyles } from '@material-ui/core';
 import { useAdminSocket } from 'renderer/hooks/useAdminSocket';
+import { usePrintingReceipt } from 'renderer/hooks/usePrintingReceipt';
 
 const styles = makeStyles({
   titleBar: {
@@ -40,6 +41,7 @@ const Home: React.FC = () => {
 
   usePrintingOrder();
   usePrintingBoard();
+  usePrintingReceipt();
 
   function handleLogout() {
     auth.logout().then(() => {

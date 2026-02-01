@@ -9,6 +9,11 @@ type RawPrint = {
   id: string;
 };
 
+type PDFPrint = {
+  content: string;
+  id: string;
+};
+
 const electronHandler = {
   ipcRenderer: {
     sendMessage(channel: Channels, args: unknown[]) {
@@ -27,11 +32,9 @@ const electronHandler = {
     },
   },
   print: (deviceName?: string): Promise<boolean> => ipcRenderer.invoke('print', deviceName),
-
   rawPrint: (payload: RawPrint): Promise<void> => ipcRenderer.invoke('rawPrint', payload),
-
+  pdfPrint: (payload: PDFPrint): Promise<void> => ipcRenderer.invoke('pdfPrint', payload),
   socketRegister: (restaurantUuid: string): Promise<void> => ipcRenderer.invoke('socket-register', restaurantUuid),
-
   notification: (orderSequence: string): Promise<void> => ipcRenderer.invoke('receive-order', orderSequence),
 };
 
