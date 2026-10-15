@@ -23,6 +23,10 @@ release
 .env.local
 .env.*.local
 
+# Claude Code (local only)
+.claude/settings.local.json
+.claude/worktrees/
+
 # Editors / OS
 .idea
 .DS_Store
