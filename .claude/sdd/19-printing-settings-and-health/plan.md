@@ -173,3 +173,8 @@ O gateway do `/admin` **não repassa** `printer:status`, então emitir daqui ser
 O que a medição da task 01 (#20) acrescenta, e que **muda o enunciado** da #25 quando ela for feita: **`status` não existe no `PrinterInfo` do Electron 43** (só `description`, `displayName`, `name` e `options`, com `Options` declarado vazio). Então a #25 não pode prometer "impressora online" a partir do device. O que sobra é o que ela já previa: **presença do nome na lista** e **falha de impressão** — e `no_paper`/`overheat` seguem fora.
 
 Quando a `socket-api#50` fechar, a #25 roda sem nenhuma mudança nas outras cinco tasks: ela só acrescenta emissão.
+
+## Decisões do dev, tomadas em 2026-10-15 durante o teste em Windows
+
+- **Impressora não encontrada → imprime na impressora padrão do dispositivo.** Era a "decisão pendente 1" da spec (o fallback silencioso do `printReceipt`), e o dev confirmou o comportamento atual: **manter**. O `onRawPrint`/`printReceipt` fica como está, e o papel das telas da #21/#22 é tornar o descasamento **visível**, não mudar o destino da impressão.
+  - Medido no teste: com nenhuma impressora cadastrada no restaurante de dev, o `device_name` vem `null` nos seis trabalhos, e os seis foram para a **"Microsoft Print to PDF"**, que era a padrão da máquina. A fila registrou os seis como `printed`, porque o `webContents.print` resolveu — **"printed" na fila significa "o spooler aceitou", não "saiu papel"**. Vale lembrar disso em qualquer suporte futuro.
