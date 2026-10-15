@@ -1,13 +1,13 @@
 ---
-description: Ship de uma spec SDD — push da branch da spec (feat/<issue>-<slug>, um commit por task já feito pelo /execute) e um PR contra master, com a versão do package.json conferida. NÃO cria tag nem release — quem cria é o electron-builder no merge em master, como draft; publicar o draft é ato do dev e é o que entrega a atualização aos PDVs.
+description: Ship de uma spec SDD — push da branch da spec (feat/<issue>-<slug>, um commit por task já feito pelo /execute) e um PR contra master, com a versão do package.json conferida. NÃO cria tag nem release: merge em master não publica nada, e quem dispara a esteira é o dev criando a release como pré-release. Promover a pré-release é o que entrega a atualização aos PDVs.
 argument-hint: [<feature> | <feature>/<id> | <id> | PRINTER-XXX | caminho do arquivo da task]
 ---
 
 O trabalho **$ARGUMENTS** foi aprovado por mim após testes locais. Prossiga com o ship.
 
-> **Como a publicação acontece aqui.** O `.github/workflows/publish.yml` roda em **`push` para `master`**: typecheck, test, build e `npx electron-builder --win --publish always`. O release nasce como **`draft`** com a tag `v<version>` do `package.json`. Draft **não atualiza ninguém**: o electron-updater pede `https://github.com/<owner>/<repo>/releases/latest`, que ignora draft e pré-release. **Publicar o release é ato do dev**, pela UI, depois de instalar o `.exe` — e é isso que entrega a atualização ao parque instalado.
+> **Como a publicação acontece aqui.** O `.github/workflows/publish.yml` roda no evento **`release: [published]`** — **push em `master` não publica nada**. Quem checa PR e `master` é o `ci.yml`. O dev cria a release com a tag `v<version>` marcada como **PRÉ-RELEASE** (draft não dispara workflow nenhum no GitHub), a esteira confere tag × `package.json`, builda e anexa os três arquivos, e **promover a pré-release é o que entrega a atualização** — o electron-updater pede `/releases/latest`, que ignora draft e pré-release. O fluxo completo, com as armadilhas, está em `.claude/rules/autoupdate.md`.
 
-> **Logo: `/ship` aqui termina no PR.** Não existe tag para criar, não existe release para criar, não existe pré-release para promover. Quem cria o release é a esteira; o dev publica depois de conferir. Se algo pedir `git tag` ou `gh release create`, está errado: a tag `v<version>` nasce com o release do electron-builder, e criá-la antes faz o publish colidir com um ref existente.
+> **Logo: `/ship` aqui termina no PR.** Não existe tag para criar nem release para criar. Quem cria a tag é o GitHub, quando o dev cria a release; quem anexa os assets é a esteira; quem promove é o dev, depois de instalar o `.exe`. Se algo pedir `git tag` ou `gh release create`, está errado.
 
 > **Onde este comando roda.** O `/execute` deixa o trabalho na branch da spec, `feat/<issue>-<slug>`, com um commit por task. Confirme com `git branch --show-current`; se a branch não existir ou não tiver os commits das tasks, é sinal de que a spec não foi executada por este fluxo, e aí vale perguntar em vez de supor.
 
@@ -24,10 +24,10 @@ Fluxo:
 
 2. **Confirmar o alvo do PR com o dev**, oferecendo a base registrada como default — normalmente `master`, porque este repo não tem branch de integração. Se a spec foi cortada da branch de outra spec que ainda não mergeou, o default é **essa** branch, e o comando certo passa a ser o `/ship-pr`: apontar para `master` faria o diff carregar a spec alheia inteira. Se o registro não existir, descobrir com `git merge-base` contra os candidatos e **perguntar**, sem presumir.
 
-3. **A versão.** O nome da tag e do release saem do `package.json`, e não há Action que faça bump neste repo.
+3. **A versão.** O nome da tag e da release saem do `package.json`, e não há Action que faça bump neste repo.
    - `git fetch --tags` e `gh release list --repo sgrande-delivery/delivery-printer --limit 5` para ver o que já existe (a última publicada é a referência real; o `package.json` da branch pode já estar à frente).
-   - Se a `version` atual **já corresponde a um release publicado**, o merge vai tentar publicar assets numa tag existente: **pare e pergunte ao dev o bump** (patch default, minor, major), e deixe o bump num commit próprio `chore(release): bump version to X.Y.Z`.
-   - Se a `version` já está à frente da última publicada, dizer qual é e seguir — ela é o nome do draft que vai nascer.
+   - Se a `version` atual **já corresponde a uma release publicada**, a release nova não pode reusar essa tag: **pare e pergunte ao dev o bump** (patch default, minor, major), e deixe o bump num commit próprio `chore(release): bump version to X.Y.Z`.
+   - Se a `version` já está à frente da última publicada, dizer qual é e seguir — é a tag que o dev vai usar ao criar a pré-release, e a esteira **reprova** se as duas divergirem.
    - **A versão só cresce.** É a única coisa que o updater compara.
 
 4. **Delegar ao `git-agent` em duas etapas** — ele não consegue perguntar ao usuário, então a confirmação acontece aqui:
@@ -52,7 +52,7 @@ Fluxo:
    - Variáveis de ambiente novas, nos cinco pontos
    - Se mexeu em `package.json`: a versão antes e depois, e o lembrete de que `npm ci` precisa passar
    - Limitações honestas: o que ficou fora e **o que não foi verificado**
-   - **O que acontece no merge:** a esteira builda e cria/atualiza o release **draft** `v<version>`; **publicar o release é ato do dev**, depois de instalar o `.exe`, e é o que entrega a atualização. Sem essa linha, alguém mergeia achando que publicou — ou achando que não
+   - **O que acontece no merge, e o que NÃO acontece:** o merge em `master` roda só a checagem e **não publica nada**. Publicar é o dev criar a release com a tag `v<version>` **como pré-release**; a esteira anexa os três arquivos, e **promover é o que entrega a atualização**, depois de instalar o `.exe`. Sem essa linha, alguém mergeia achando que publicou — ou achando que não
    - `Closes #<issue>` no fim, **um por linha para cada task do PR**, mais `Closes #<issue-da-feature>` quando todas as tasks estiverem no PR. Literal e fora de bloco de código
    - Como testar localmente, com comandos que funcionam copiados
 
@@ -77,7 +77,9 @@ Fluxo:
    - Branch em que a sessão ficou
    - E explicitamente, o que falta e é do dev:
 
-   > **Próximos passos (não são deste comando):** mergear o PR em `master` → a esteira roda typecheck, test, build e cria/atualiza o release **draft `v<version>`** com o instalador, o `.blockmap` e o `latest.yml` → **instalar o `.exe` do draft e conferir** → publicar o release pela UI do GitHub. É a publicação que entrega a atualização, e ela chega em cada PDV **quando o operador fechar o app** — pode levar dias.
+   > **Próximos passos (não são deste comando), na ordem:** mergear o PR em `master` (**não publica nada**) → criar a release com a tag `v<version>` marcada como **PRÉ-RELEASE** → a esteira confere a tag, builda e anexa `.exe`, `.blockmap` e `latest.yml` **à mesma pré-release** → **instalar o `.exe` e conferir** → **promover** a pré-release, que é o que entrega a atualização → **atualizar o `delivery_printer_version` no `delivery-admin`**, senão o link de download do painel oferece a versão anterior.
+   >
+   > Dois avisos que valem repetir ao dev: **se a esteira terminar verde e sem assets anexados, não promova** (o suspeito é o `releaseType` ou a regra das 2 horas — ver `.claude/rules/autoupdate.md`); e **criar a release direto como normal** faz a esteira falhar de propósito, porque nesse instante ela já é a `Latest` sem `latest.yml` e todo app instalado tomaria 404. A atualização chega em cada PDV **quando o operador fechar o app pela bandeja** — pode levar dias.
 
 **Não fazer:**
 
