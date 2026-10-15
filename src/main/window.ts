@@ -1,22 +1,25 @@
-import { App, BrowserWindow, shell } from 'electron';
-import { Extensions } from './extensions';
+import { App, BrowserWindow, Menu, shell } from 'electron';
+import path from 'node:path';
 import { getAssetPath } from './asset';
-import path from 'path';
-import { resolveHtmlPath } from './util';
+import { loadRenderer } from './util';
 import { isQuiting } from './tray';
-import MenuBuilder from './menu';
+import { registerDevtools } from './devtools';
 import { AppUpdater } from './updater';
 
 export class MainWindowBuilder {
   private window: BrowserWindow;
 
-  constructor(private readonly app: App) {
+  constructor(app: App) {
     this.window = new BrowserWindow({
       show: false,
       width: 1024,
       height: 728,
       icon: getAssetPath(app, 'icon.ico'),
-      webPreferences: this.getWindowWebPreferences(),
+      webPreferences: {
+        // electron-vite emits the preload bundle next to the main bundle, so
+        // this path is the same in development and packaged.
+        preload: path.join(__dirname, '../preload/preload.js'),
+      },
       titleBarStyle: 'hidden',
       titleBarOverlay: {
         color: 'white',
@@ -26,28 +29,22 @@ export class MainWindowBuilder {
     });
   }
 
-  async build(): Promise<BrowserWindow> {
-    await this.extensions();
+  build(): BrowserWindow {
+    loadRenderer(this.window);
 
-    this.load();
     this.settings();
-    this.menu();
     this.events();
     this.updater();
+
+    registerDevtools(this.window);
 
     return this.window;
   }
 
-  private async extensions() {
-    const extentions = new Extensions();
-    await extentions.install();
-  }
-
-  private load() {
-    this.window.loadURL(resolveHtmlPath('index.html'));
-  }
-
   private settings() {
+    // The app never uses the menu bar; dropping it outright is clearer than
+    // building a menu and then hiding it.
+    Menu.setApplicationMenu(null);
     this.window.setMenuBarVisibility(false);
 
     this.window.webContents.setWindowOpenHandler(edata => {
@@ -59,11 +56,6 @@ export class MainWindowBuilder {
     });
   }
 
-  private menu() {
-    const menuBuilder = new MenuBuilder(this.window);
-    menuBuilder.buildMenu();
-  }
-
   private events() {
     this.window.on('ready-to-show', () => {
       if (process.env.START_MINIMIZED) {
@@ -72,11 +64,6 @@ export class MainWindowBuilder {
       }
 
       this.window.show();
-    });
-
-    this.window.on('minimize', event => {
-      event.preventDefault();
-      // mainWindow.hide();
     });
 
     this.window.on('close', event => {
@@ -93,15 +80,5 @@ export class MainWindowBuilder {
   private updater() {
     const updater = new AppUpdater();
     updater.run();
-  }
-
-  private getWindowWebPreferences() {
-    const filePath = this.app.isPackaged
-      ? path.join(__dirname, 'preload.js')
-      : path.join(__dirname, '../../.erb/dll/preload.js');
-
-    return {
-      preload: filePath,
-    };
   }
 }

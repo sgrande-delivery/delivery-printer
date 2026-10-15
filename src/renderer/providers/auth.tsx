@@ -1,10 +1,8 @@
-import React, { ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { setRestaurant } from 'renderer/store/modules/restaurant/actions';
-import { setUser } from 'renderer/store/modules/user/actions';
-import { User } from 'renderer/types/user';
-import { api } from 'renderer/services/api';
+import React, { ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
+import { User } from 'renderer/types/user';
+import { Restaurant } from 'renderer/types/restaurant';
+import { api } from 'renderer/services/api';
 
 interface AuthContextData {
   login(email: string, password: string): Promise<void>;
@@ -13,6 +11,9 @@ interface AuthContextData {
   checkEmail(email: string): Promise<User>;
   loading: boolean;
   me(): Promise<void>;
+  user: User;
+  restaurant: Restaurant | null;
+  setRestaurantIsOpen(isOpen: boolean): void;
 }
 
 const AuthContext = React.createContext({} as AuthContextData);
@@ -27,40 +28,39 @@ interface AuthProviderProps {
 }
 
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  // The session always sets these two together, so they live here instead of in
+  // a separate store.
+  const [user, setUser] = useState<User>({} as User);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
 
   useEffect(() => {
-    setLoading(true);
     api
       .get('/users/me')
       .then(response => {
-        dispatch(setRestaurant(response.data.restaurant));
-        dispatch(setUser(response.data));
+        setRestaurant(response.data.restaurant);
+        setUser(response.data);
         setAuthenticated(true);
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, [dispatch]);
+  }, []);
 
-  const login = useCallback(
-    async (email: string, password: string): Promise<void> => {
-      try {
-        const response = await api.post('/login', { email, password });
-        dispatch(setRestaurant(response.data.data.restaurant));
-        dispatch(setUser(response.data.data.user));
-        setAuthenticated(true);
-      } catch (err) {
-        if (err instanceof AxiosError && err.response?.status === 401) {
-          throw new Error('Usuário ou senha incorretos');
-        }
-
-        throw new Error('Não foi possível fazer o login');
+  const login = useCallback(async (email: string, password: string): Promise<void> => {
+    try {
+      const response = await api.post('/login', { email, password });
+      setRestaurant(response.data.data.restaurant);
+      setUser(response.data.data.user);
+      setAuthenticated(true);
+    } catch (err) {
+      if (err instanceof AxiosError && err.response?.status === 401) {
+        throw new Error('Usuário ou senha incorretos', { cause: err });
       }
-    },
-    [dispatch]
-  );
+
+      throw new Error('Não foi possível fazer o login', { cause: err });
+    }
+  }, []);
 
   const checkEmail = useCallback(async (email: string): Promise<User> => {
     try {
@@ -68,7 +68,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return response.data.data;
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 401) {
-        throw new Error('E-mail não encontrado');
+        throw new Error('E-mail não encontrado', { cause: err });
       }
 
       throw err;
@@ -78,28 +78,34 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async (): Promise<void> => {
     await api.post('/logout');
     setAuthenticated(false);
-    dispatch(setRestaurant(null));
-    dispatch(setUser({} as User));
-  }, [dispatch]);
+    setRestaurant(null);
+    setUser({} as User);
+  }, []);
 
   const me = useCallback(async () => {
     await api.get('/users/me');
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        login,
-        logout,
-        authenticated,
-        checkEmail,
-        loading,
-        me,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const setRestaurantIsOpen = useCallback((isOpen: boolean) => {
+    setRestaurant(state => (state ? { ...state, is_open: isOpen } : null));
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      login,
+      logout,
+      authenticated,
+      checkEmail,
+      loading,
+      me,
+      user,
+      restaurant,
+      setRestaurantIsOpen,
+    }),
+    [login, logout, authenticated, checkEmail, loading, me, user, restaurant, setRestaurantIsOpen]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export default AuthProvider;

@@ -1,43 +1,9 @@
-import React from 'react';
-import SnackbarContent from '@material-ui/core/SnackbarContent';
-import Snackbar from '@material-ui/core/Snackbar';
-import { makeStyles } from '@material-ui/core/styles';
-import Button from '@material-ui/core/Button';
+import React, { useEffect } from 'react';
+import Button from 'renderer/base/Button';
 import { useMessaging, Options, CallbackFunction } from 'renderer/providers/messaging';
+import styles from './Messaging.module.css';
 
-const useStyles = makeStyles(theme => ({
-  success: {
-    backgroundColor: '#28a745',
-  },
-  error: {
-    backgroundColor: '#dc3545',
-  },
-  warning: {
-    backgroundColor: '#ffc107',
-  },
-  info: {
-    backgroundColor: '#17a2b8',
-  },
-  primary: {
-    backgroundColor: '#007bff',
-  },
-  message: {
-    marginLeft: 10,
-    paddingTop: 3,
-  },
-  messageContent: {
-    display: 'flex',
-  },
-  snackbar: {
-    bottom: 10,
-  },
-  warningText: {
-    color: '#ffc107',
-  },
-  actionText: {
-    color: theme.palette.primary.light,
-  },
-}));
+const AUTO_HIDE_DURATION = 4000;
 
 interface MessagingProps {
   message: string;
@@ -48,42 +14,33 @@ interface MessagingProps {
 }
 
 const Messaging: React.FC<MessagingProps> = ({ message, options, action, handleAction, open }) => {
-  const classes = useStyles();
   const messaging = useMessaging();
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const timer = setTimeout(messaging.handleClose, AUTO_HIDE_DURATION);
+
+    return () => clearTimeout(timer);
+  }, [open, messaging]);
+
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Snackbar
-      style={options || undefined}
-      classes={{
-        anchorOriginBottomCenter: classes.snackbar,
-      }}
-      open={open}
-      onClose={messaging.handleClose}
-      autoHideDuration={4000}
-      anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'center',
-      }}
-    >
-      <SnackbarContent
-        message={
-          <div className={classes.messageContent}>
-            <span className={classes.message}>{message}</span>
-          </div>
-        }
-        action={
-          action ? (
-            <Button classes={{ root: classes.actionText }} size="small" onClick={handleAction}>
-              Desfazer
-            </Button>
-          ) : (
-            <Button size="small" classes={{ root: classes.actionText }} onClick={messaging.handleClose}>
-              Fechar
-            </Button>
-          )
-        }
-      />
-    </Snackbar>
+    <div className={styles.snackbar} style={options || undefined}>
+      <div className={styles.content}>
+        <div className={styles.messageContent}>
+          <span className={styles.message}>{message}</span>
+        </div>
+        <Button size="small" className={styles.actionText} onClick={action ? handleAction : messaging.handleClose}>
+          {action ? 'Desfazer' : 'Fechar'}
+        </Button>
+      </div>
+    </div>
   );
 };
 

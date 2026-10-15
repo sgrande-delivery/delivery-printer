@@ -1,0 +1,86 @@
+/* Reproduces MUI v4's "standard" TextField: underline plus a label that floats
+   up on focus or when the field has a value. */
+.root {
+  display: inline-flex;
+  flex-direction: column;
+  /* margin="normal" */
+  margin: 16px 0 8px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding-top: 16px;
+}
+
+.input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0 7px;
+  border: 0;
+  border-bottom: 1px solid var(--color-input-border);
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  /* MuiInput.root override */
+  font-weight: var(--font-weight-regular);
+  line-height: 1.1876em;
+}
+
+.input:focus {
+  outline: 0;
+  border-bottom: 2px solid var(--color-primary);
+  /* keep the text from shifting when the border thickens */
+  padding-bottom: 6px;
+}
+
+/* The placeholder only appears once the label has floated out of the way. */
+.input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity 200ms;
+}
+
+.input:focus::placeholder {
+  opacity: 1;
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  top: 16px;
+  transform-origin: top left;
+  pointer-events: none;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1.1876em;
+  padding-top: 6px;
+  transition:
+    transform 200ms,
+    color 200ms;
+}
+
+.input:focus ~ .label,
+.input:not(:placeholder-shown) ~ .label {
+  transform: translateY(-18px) scale(0.75);
+}
+
+.input:focus ~ .label {
+  color: var(--color-primary);
+}
+
+.adornment {
+  display: flex;
+  align-items: center;
+  height: 0.01em;
+  max-height: 2em;
+  margin-left: 8px;
+  white-space: nowrap;
+}

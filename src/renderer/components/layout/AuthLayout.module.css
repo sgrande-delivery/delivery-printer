@@ -1,0 +1,22 @@
+.container {
+  display: flex;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+}
+
+.contentWrapper {
+  width: 100%;
+  transition-duration: 225ms;
+  padding-left: 0;
+  padding-top: 0;
+  overflow-y: auto;
+  position: relative;
+}
+
+.content {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}

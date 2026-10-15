@@ -1,22 +1,17 @@
-import constants from 'constants/constants';
-import { useEffect, useState } from 'react';
-import { Socket, io } from 'socket.io-client';
-import { useSelector } from 'renderer/store/selector';
-import { useDispatch } from 'react-redux';
-import { setRestaurantIsOpen } from 'renderer/store/modules/restaurant/actions';
+import { useEffect } from 'react';
+import { useAuth } from 'renderer/providers/auth';
 import packageJson from '../../../package.json';
 import { useAdminSocket } from './useAdminSocket';
 
 let timer: NodeJS.Timeout;
 
 export function useAdminSocketEvents(): void {
-  const restaurant = useSelector(state => state.restaurant);
-  const dispatch = useDispatch();
+  const { restaurant, setRestaurantIsOpen } = useAuth();
   const { socket, isConnected } = useAdminSocket();
 
   useEffect(() => {
     socket?.on('handleRestaurantState', (response: { isOpen: boolean }) => {
-      dispatch(setRestaurantIsOpen(response.isOpen));
+      setRestaurantIsOpen(response.isOpen);
     });
 
     socket?.on('admin_ping', () => {
@@ -30,7 +25,7 @@ export function useAdminSocketEvents(): void {
       socket?.off('handleRestaurantState');
       socket?.off('admin_ping');
     };
-  }, [restaurant, dispatch, socket]);
+  }, [restaurant, setRestaurantIsOpen, socket]);
 
   useEffect(() => {
     if (restaurant && isConnected) {

@@ -1,0 +1,22 @@
+.statusContainer {
+  display: flex;
+  border-radius: 4px;
+  height: 45px;
+  flex-shrink: 0;
+  width: 350px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+}
+
+.status svg {
+  margin-right: 6px;
+  font-size: 26px;
+  color: var(--color-error);
+}
+
+.open svg {
+  color: var(--color-success);
+}

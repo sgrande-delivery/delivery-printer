@@ -1,0 +1,63 @@
+.root {
+  margin: 0;
+  font-family: var(--font-family);
+}
+
+/* Sizes and line heights mirror MUI v4 with fontSize: 14 */
+.h4 {
+  font-size: 2.125rem;
+  font-weight: var(--font-weight-regular);
+  line-height: 1.235;
+}
+
+.h6 {
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.6;
+}
+
+.body1 {
+  font-size: 1rem;
+  font-weight: var(--font-weight-regular);
+  line-height: 1.5;
+}
+
+.body2 {
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-regular);
+  line-height: 1.43;
+}
+
+.caption {
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-regular);
+  line-height: 1.66;
+}
+
+.colorInherit {
+  color: inherit;
+}
+
+.colorPrimary {
+  color: var(--color-primary);
+}
+
+.colorTextPrimary {
+  color: var(--color-text);
+}
+
+.colorTextSecondary {
+  color: var(--color-text-secondary);
+}
+
+.alignLeft {
+  text-align: left;
+}
+
+.alignCenter {
+  text-align: center;
+}
+
+.alignRight {
+  text-align: right;
+}

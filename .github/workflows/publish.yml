@@ -7,39 +7,35 @@ on:
 
 jobs:
   publish:
-    # To enable auto publishing to github, update your electron publisher
-    # config in package.json > "build" and remove the conditional below
-
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [macos-latest]
+    # Windows NSIS installers are built on Windows so no wine is involved.
+    runs-on: windows-latest
 
     steps:
       - name: Checkout git repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Node and NPM
-        uses: actions/setup-node@v3
+      - name: Install Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version-file: .nvmrc
           cache: npm
 
-      - name: Install and build
-        run: |
-          npm install --legacy-peer-deps
-          npm run postinstall
-          npm run build
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Publish releases
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build renderer, preload and main
+        run: npm run build
+
+      # One electron-builder invocation covers both architectures, which keeps a
+      # single latest.yml. Publishing the architectures in separate runs would
+      # overwrite it and break auto update for one of them.
+      - name: Package and publish
         env:
-          # These values are used for auto updates signing
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASS: ${{ secrets.APPLE_ID_PASS }}
-          # CSC_LINK: ${{ secrets.CSC_LINK }}
-          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          # This is used for uploading release assets to github
           GH_TOKEN: ${{ secrets.TOKEN }}
-        run: |
-          npm exec electron-builder -- --publish always --win --ia32
+        run: npx electron-builder --win --publish always

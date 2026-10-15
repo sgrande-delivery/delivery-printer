@@ -1,23 +1,17 @@
-/**
- * When running `npm run build` or `npm run build:main`, this file is compiled to
- * `./src/main.js` using webpack. This gives us some performance wins.
- */
 import { app, ipcMain } from 'electron';
-import { onRawPrint } from './ipc-events/onRawPrint';
-import { TrayBuilder } from './tray';
-import { MainWindowBuilder } from './window';
-import { onWindowAllClosed } from './app-events/onWindowAllClosed';
-import { onIPCExample } from './ipc-events/onIPCExample';
 import { io } from 'socket.io-client';
 import constants from '../constants/constants';
+import { onRawPrint } from './ipc-events/onRawPrint';
 import { onSocketRegister } from './ipc-events/onSocketRegister';
+import { onNotification } from './ipc-events/onNotification';
 import { onBeforeQuit } from './app-events/onBeforeQuit';
 import { onSecondInstance } from './app-events/onSecondInstance';
-import { onNotification } from './ipc-events/onNotification';
+import { onWindowAllClosed } from './app-events/onWindowAllClosed';
+import { TrayBuilder } from './tray';
+import { MainWindowBuilder } from './window';
 
 const socket = io(constants.WS_BASE_URL);
 
-ipcMain.on('ipc-example', onIPCExample);
 ipcMain.handle('rawPrint', onRawPrint);
 ipcMain.handle('socket-register', (event, id: string) => onSocketRegister(event, socket, id));
 ipcMain.handle('notification', onNotification);
@@ -35,8 +29,8 @@ if (process.platform === 'win32') {
 
 app
   .whenReady()
-  .then(async () => {
-    const window = await new MainWindowBuilder(app).build();
+  .then(() => {
+    const window = new MainWindowBuilder(app).build();
 
     new TrayBuilder(app, window).build();
 

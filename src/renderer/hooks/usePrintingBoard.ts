@@ -1,7 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { Socket } from 'socket.io-client';
 import { BoardControlMovement } from 'renderer/types/boardControlMovement';
-import constants from 'constants/constants';
 import { api } from 'renderer/services/api';
 import { uuidv4 } from 'renderer/helpers/uuid';
 import { useBoardSocket } from './useBoardSocket';
@@ -19,7 +17,7 @@ export function usePrintingBoard(): void {
 
   const print = useCallback(async (session: BoardControlMovement, layout: PrintingLayoutOptions) => {
     try {
-      const response = await api.get<Response[]>(`${constants.BASE_URL}board-sessions/${session.id}/${layout}`);
+      const response = await api.get<Response[]>(`board-sessions/${session.id}/${layout}`);
 
       const promises = response.data.map(payload =>
         window.electron.rawPrint({
@@ -47,6 +45,7 @@ export function usePrintingBoard(): void {
 
     return () => {
       socket?.off('print_board_billing');
+      socket?.off('print_board');
     };
   }, [print, socket]);
 }

@@ -1,8 +1,6 @@
 import { useCallback, useEffect } from 'react';
-import { Socket } from 'socket.io-client';
 import { OrderData } from 'renderer/types/order';
 import { api } from 'renderer/services/api';
-import constants from 'constants/constants';
 import { uuidv4 } from 'renderer/helpers/uuid';
 import { useOrderSocket } from './useOrderSocket';
 
@@ -19,7 +17,7 @@ export function usePrintingOrder(): void {
 
   const print = useCallback(async (uuid: string, layout: PrintingLayoutOptions) => {
     try {
-      const response = await api.get<Response[]>(`${constants.BASE_URL}orders/${uuid}/${layout}`);
+      const response = await api.get<Response[]>(`orders/${uuid}/${layout}`);
 
       const promises = response.data.map(payload =>
         window.electron.rawPrint({
