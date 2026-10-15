@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** build
 **Depende de:** (nenhuma)
-**Status:** pendente
+**Status:** bloqueada (decisão de certificado do dev, 2026-10-15)
 
 ## Objetivo
 

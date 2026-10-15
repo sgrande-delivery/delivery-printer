@@ -83,3 +83,14 @@ Da task 01 (#27) — **a decisão desta task foi contra o que a spec pedia, e o 
 - **`nsis: {}`** está vazio, então vale o default do electron-builder: `oneClick: true` e **`perMachine: false`** — instalação por usuário, em `%LOCALAPPDATA%`. É o ponto de partida da task 01 (#27).
 - **`build.publish` continua `owner: raphaelcarreiro` / `repo: delivery-printer-2`** de propósito: toda instalação no parque consulta essa URL para atualizar. O GitHub redireciona do nome antigo, e o link do painel usa o antigo também.
 
+## A task 02 (#28) NÃO foi entregue, e o motivo
+
+**Status: ⛔ bloqueada por decisão do dono do negócio**, não por impedimento técnico.
+
+Assinar exige **escolher e comprar um certificado**, e a decisão pendente 1 desta spec descreve as duas saídas: OV tradicional (US$ 200–400/ano, com a chave em token físico pelas regras novas da CA/B Forum — o que complica assinar na esteira) ou **Azure Trusted Signing** (assinatura na nuvem, ~US$ 10/mês, exige empresa verificada e plano Azure). **A recomendação é o Azure Trusted Signing**, por assinar no CI sem token físico.
+
+Sem certificado não há o que implementar: `win.certificateFile`/`win.signtoolOptions` sem credencial não assina nada, e colocar credencial em `.env` versionado é proibido neste repo (o valor seria inlinado no bundle e extraível do instalador com `npx asar`).
+
+**Enquanto isso, o SmartScreen avisa "editor desconhecido" em toda instalação**, e o `INSTALL.md` da task 03 documenta como passar por ele — é a mitigação, não a correção.
+
+Quando o certificado existir, a #28 roda sem mudar nada do que a #27 entregou: ela só acrescenta assinatura ao mesmo `build.win`.

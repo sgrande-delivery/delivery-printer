@@ -1,6 +1,6 @@
 # Spec — Distribuição no Windows: instalador e assinatura
 
-**Status:** rascunho
+**Status:** entregue, menos a task 02 (#28), bloqueada pela decisão de certificado
 **Criada em:** 2026-10-15
 **Escopo:** build/empacotamento
 **Issue:** [#26](https://github.com/sgrande-delivery/delivery-printer/issues/26)
