@@ -1,6 +1,11 @@
 import './logger';
 import { app, ipcMain } from 'electron';
 import { onRawPrint } from './ipc-events/onRawPrint';
+import { onEnqueue } from './ipc-events/onEnqueue';
+import { onQueueState } from './ipc-events/onQueueState';
+import { onRetryFailed } from './ipc-events/onRetryFailed';
+import { onNotifyConnection } from './ipc-events/onNotifyConnection';
+import { bootPrintQueue } from './queue/print-queue';
 import { onNotification } from './ipc-events/onNotification';
 import { onLog } from './ipc-events/onLog';
 import { onRevealLogs } from './ipc-events/onRevealLogs';
@@ -14,6 +19,10 @@ import { MainWindowBuilder } from './window';
 import { registerAutostart } from './autostart';
 
 ipcMain.handle('rawPrint', onRawPrint);
+ipcMain.handle('enqueue', onEnqueue);
+ipcMain.handle('queueState', onQueueState);
+ipcMain.handle('retryFailed', onRetryFailed);
+ipcMain.on('notifyConnection', onNotifyConnection);
 ipcMain.handle('notification', onNotification);
 ipcMain.on('log', onLog);
 ipcMain.handle('revealLogs', onRevealLogs);
@@ -33,6 +42,8 @@ function boot(): void {
       const window = new MainWindowBuilder(app).build();
 
       new TrayBuilder(app, window).build();
+
+      bootPrintQueue(window);
 
       app.on('before-quit', event => onBeforeQuit(event, window));
       app.on('second-instance', () => onSecondInstance(window));

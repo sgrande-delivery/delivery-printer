@@ -24,7 +24,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isPrintJob(value: unknown): value is PrintJob {
+export function isPrintJob(value: unknown): value is PrintJob {
   if (!isRecord(value) || !isRecord(value.payload)) {
     return false;
   }
@@ -39,6 +39,7 @@ function isPrintJob(value: unknown): value is PrintJob {
     typeof value.createdAt === 'number' &&
     (value.lastError === null || typeof value.lastError === 'string') &&
     (value.orderUuid === undefined || typeof value.orderUuid === 'string') &&
+    (value.label === undefined || typeof value.label === 'string') &&
     typeof payload.content === 'string' &&
     typeof payload.copies === 'number' &&
     (payload.deviceName === null || typeof payload.deviceName === 'string') &&
@@ -157,6 +158,22 @@ export const printQueueStore = {
     return true;
   },
 
+  // All or nothing: one read, one atomic write. Returns how many were added
+  // (ids already in the file are skipped).
+  enqueueMany(newJobs: PrintJob[]): number {
+    const { jobs } = readJobs();
+    const fresh = newJobs.filter(job => !jobs.some(existing => existing.id === job.id));
+
+    if (fresh.length === 0) {
+      return 0;
+    }
+
+    writeJobs(dropOverflow([...jobs, ...fresh]));
+    logger.info(`print-queue: enqueued ${fresh.map(job => `${job.id} (${job.kind})`).join(', ')}`);
+
+    return fresh.length;
+  },
+
   list(status?: PrintJobStatus): PrintJob[] {
     const { jobs } = readJobs();
 
@@ -184,6 +201,30 @@ export const printQueueStore = {
     if (changed) {
       logger.warn(`print-queue: failed ${id}, reason: ${reason}`);
     }
+  },
+
+  // Manual retry: failed goes back to pending with a fresh count. Returns how
+  // many jobs were put back.
+  resetFailed(id?: string): number {
+    const { jobs } = readJobs();
+    let count = 0;
+
+    const next = jobs.map(job => {
+      if (job.status !== 'failed' || (id !== undefined && job.id !== id)) {
+        return job;
+      }
+
+      count += 1;
+      logger.info(`print-queue: retry requested for ${job.id}`);
+
+      return { ...job, status: 'pending' as const, attempts: 0, lastError: null };
+    });
+
+    if (count > 0) {
+      writeJobs(next);
+    }
+
+    return count;
   },
 
   incrementAttempt(id: string): void {

@@ -95,6 +95,21 @@ describe('printQueueStore', () => {
     expect(failed.payload.content).toBe('<html>a</html>');
   });
 
+  it('resetFailed puts failed jobs back to pending with a fresh count, only the one asked for', () => {
+    printQueueStore.enqueue(job('a'));
+    printQueueStore.enqueue(job('b'));
+    printQueueStore.incrementAttempt('a');
+    printQueueStore.markFailed('a', 'Print job failed');
+    printQueueStore.markFailed('b', 'Print job failed');
+
+    expect(printQueueStore.resetFailed('a')).toBe(1);
+
+    expect(printQueueStore.list('pending')).toEqual([job('a')]);
+    expect(printQueueStore.list('failed').map(j => j.id)).toEqual(['b']);
+    expect(printQueueStore.resetFailed()).toBe(1);
+    expect(printQueueStore.resetFailed()).toBe(0);
+  });
+
   it('incrementAttempt counts', () => {
     printQueueStore.enqueue(job('a'));
 
