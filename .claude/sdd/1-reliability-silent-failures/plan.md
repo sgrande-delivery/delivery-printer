@@ -2,7 +2,7 @@
 
 **Spec:** [spec.md](./spec.md)
 **Issue da feature:** [#1](https://github.com/sgrande-delivery/delivery-printer/issues/1)
-**Branch de trabalho:** `feat/1-reliability-silent-failures`: uma por spec, com todas as tasks em sequência, um commit por task e um PR no fim. O `/execute` completa com a base e a data
+**Branch de trabalho:** `feat/1-reliability-silent-failures`, cortada de `refactor/remove-erb-boilerplate` em 2026-10-15: todas as tasks em sequência, um commit por task e um PR no fim
 
 ## Abordagem técnica
 
@@ -28,7 +28,7 @@ O que será reaproveitado:
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Iniciar com o Windows | [#2](https://github.com/sgrande-delivery/delivery-printer/issues/2) | [2-autostart-with-windows.md](./tasks/2-autostart-with-windows.md) | — | pendente |
+| 01 | Iniciar com o Windows | [#2](https://github.com/sgrande-delivery/delivery-printer/issues/2) | [2-autostart-with-windows.md](./tasks/2-autostart-with-windows.md) | — | executada |
 | 02 | Aguardar o patch de impresso e parar de reimprimir | [#3](https://github.com/sgrande-delivery/delivery-printer/issues/3) | [3-await-printed-patch.md](./tasks/3-await-printed-patch.md) | — | pendente |
 | 03 | Fazer o `printer_exited` chegar ao admin | [#4](https://github.com/sgrande-delivery/delivery-printer/issues/4) | [4-printer-exited-reaches-admin.md](./tasks/4-printer-exited-reaches-admin.md) | — | pendente |
 | 04 | Estado de sem conexão e `ProtectedRoute` de verdade | [#5](https://github.com/sgrande-delivery/delivery-printer/issues/5) | [5-offline-state-and-protected-route.md](./tasks/5-offline-state-and-protected-route.md) | — | pendente |
@@ -54,4 +54,9 @@ Além de `npm run typecheck`, `npm run lint` e `npm test`:
 
 ## Aprendizados que valem para as próximas tasks
 
-<!-- Preenchido ao longo da execução. -->
+Da task 01 (#2), e as três valem para a 03 (#4), que também mexe no main:
+
+- **`args` do login item chega por `process.argv`, não por `process.env`.** O `process.env.START_MINIMIZED` que o `window.ts` lia é herança do ERB e **nada no repo o define**. A task #2 afirmava o contrário, e a afirmação foi corrigida no arquivo dela — a spec [#26](https://github.com/sgrande-delivery/delivery-printer/issues/26), que vai criar atalho de startup pelo instalador, dependia desse detalhe estar certo.
+- **Teste de código do main vive em `src/main/__tests__/`** (o `include` do Vitest é `src/**/*.{test,spec}.{ts,tsx}`, então é coletado) e roda no **jsdom global**: `// @vitest-environment node` quebra, porque o `setupFiles` de `src/__tests__/setup.ts` usa `window`. `node:fs`, `node:os` e `node:path` funcionam normalmente sob jsdom. O padrão a copiar é o `vi.mock('electron', ...)` com `vi.hoisted` e o getter de `isPackaged` de `src/main/__tests__/autostart.test.ts`.
+- **O `electron-log` já tem transporte de arquivo ligado neste processo** (`src/main/updater.ts:8`, `log.transports.file.level = 'info'`), e a dependência já é empacotada. Ou seja, a spec [#11](https://github.com/sgrande-delivery/delivery-printer/issues/11) não começa do zero: existe um sink pronto, e os três `console.*` de `src/main/` (`main.ts`, `updater.ts`, `autostart.ts`) são os sites a trocar. Atenção ao fato de que o `AppUpdater` é construído **depois** do `registerAutostart()` no `whenReady`, então quem configurar o logger precisa fazê-lo antes de tudo.
+- **Decisão de produto em aberto, levada ao dev:** no boot, o app sobe **minimizado na barra de tarefas** (é o que o `START_MINIMIZED` sempre fez e o que está implementado), não escondido na bandeja. Para um app que vive na bandeja, "escondido" talvez seja o esperado — mas mudar isso altera o comportamento de uma flag pré-existente, então ficou como pergunta.

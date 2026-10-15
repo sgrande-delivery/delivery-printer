@@ -74,4 +74,4 @@ Guardar em memória, no hook, os `uuid` cuja impressão foi concluída nesta ses
 
 ## Branch
 
-`feat/1-reliability-silent-failures`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/1-reliability-silent-failures`, cortada de `refactor/remove-erb-boilerplate` em 2026-10-15, com um commit por task.

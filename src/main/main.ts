@@ -9,6 +9,7 @@ import { onSecondInstance } from './app-events/onSecondInstance';
 import { onWindowAllClosed } from './app-events/onWindowAllClosed';
 import { TrayBuilder } from './tray';
 import { MainWindowBuilder } from './window';
+import { registerAutostart } from './autostart';
 
 const socket = io(constants.WS_BASE_URL);
 
@@ -30,6 +31,8 @@ if (process.platform === 'win32') {
 app
   .whenReady()
   .then(() => {
+    registerAutostart();
+
     const window = new MainWindowBuilder(app).build();
 
     new TrayBuilder(app, window).build();

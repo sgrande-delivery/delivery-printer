@@ -5,6 +5,7 @@ import { loadRenderer } from './util';
 import { isQuiting } from './tray';
 import { registerDevtools } from './devtools';
 import { AppUpdater } from './updater';
+import { START_MINIMIZED_ARG } from './autostart';
 
 export class MainWindowBuilder {
   private window: BrowserWindow;
@@ -58,7 +59,7 @@ export class MainWindowBuilder {
 
   private events() {
     this.window.on('ready-to-show', () => {
-      if (process.env.START_MINIMIZED) {
+      if (process.env.START_MINIMIZED || process.argv.includes(START_MINIMIZED_ARG)) {
         this.window.minimize();
         return;
       }
