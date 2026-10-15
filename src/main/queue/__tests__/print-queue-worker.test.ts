@@ -59,9 +59,10 @@ describe('print queue worker', () => {
   const print = vi.fn<(payload: PrintPayload) => Promise<void>>();
   const onPrinted = vi.fn<(job: PrintJobSummary) => void>();
   const onFailed = vi.fn<(job: PrintJobSummary) => void>();
+  const onChanged = vi.fn<() => void>();
 
   function newWorker(): PrintQueueWorker {
-    return createPrintQueueWorker({ print, onPrinted, onFailed });
+    return createPrintQueueWorker({ print, onPrinted, onFailed, onChanged });
   }
 
   beforeEach(() => {
@@ -70,6 +71,7 @@ describe('print queue worker', () => {
     print.mockReset().mockResolvedValue(undefined);
     onPrinted.mockReset();
     onFailed.mockReset();
+    onChanged.mockReset();
     log.info.mockClear();
     log.warn.mockClear();
     log.error.mockClear();
@@ -124,6 +126,42 @@ describe('print queue worker', () => {
 
     await settle(120000);
     expect(print).toHaveBeenCalledTimes(MAX_ATTEMPTS);
+  });
+
+  it('announces every change the screen shows, and nothing between attempts', async () => {
+    print.mockRejectedValue('Print job failed');
+    const worker = newWorker();
+
+    worker.enqueue(request('a'));
+    expect(onChanged).toHaveBeenCalledTimes(1);
+
+    // Still pending between attempts: a ping per attempt would be a ping every few
+    // seconds for as long as the printer is off.
+    await settle(10000);
+    expect(onChanged).toHaveBeenCalledTimes(1);
+
+    await settle(60000);
+    expect(printQueueStore.list()[0].status).toBe('failed');
+    expect(onChanged).toHaveBeenCalledTimes(2);
+
+    print.mockResolvedValue(undefined);
+    expect(worker.retryFailed()).toBe(1);
+    expect(onChanged).toHaveBeenCalledTimes(3);
+
+    await settle();
+    expect(printQueueStore.list()[0].status).toBe('printed');
+    expect(onChanged).toHaveBeenCalledTimes(4);
+  });
+
+  it('an announcement that throws does not fail the enqueue: the receipt is already on disk', () => {
+    onChanged.mockImplementation(() => {
+      throw new Error('the window is gone');
+    });
+    const worker = newWorker();
+
+    expect(worker.enqueue(request('a'))).toBe('enqueued');
+    expect(printQueueStore.list()).toHaveLength(1);
+    expect(log.error).toHaveBeenCalled();
   });
 
   it('retryFailed gives the job a fresh set of attempts', async () => {

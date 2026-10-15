@@ -44,6 +44,9 @@ export type PrintQueueWorkerDeps = {
   print: (payload: PrintPayload) => Promise<void>;
   onPrinted: (job: PrintJobSummary) => void;
   onFailed: (job: PrintJobSummary) => void;
+  // Called after a transition that changes what is waiting or what failed, so the
+  // screen never has to poll the queue file to notice.
+  onChanged: () => void;
 };
 
 export type PrintQueueWorker = {
@@ -72,6 +75,16 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     }
   }
 
+  // Never let the announcement break the caller: enqueue would reject for a job that
+  // did reach the disk, and the renderer would warn that the receipt was lost.
+  function announce(): void {
+    try {
+      deps.onChanged();
+    } catch (err: unknown) {
+      logger.error('print-queue: could not tell the renderer that the queue changed', describeError(err));
+    }
+  }
+
   function fail(job: PrintJob, err: unknown): void {
     const reason = reasonOf(err);
     const attempts = job.attempts + 1;
@@ -83,6 +96,7 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
         printQueueStore.markFailed(job.id, reason);
         nextAttemptAt.delete(job.id);
         notify(deps.onFailed, toSummary({ ...job, attempts, status: 'failed', lastError: reason }));
+        announce();
         return;
       }
     } catch (storeErr: unknown) {
@@ -91,6 +105,9 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
 
     const wait = backoffMs(attempts);
 
+    // No announcement between attempts: the job stays pending, so nothing the screen
+    // shows has changed, and a ping per attempt would be a ping every few seconds
+    // for as long as the printer is off.
     nextAttemptAt.set(job.id, Date.now() + wait);
     logger.warn(`print-queue: attempt ${attempts} of ${MAX_ATTEMPTS} for ${job.id} failed, reason: ${reason}`);
   }
@@ -115,6 +132,7 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     }
 
     notify(deps.onPrinted, toSummary({ ...job, status: 'printed', lastError: null }));
+    announce();
   }
 
   function schedule(pending: PrintJob[]): void {
@@ -226,6 +244,7 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
       return 'duplicate';
     }
 
+    announce();
     kick();
 
     return 'enqueued';
@@ -235,6 +254,7 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     const count = printQueueStore.resetFailed(id);
 
     if (count > 0) {
+      announce();
       kick();
     }
 

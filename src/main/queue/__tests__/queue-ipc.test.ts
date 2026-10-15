@@ -45,11 +45,13 @@ describe('queue channels', () => {
   it('queueState never lets the receipt content cross to the renderer', () => {
     printQueueStore.enqueue(job('pending', 'pending'));
     printQueueStore.enqueue(job('failed', 'failed'));
+    // The ledger of what was already printed has no reader in the renderer.
+    printQueueStore.enqueue(job('printed', 'printed'));
 
     const state = onQueueState();
     const wire = JSON.stringify(structuredClone(state));
 
-    expect(state).toHaveLength(2);
+    expect(state.map(summary => summary.id)).toEqual(['pending', 'failed']);
     expect(wire).not.toContain(SECRET);
     expect(wire).not.toContain('Maria');
     expect(wire).not.toContain('content');

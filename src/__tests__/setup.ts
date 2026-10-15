@@ -14,6 +14,7 @@ Object.defineProperty(window, 'electron', {
     notifyConnection: vi.fn(),
     onJobPrinted: vi.fn().mockReturnValue(() => undefined),
     onJobFailed: vi.fn().mockReturnValue(() => undefined),
+    onQueueChanged: vi.fn().mockReturnValue(() => undefined),
     onBeforeQuit: vi.fn().mockReturnValue(() => undefined),
     beforeQuitDone: vi.fn(),
     log: vi.fn(),

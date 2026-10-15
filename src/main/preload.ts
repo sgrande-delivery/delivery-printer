@@ -44,6 +44,18 @@ const electronHandler = {
     };
   },
 
+  // Every transition that changes what is waiting or what failed, with no payload:
+  // whoever shows the queue reads it again through queueState. It exists so that
+  // showing the queue does not mean reading the file on a timer.
+  onQueueChanged: (listener: () => void): (() => void) => {
+    const handler = (): void => listener();
+    ipcRenderer.on('queue:changed', handler);
+
+    return () => {
+      ipcRenderer.removeListener('queue:changed', handler);
+    };
+  },
+
   // First channel in the main -> renderer direction. The renderer must call the
   // returned function on cleanup and send the ack once it has emitted.
   onBeforeQuit: (listener: () => void): (() => void) => {
