@@ -31,7 +31,7 @@ As telas seguem a skill `add-screen`: componente + CSS Module, screen, rota no `
 | 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | executada |
 | 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | executada |
 | 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | executada |
-| 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | pendente |
+| 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | executada |
 | 05 | Imprimir teste local | [#24](https://github.com/sgrande-delivery/delivery-printer/issues/24) | [24-local-test-print.md](./tasks/24-local-test-print.md) | 01 | pendente |
 | 06 | Emitir `printer:status` por impressora | [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25) | [25-emit-printer-status.md](./tasks/25-emit-printer-status.md) | 01 | pendente |
 
@@ -102,6 +102,30 @@ Da task 03 (#22):
 - **Teste que renderiza componente pelado e código desenhado em volta disso são coisas diferentes.** A primeira versão evitou o `useMessaging()` com o argumento de que "sem o provider o `handleOpen` seria `undefined`" — verdade **nos testes**, falso na tela real, porque o `MessagingProvider` envolve o `Routes` (`App.tsx:13`). A saída é embrulhar o teste no provider, não desenhar o código em volta da limitação do teste.
 - **`base/Select` está ganho para task própria:** o padrão `label + select` se repete **4 vezes dentro de um arquivo**, e o `<select>` do form usa *caption acima* enquanto o `base/TextField` usa *label flutuante* — hoje não aparecem juntos, mas **na #23 vão**, e aí a diferença fica visível.
 - **A dívida do `base/LinkButton` chegou a SEIS call sites.**
+
+Da task 04 (#23) — **e o achado mais grave da spec está aqui**:
+
+- **`GET /api/admin/printerSettings` LÊ A TABELA ERRADA na `delivery-api`.** Medido e conferido linha por linha:
+
+  | | Relação | Model | Tabela |
+  | --- | --- | --- | --- |
+  | `GET /printerSettings` | `$restaurant->settings` (`FindCurrentRestaurantPrinterSettingsUseCase:19`) | `RestaurantSetting` | **`restaurant_settings`** |
+  | `PUT /printerSettings` | — | `PrinterSetting` | **`printer_settings`** |
+
+  A relação certa existe no mesmo model, vinte linhas abaixo (`Restaurant.php:272`, `printerSettings()`), e nenhum dos dois models sobrescreve `$table`, então o Laravel deriva nomes diferentes. **A correção na API é de uma linha.**
+  - **Ninguém percebeu porque o `delivery-admin` nunca chama esse `GET`**: ele monta o formulário de `restaurant.printer_settings`, vindo do `/users/me`. Este app seria o primeiro consumidor.
+  - **O que isso teria causado:** o `GET` devolve as 32 chaves de configuração geral do restaurante (`pizza_calculate`, `tax_mode`, `delivery_time`…), sobreposição **zero** com as 7 de impressão. A tela mostraria tudo vazio para **todo** restaurante, e o primeiro "Salvar" mandaria as 32 chaves alheias — e como o `PUT` apaga tudo e recria do payload, **as sete linhas reais iriam embora**. `PrintCreatedOrderUseCase:28` e `ShipmentOrderUseCase:32` leem as cópias, e a blade interpola `font_size`/`margin_size`: **o restaurante pararia de imprimir**, e o botão "Baixar agora" do painel apontaria para `v undefined`. A RN-05 invertida.
+  - **A fonte certa era a que a própria task indicava:** `useAuth().restaurant.printer_settings`, do `/users/me` — medido: `ShowAdminUserUseCase:44` faz `append('printer_settings')` e o acessor `Restaurant::getPrinterSettingsAttribute()` usa `$this->printerSettings()->get()`, **a relação correta**. É também a mesma fonte do admin, então o suporte fala uma língua só. O `GET` isolado é o único quebrado.
+- **Guard de forma não pega semântica errada.** `typeof === 'object'` aprovava as 32 chaves alheias. O porteiro agora exige **ao menos uma das sete chaves conhecidas** e **recusa o salvamento com mensagem** em vez de reconstruir do zero — em duas camadas (a tela não monta o form; o serviço lança antes do `PUT`).
+- **"Objeto vazio" NÃO significa "restaurante novo":** `OnCreatedRestaurantUseCase:54-73` semeia as sete chaves no cadastro, então baseline vazio é **evidência de bug**. O teste que dizia "não quebra com objeto vazio" virou "**não salva** sobre baseline vazio" — a versão anterior consagrava a perda de dados como comportamento desejado, mesmo padrão da #17.
+- **`max_width` é configuração MORTA:** não existe no formulário do admin, e `grep` na `delivery-api`, no `delivery-admin` e no `delivery-socket-api` só acha o cast, o default `80` do cadastro e a declaração de tipo. **Nenhuma blade e nenhum use case a leem.** Saiu da edição e continua **preservada** no payload — que é o que a RN-05 pede.
+- **Os limites numéricos não eram opcionais, porque o servidor não é rede nenhuma** (sem FormRequest, coluna `string(255)` sem `CHECK`). `copies: 0` chega ao `webContents.print` e **nenhum comprovante sai**; `font-size: 0px` na blade dá comprovante em branco. A saída foi espelhar os **conjuntos fechados do admin** com o `base/Select` — o que matou de uma vez a validação inventada, a mensagem global de erro ("o operador não sabia qual campo recusou") e a divergência com o painel. Os rótulos de `margin_size` foram conferidos no painel: `1` é "0px", os demais "NNpx".
+- **Valor fora do conjunto aparece como opção extra**, para abrir a tela não reescrever o que já estava gravado.
+- **Depois de salvar, a sessão tem de ser atualizada.** Sem `setPrinterSettings` no `providers/auth.tsx`, voltar à tela releria o `printer_settings` **velho** do `/users/me`, e um segundo "Salvar" mesclaria sobre o baseline antigo **desfazendo o primeiro**.
+- **`base/Select` criado**, no idioma do `base/TextField` (label via `useId` + `htmlFor`, `<select>` antes do `<label>` para o seletor irmão `:focus ~ .label`). A label fica **sempre** flutuada, porque um `<select>` sempre exibe uma opção e não há `:placeholder-shown` a seguir — é exatamente o estado em que o `TextField` fica quando tem valor. **E ganhou o teste de ordem que o comentário do `TextField` sempre quis ter.** O `PrinterForm` da #22 migrou, e o `.select` saiu do CSS dele.
+- **Consequência aceita e visível:** `/printer-settings` **não tem região de arraste**, então a janela não se move nessa tela — enquanto `/printers` move, porque a #21 copiou a barra antes de a decisão ser tomada. São **cinco** telas sem arraste, e duas telas irmãs da mesma spec se comportam diferente. É o preço de não fazer a quarta cópia, e reforça a task de subir a barra para o `DefaultLayout`.
+- **O ramo de 422 é contrato defensivo, não comportamento observado:** essa rota não tem validação nenhuma, e o nome do teste passou a dizer isso.
+- **A dívida do `base/LinkButton` chegou a SETE call sites.**
 
 Para a task 04 (#23) — medido no `delivery-api` antes de a task começar:
 

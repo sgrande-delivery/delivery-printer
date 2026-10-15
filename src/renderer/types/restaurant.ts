@@ -12,6 +12,8 @@ export interface PrinterSetting {
   no_margin: boolean;
   max_width: number;
   margin_size: number;
+  // Not editable in this app: the admin panel builds the installer download link from it.
+  delivery_printer_version: string;
 }
 
 export interface Restaurant {

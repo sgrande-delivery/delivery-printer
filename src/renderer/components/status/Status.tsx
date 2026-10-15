@@ -107,6 +107,9 @@ const Status: React.FC<StatusProps> = ({ wsConnected, handleLogout }) => {
         <button type="button" className={styles.linkLogs} onClick={() => history.push('/printers')}>
           impressoras
         </button>
+        <button type="button" className={styles.linkLogs} onClick={() => history.push('/printer-settings')}>
+          configurações de impressão
+        </button>
       </div>
     </div>
   );

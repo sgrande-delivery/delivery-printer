@@ -1,7 +1,7 @@
 import React, { ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AxiosError } from 'axios';
 import { User } from 'renderer/types/user';
-import { Restaurant } from 'renderer/types/restaurant';
+import { PrinterSetting, Restaurant } from 'renderer/types/restaurant';
 import { api } from 'renderer/services/api';
 import { log } from 'renderer/services/log';
 
@@ -35,6 +35,7 @@ interface AuthContextData {
   user: User;
   restaurant: Restaurant | null;
   setRestaurantIsOpen(isOpen: boolean): void;
+  setPrinterSettings(settings: PrinterSetting): void;
 }
 
 const AuthContext = React.createContext({} as AuthContextData);
@@ -137,6 +138,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setRestaurant(state => (state ? { ...state, is_open: isOpen } : null));
   }, []);
 
+  // The session copy is the baseline the printer settings screen reads, so a save has to
+  // land here too or the next visit would merge over a stale object.
+  const setPrinterSettings = useCallback((settings: PrinterSetting) => {
+    setRestaurant(state => (state ? { ...state, printer_settings: settings } : null));
+  }, []);
+
   const value = useMemo(
     () => ({
       login,
@@ -150,8 +157,20 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       user,
       restaurant,
       setRestaurantIsOpen,
+      setPrinterSettings,
     }),
-    [login, logout, sessionStatus, retrySession, checkEmail, me, user, restaurant, setRestaurantIsOpen]
+    [
+      login,
+      logout,
+      sessionStatus,
+      retrySession,
+      checkEmail,
+      me,
+      user,
+      restaurant,
+      setRestaurantIsOpen,
+      setPrinterSettings,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

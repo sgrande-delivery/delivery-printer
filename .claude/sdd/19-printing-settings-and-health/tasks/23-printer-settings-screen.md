@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 21
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -75,6 +75,76 @@ Estados: carregando, salvando, sem permissão (403), erro.
 - Editar `delivery_printer_version` daqui: é o painel que decide qual versão oferecer
 - Interpretar `font_size`/margens no app (RN-06)
 - Cadastro de impressoras — tasks [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) e [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22)
+
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/renderer/services/printerSettings.ts`, `hooks/usePrinterSettings.ts`, `components/printer-settings/{PrinterSettings,PrinterSettingsForm}.tsx` + `.module.css`, `screens/PrinterSettingsScreen.tsx`, **`base/Select.tsx`** + `.module.css`, e três arquivos de teste.
+Alterados: `providers/auth.tsx`, `routes/Routes.tsx`, `components/status/Status.tsx` + teste, `components/printers/PrinterForm.tsx` + `.module.css` (migrado para o `base/Select`).
+
+### O bug que esta task quase entregou, e que ela existia para evitar
+
+A primeira versão lia o baseline de `GET /api/admin/printerSettings`. **Essa rota lê a tabela errada na `delivery-api`**: `FindCurrentRestaurantPrinterSettingsUseCase:19` usa `$restaurant->settings` (`RestaurantSetting` → `restaurant_settings`), enquanto o `PUT` escreve em `printer_settings`. A relação certa está vinte linhas abaixo no mesmo model.
+
+Como o `PUT` **apaga todas as linhas e recria do payload**, o primeiro "Salvar" num PDV mandaria as 32 chaves de configuração geral do restaurante e **destruiria as sete de impressão**. `PrintCreatedOrderUseCase:28` e `ShipmentOrderUseCase:32` leem as cópias e a blade interpola `font_size`/`margin_size`: **o restaurante pararia de imprimir**, e o botão "Baixar agora" do painel passaria a apontar `v undefined`.
+
+Ninguém havia percebido porque o `delivery-admin` **nunca chama esse `GET`** — ele usa `restaurant.printer_settings` do `/users/me`. Este app seria o primeiro consumidor.
+
+**A fonte certa era a que esta própria task indicava:** a sessão. Medido que ela lê a tabela correta — `ShowAdminUserUseCase:44` faz `append('printer_settings')` e o acessor usa `$this->printerSettings()->get()`.
+
+### A invariante, e o porteiro que a protege
+
+O `PUT` manda `{ ...loaded, ...changes }`, onde `loaded` é o objeto da sessão **sem filtro**: as sete chaves conhecidas, as que existirem, e qualquer chave que este app não declara. O `delivery_printer_version` **nunca** é editável aqui — quem decide a versão oferecida é o painel — e volta intacto.
+
+Como guard de **forma** não pega semântica errada (`typeof === 'object'` aprovava as 32 chaves alheias), há porteiro de **conteúdo**: baseline sem nenhuma das sete chaves conhecidas **recusa o salvamento com mensagem**, em duas camadas. Baseline vazio também recusa, porque as sete chaves são semeadas no cadastro do restaurante — vazio é evidência de bug, não de restaurante novo.
+
+### Campos
+
+| Campo | Conjunto, igual ao do painel |
+| --- | --- |
+| Tamanho da fonte | 12, 14, 16, 18, 20, 22, 24 |
+| Cópias de produção | 1, 2, 3, 4 |
+| Cópias de entrega | 1, 2, 3, 4 |
+| Margens | 1 ("0px"), 10, 15, 20, 25, 30, 35, 40 ("NNpx") |
+| Remover margens | checkbox |
+| `delivery_printer_version` | **só exibido** |
+
+Conjuntos fechados em vez de texto livre, porque **o servidor não valida nada** (sem FormRequest, coluna `string(255)` sem `CHECK`): `copies: 0` chega ao `webContents.print` e nenhum comprovante sai; `font-size: 0px` dá comprovante em branco. Isso também matou a mensagem global de erro, que não dizia qual campo havia sido recusado. Os rótulos foram conferidos no painel.
+
+**`max_width` saiu da edição:** é configuração morta — não existe no painel e nenhuma blade ou use case a lê. Continua preservada no payload.
+
+Valor fora do conjunto aparece como opção extra, para abrir a tela não reescrever o que estava gravado.
+
+### `base/Select`
+
+Criado seguindo o `base/TextField`: label por `useId` + `htmlFor`, e o `<select>` **antes** do `<label>` para o seletor irmão `:focus ~ .label` funcionar. A label fica sempre flutuada, porque um `<select>` sempre exibe uma opção e não há `:placeholder-shown` a seguir — é o estado em que o `TextField` fica quando tem valor.
+
+Ganhou **o teste de ordem que o comentário do `TextField` sempre quis ter**, e o `PrinterForm` da #22 migrou (o `.select` saiu do CSS dele).
+
+### Depois de salvar, a sessão é atualizada
+
+`setPrinterSettings` no `providers/auth.tsx`, no molde do `setRestaurantIsOpen`. Sem isso, voltar à tela releria o valor **velho** do `/users/me` e um segundo "Salvar" mesclaria sobre o baseline antigo, **desfazendo o primeiro**.
+
+### Testes
+
+**199 em 32 arquivos** (baseline da task: 176/29).
+
+Mutações verificadas: porteiro sempre verdadeiro → **7** testes caem; merge trocado por `{ ...changes }` → **6** caem.
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · `ui.test.tsx` verde · nenhum `GET /printerSettings` restante · contrato conferido no fonte da `delivery-api` e os conjuntos conferidos no formulário do `delivery-admin`.
+
+### Consequência aceita
+
+Esta tela **não tem região de arraste**, então a janela não se move nela — enquanto `/printers` se move, porque a #21 copiou a barra antes de a decisão ser tomada. São cinco telas sem arraste, e duas irmãs da mesma spec se comportando diferente. É o preço de não fazer a quarta cópia, e reforça a task de subir a barra para o `DefaultLayout`.
+
+### O que não foi verificado
+
+Nada contra a `api-dev` nem no Electron real: a persistência, o link do instalador no painel continuando na mesma versão, e o comprovante seguinte saindo com o número de cópias novo. A aparência do `Select` ao lado do `TextField` não teve olhar humano.
 
 ## Branch
 

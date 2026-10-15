@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AxiosError } from 'axios';
 import Button from 'renderer/base/Button';
+import Select from 'renderer/base/Select';
 import Typography from 'renderer/base/Typography';
 import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import { log } from 'renderer/services/log';
@@ -80,56 +81,47 @@ const PrinterForm: React.FC<PrinterFormProps> = ({ printer, devices, onSaved, on
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
-      <label className={styles.field}>
-        <span className={styles.label}>Impressora do Windows</span>
-        {canPickName ? (
-          <select className={styles.select} value={name} onChange={event => setName(event.target.value)}>
-            <option value="" disabled>
-              Selecione uma impressora
+      {canPickName ? (
+        <Select label="Impressora do Windows" fullWidth value={name} onChange={event => setName(event.target.value)}>
+          <option value="" disabled>
+            Selecione uma impressora
+          </option>
+          {devices.map(device => (
+            <option key={device.name} value={device.name}>
+              {device.name}
             </option>
-            {devices.map(device => (
-              <option key={device.name} value={device.name}>
-                {device.name}
-              </option>
-            ))}
-          </select>
-        ) : (
+          ))}
+        </Select>
+      ) : (
+        <div className={styles.field}>
+          <span className={styles.label}>Impressora do Windows</span>
           <Typography variant="body2" color="textSecondary">
             {printer.name} (não foi possível ler as impressoras deste computador)
           </Typography>
-        )}
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Cópias</span>
-        <select className={styles.select} value={copies} onChange={event => setCopies(Number(event.target.value))}>
-          {copiesOptions.map(option => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Setor</span>
-        <select className={styles.select} value={station} onChange={event => setStation(event.target.value)}>
-          <option value="">Sem setor</option>
-          {Object.entries(stations).map(([value, text]) => (
-            <option key={value} value={value}>
-              {text}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.field}>
-        <span className={styles.label}>Papel</span>
-        <select className={styles.select} value={paperWidth} onChange={event => setPaperWidth(paperOf(event))}>
-          {paperOptions.map(option => (
-            <option key={option} value={option}>
-              {option} mm
-            </option>
-          ))}
-        </select>
-      </label>
+        </div>
+      )}
+      <Select label="Cópias" fullWidth value={copies} onChange={event => setCopies(Number(event.target.value))}>
+        {copiesOptions.map(option => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </Select>
+      <Select label="Setor" fullWidth value={station} onChange={event => setStation(event.target.value)}>
+        <option value="">Sem setor</option>
+        {Object.entries(stations).map(([value, text]) => (
+          <option key={value} value={value}>
+            {text}
+          </option>
+        ))}
+      </Select>
+      <Select label="Papel" fullWidth value={paperWidth} onChange={event => setPaperWidth(paperOf(event))}>
+        {paperOptions.map(option => (
+          <option key={option} value={option}>
+            {option} mm
+          </option>
+        ))}
+      </Select>
       {error && (
         <div role="alert">
           <Typography variant="body2" className={styles.error}>

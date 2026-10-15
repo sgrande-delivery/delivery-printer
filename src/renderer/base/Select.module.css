@@ -1,0 +1,56 @@
+/* Same box as base/TextField (underline plus a floated label), for a native <select>. */
+.root {
+  display: inline-flex;
+  flex-direction: column;
+  margin: 16px 0 8px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+  padding-top: 16px;
+}
+
+.select {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0 7px;
+  border: 0;
+  border-bottom: 1px solid var(--color-input-border);
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: 1rem;
+  font-weight: var(--font-weight-regular);
+  line-height: 1.1876em;
+}
+
+.select:focus {
+  outline: 0;
+  border-bottom: 2px solid var(--color-primary);
+  /* keep the text from shifting when the border thickens */
+  padding-bottom: 6px;
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  top: 16px;
+  transform-origin: top left;
+  transform: translateY(-18px) scale(0.75);
+  pointer-events: none;
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1.1876em;
+  padding-top: 6px;
+  transition: color 200ms;
+}
+
+.select:focus ~ .label {
+  color: var(--color-primary);
+}

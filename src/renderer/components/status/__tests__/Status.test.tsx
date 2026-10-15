@@ -106,3 +106,13 @@ describe('Status printers link', () => {
     expect(window.location.hash).toBe('#/printers');
   });
 });
+
+describe('Status printer settings link', () => {
+  it('is a button that navigates to the printer settings screen', () => {
+    renderStatus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'configurações de impressão' }));
+
+    expect(window.location.hash).toBe('#/printer-settings');
+  });
+});
