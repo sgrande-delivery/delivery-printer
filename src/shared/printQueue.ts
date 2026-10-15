@@ -50,3 +50,15 @@ export type EnqueueRequest = {
 // One answer for the whole response. 'already-printed' is not an error: it tells the renderer that the receipt came
 // out before, so only the API mark may be missing.
 export type EnqueueResult = 'enqueued' | 'duplicate' | 'already-printed';
+
+// What the printers screen sends to ask for a test page. The page itself is built in
+// the main process; the renderer only says which registered printer it is for.
+export type TestPrintRequest = {
+  // The registered name (the "Cadastro" line of the page).
+  printerName: string;
+  // Already in Portuguese: the screen owns that translation table.
+  stationLabel: string;
+  paperWidth: number;
+  // The Windows device the screen resolved for this printer.
+  deviceName: string | null;
+};

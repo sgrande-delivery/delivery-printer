@@ -15,6 +15,11 @@ const KIND: Record<PrintingLayoutOptions, PrintJobKind> = {
   'print-dispatched': 'order-dispatched',
 };
 
+// Os tipos que levam marcação na API são exatamente os que este hook enfileira: lista de
+// permissão, não de exclusão, para um tipo novo (a página de teste foi um) não passar a
+// marcar pedido como impresso por omissão.
+const MARKED_IN_API: PrintJobKind[] = Object.values(KIND);
+
 const QUEUE_REASON = 'não foi possível guardar o comprovante na fila de impressão';
 
 export function usePrintingOrder(): void {
@@ -101,7 +106,7 @@ export function usePrintingOrder(): void {
   useEffect(
     () =>
       window.electron.onJobPrinted(job => {
-        if (job.orderUuid && job.kind !== 'board' && job.kind !== 'board-billing') {
+        if (job.orderUuid && MARKED_IN_API.includes(job.kind)) {
           markPrinted(job.orderUuid, job.label ?? 'o pedido');
         }
       }),

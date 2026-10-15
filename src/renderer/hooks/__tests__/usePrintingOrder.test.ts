@@ -131,6 +131,17 @@ describe('usePrintingOrder', () => {
     expect(mocks.patch).not.toHaveBeenCalled();
   });
 
+  // The test page is not an order: it must never reach PATCH /printed.
+  it('does not mark anything for a test page, even if it carried an order uuid', async () => {
+    renderHook(() => usePrintingOrder());
+
+    await act(async () => {
+      lastListener(window.electron.onJobPrinted)(summary({ kind: 'test', label: 'a página de teste' }));
+    });
+
+    expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
   it('warns that it will not print again when only the mark failed, without a loose rejection', async () => {
     mocks.patch.mockRejectedValue(new Error('500'));
     renderHook(() => usePrintingOrder());

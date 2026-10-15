@@ -6,6 +6,7 @@ import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import { AxiosError } from 'axios';
 import { useMessaging } from 'renderer/providers/messaging';
 import { log } from 'renderer/services/log';
+import { printFailureReason } from 'renderer/helpers/printFailure';
 import { togglePrinterActive } from 'renderer/services/printers';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
 import PrinterForm from './PrinterForm';
@@ -28,7 +29,13 @@ const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devices, devicesRead
   const [editing, setEditing] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
   const missing = devicesRead && !printer.resolvedDevice;
+  // Without a device there is nothing to test on, but with devicesRead false the screen
+  // has not measured it: saying "não encontrada" here would contradict its own notice.
+  const noTestReason = devicesRead
+    ? 'Esta impressora não foi encontrada nesta máquina'
+    : 'As impressoras deste computador não foram lidas';
 
   async function handleToggle(): Promise<void> {
     setToggleError(null);
@@ -49,6 +56,31 @@ const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devices, devicesRead
       );
     } finally {
       setToggling(false);
+    }
+  }
+
+  // Queued, not printed: the page comes out through the same worker as a receipt, so
+  // "enviada" is the honest word, and a failure after the retries shows on the status screen.
+  async function handleTestPrint(): Promise<void> {
+    if (!printer.resolvedDevice) {
+      return;
+    }
+
+    setTesting(true);
+
+    try {
+      await window.electron.printTest({
+        printerName: printer.name,
+        stationLabel: printer.station ? (stations[printer.station] ?? printer.station) : 'Sem setor',
+        paperWidth: printer.paper_width,
+        deviceName: printer.resolvedDevice,
+      });
+      handleOpen(`Página de teste enviada para a fila de impressão (${printer.resolvedDevice}).`);
+    } catch (err: unknown) {
+      log.error('test print failed', err);
+      handleOpen(`Não foi possível enviar a página de teste: ${printFailureReason(err)}.`);
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -104,6 +136,14 @@ const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devices, devicesRead
           </Button>
           <Button size="small" onClick={handleToggle} disabled={toggling}>
             {printer.activated ? 'Desativar' : 'Ativar'}
+          </Button>
+          <Button
+            size="small"
+            onClick={handleTestPrint}
+            disabled={testing || !printer.resolvedDevice}
+            title={printer.resolvedDevice ? undefined : noTestReason}
+          >
+            Imprimir teste
           </Button>
         </div>
       )}

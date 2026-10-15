@@ -13,6 +13,7 @@ Object.defineProperty(window, 'electron', {
       { name: 'Cozinha', displayName: 'Cozinha', isDefault: false },
     ]),
     enqueue: vi.fn().mockResolvedValue('enqueued'),
+    printTest: vi.fn().mockResolvedValue('enqueued'),
     queueState: vi.fn().mockResolvedValue([]),
     retryFailed: vi.fn().mockResolvedValue(0),
     notifyConnection: vi.fn(),

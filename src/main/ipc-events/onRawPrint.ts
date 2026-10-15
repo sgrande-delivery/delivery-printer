@@ -51,8 +51,9 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
   }
 }
 
-// Direct print, outside the queue: the local test of the printing screen wants an
-// immediate answer, not a retry that comes out minutes later.
+// Direct print, outside the queue, and with no caller in the renderer: the local test
+// page is queued like a receipt, so it inherits the retry and the failure on screen.
+// Anything new that prints goes through the queue, not through here.
 export async function onRawPrint(event: IpcMainInvokeEvent, payload: PrintPayload): Promise<void> {
   await printReceipt(payload);
 }

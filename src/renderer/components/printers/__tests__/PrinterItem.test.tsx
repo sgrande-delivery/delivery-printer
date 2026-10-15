@@ -141,4 +141,48 @@ describe('PrinterItem', () => {
 
     expect(screen.queryByText('Impressora desativada.')).not.toBeInTheDocument();
   });
+
+  describe('test print', () => {
+    beforeEach(() => {
+      vi.mocked(window.electron.printTest).mockReset().mockResolvedValue('enqueued');
+    });
+
+    it('queues a test page for the printer of that row, resolved device included', async () => {
+      const { container } = renderScreen();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Imprimir teste' }));
+
+      await waitFor(() =>
+        expect(window.electron.printTest).toHaveBeenCalledWith({
+          printerName: 'EPSON TM-T20',
+          stationLabel: 'Cozinha',
+          paperWidth: 80,
+          deviceName: 'EPSON TM-T20',
+        })
+      );
+      expect(await screen.findByText(/Página de teste enviada/)).toBeInTheDocument();
+      expect(window.electron.rawPrint).not.toHaveBeenCalled();
+      expectNoUndefinedClasses(container);
+    });
+
+    it('is disabled for a printer that matches no device', async () => {
+      vi.mocked(window.electron.listPrinters).mockResolvedValue([
+        { name: 'Outra', displayName: 'Outra', isDefault: true },
+      ]);
+      renderScreen();
+
+      expect(await screen.findByRole('button', { name: 'Imprimir teste' })).toBeDisabled();
+    });
+
+    it('shows the reason when it cannot be queued', async () => {
+      vi.mocked(window.electron.printTest).mockRejectedValue(
+        new Error("Error invoking remote method 'printTest': Error: disco cheio")
+      );
+      renderScreen();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Imprimir teste' }));
+
+      expect(await screen.findByText(/Não foi possível enviar a página de teste: disco cheio/)).toBeInTheDocument();
+    });
+  });
 });
