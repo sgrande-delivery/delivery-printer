@@ -1,8 +1,26 @@
-import React, { ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AxiosError } from 'axios';
 import { User } from 'renderer/types/user';
 import { Restaurant } from 'renderer/types/restaurant';
 import { api } from 'renderer/services/api';
+
+export type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'unreachable';
+
+/**
+ * Only a 401 is the server stating that the session itself is not valid, and a
+ * 401 that gets here already went through the refresh attempt in
+ * apiErrorInterceptor. A 403 is an authenticated user without permission, and a
+ * 404 or a 5xx is the server failing to answer the question at all: treating any
+ * of those as "logged out" would send every PDV to a login screen where the same
+ * credentials fail the same way (RN-04).
+ */
+function isSessionRefused(err: unknown): boolean {
+  if (!(err instanceof AxiosError)) {
+    return false;
+  }
+
+  return err.response?.status === 401;
+}
 
 interface AuthContextData {
   login(email: string, password: string): Promise<void>;
@@ -10,6 +28,8 @@ interface AuthContextData {
   authenticated: boolean;
   checkEmail(email: string): Promise<User>;
   loading: boolean;
+  sessionStatus: SessionStatus;
+  retrySession(): void;
   me(): Promise<void>;
   user: User;
   restaurant: Restaurant | null;
@@ -28,31 +48,51 @@ interface AuthProviderProps {
 }
 
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>('loading');
+  const sessionStatusRef = useRef(sessionStatus);
+
+  useEffect(() => {
+    sessionStatusRef.current = sessionStatus;
+  }, [sessionStatus]);
+
   // The session always sets these two together, so they live here instead of in
   // a separate store.
   const [user, setUser] = useState<User>({} as User);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
 
-  useEffect(() => {
+  const applySession = useCallback((data: User & { restaurant: Restaurant }): void => {
+    setRestaurant(data.restaurant);
+    setUser(data);
+    setSessionStatus('authenticated');
+  }, []);
+
+  const failSession = useCallback((err: unknown): void => {
+    console.error(err);
+    setSessionStatus(isSessionRefused(err) ? 'unauthenticated' : 'unreachable');
+  }, []);
+
+  const requestSession = useCallback((): void => {
     api
       .get('/users/me')
-      .then(response => {
-        setRestaurant(response.data.restaurant);
-        setUser(response.data);
-        setAuthenticated(true);
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
+      .then(response => applySession(response.data))
+      .catch(failSession);
+  }, [applySession, failSession]);
+
+  useEffect(() => {
+    requestSession();
+  }, [requestSession]);
+
+  const retrySession = useCallback((): void => {
+    setSessionStatus('loading');
+    requestSession();
+  }, [requestSession]);
 
   const login = useCallback(async (email: string, password: string): Promise<void> => {
     try {
       const response = await api.post('/login', { email, password });
       setRestaurant(response.data.data.restaurant);
       setUser(response.data.data.user);
-      setAuthenticated(true);
+      setSessionStatus('authenticated');
     } catch (err) {
       if (err instanceof AxiosError && err.response?.status === 401) {
         throw new Error('Usuário ou senha incorretos', { cause: err });
@@ -77,14 +117,20 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = useCallback(async (): Promise<void> => {
     await api.post('/logout');
-    setAuthenticated(false);
+    setSessionStatus('unauthenticated');
     setRestaurant(null);
     setUser({} as User);
   }, []);
 
+  // Login calls this on mount; when the session turns out valid while the provider
+  // thought otherwise, adopt it so ProtectedRoute does not bounce back to /login.
   const me = useCallback(async () => {
-    await api.get('/users/me');
-  }, []);
+    const response = await api.get('/users/me');
+
+    if (sessionStatusRef.current !== 'authenticated') {
+      applySession(response.data);
+    }
+  }, [applySession]);
 
   const setRestaurantIsOpen = useCallback((isOpen: boolean) => {
     setRestaurant(state => (state ? { ...state, is_open: isOpen } : null));
@@ -94,15 +140,17 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     () => ({
       login,
       logout,
-      authenticated,
+      authenticated: sessionStatus === 'authenticated',
       checkEmail,
-      loading,
+      loading: sessionStatus === 'loading',
+      sessionStatus,
+      retrySession,
       me,
       user,
       restaurant,
       setRestaurantIsOpen,
     }),
-    [login, logout, authenticated, checkEmail, loading, me, user, restaurant, setRestaurantIsOpen]
+    [login, logout, sessionStatus, retrySession, checkEmail, me, user, restaurant, setRestaurantIsOpen]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
