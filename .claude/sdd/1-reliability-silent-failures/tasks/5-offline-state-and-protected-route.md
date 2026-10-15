@@ -5,7 +5,7 @@
 **Tipo:** bug
 **Processo:** renderer
 **Depende de:** (nenhuma)
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

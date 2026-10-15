@@ -28,11 +28,11 @@ O que será reaproveitado:
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Iniciar com o Windows | [#2](https://github.com/sgrande-delivery/delivery-printer/issues/2) | [2-autostart-with-windows.md](./tasks/2-autostart-with-windows.md) | — | executada |
-| 02 | Aguardar o patch de impresso e parar de reimprimir | [#3](https://github.com/sgrande-delivery/delivery-printer/issues/3) | [3-await-printed-patch.md](./tasks/3-await-printed-patch.md) | — | executada |
-| 03 | Fazer o `printer_exited` chegar ao admin | [#4](https://github.com/sgrande-delivery/delivery-printer/issues/4) | [4-printer-exited-reaches-admin.md](./tasks/4-printer-exited-reaches-admin.md) | — | executada |
-| 04 | Estado de sem conexão e `ProtectedRoute` de verdade | [#5](https://github.com/sgrande-delivery/delivery-printer/issues/5) | [5-offline-state-and-protected-route.md](./tasks/5-offline-state-and-protected-route.md) | — | executada |
-| 05 | Error boundary com recuperação | [#6](https://github.com/sgrande-delivery/delivery-printer/issues/6) | [6-react-error-boundary.md](./tasks/6-react-error-boundary.md) | — | executada |
+| 01 | Iniciar com o Windows | [#2](https://github.com/sgrande-delivery/delivery-printer/issues/2) | [2-autostart-with-windows.md](./tasks/2-autostart-with-windows.md) | — | shipped |
+| 02 | Aguardar o patch de impresso e parar de reimprimir | [#3](https://github.com/sgrande-delivery/delivery-printer/issues/3) | [3-await-printed-patch.md](./tasks/3-await-printed-patch.md) | — | shipped |
+| 03 | Fazer o `printer_exited` chegar ao admin | [#4](https://github.com/sgrande-delivery/delivery-printer/issues/4) | [4-printer-exited-reaches-admin.md](./tasks/4-printer-exited-reaches-admin.md) | — | shipped |
+| 04 | Estado de sem conexão e `ProtectedRoute` de verdade | [#5](https://github.com/sgrande-delivery/delivery-printer/issues/5) | [5-offline-state-and-protected-route.md](./tasks/5-offline-state-and-protected-route.md) | — | shipped |
+| 05 | Error boundary com recuperação | [#6](https://github.com/sgrande-delivery/delivery-printer/issues/6) | [6-react-error-boundary.md](./tasks/6-react-error-boundary.md) | — | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
