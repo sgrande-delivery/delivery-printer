@@ -1,7 +1,7 @@
 {
   "name": "sgrande-delivery-printer-2",
-  "version": "2.7.0",
-  "description": "SGrande Delivery Printer 2 - Impress\u00e3o autom\u00e1tica dos pedidos",
+  "version": "2.7.0-dev.1",
+  "description": "SGrande Delivery Printer 2 - Impressão automática dos pedidos",
   "author": {
     "name": "SGrande Delivery",
     "email": "contato@sgrande.delivery"

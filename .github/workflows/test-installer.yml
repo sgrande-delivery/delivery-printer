@@ -1,0 +1,74 @@
+# Instalador de TESTE, apontando para o ambiente de dev.
+#
+# Existe porque compilar o instalador NSIS exige Windows (no Linux o
+# electron-builder morre em `spawn wine ENOENT` depois de empacotar os dois
+# win-unpacked), e porque o build de producao nao pode apontar para a API real
+# num teste: o printer_ping registraria a maquina como impressora do
+# restaurante em producao.
+#
+# Nao publica nada: `--publish never`, nenhuma release, nenhuma tag. O
+# instalador sai como artifact do run, para download manual.
+#
+# O gatilho e `push` nesta familia de branches porque `workflow_dispatch` so
+# aparece quando o workflow esta na branch default, e este nao deve ir para a
+# master.
+name: Test installer (dev environment)
+
+on:
+  push:
+    branches:
+      - 'test/dev-build-**'
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # As URLs de dev nao sao segredo: o `.env.development` versionado tem as
+      # mesmas. O `.env.production.local` tem a maior precedencia no loadEnv do
+      # Vite e e gitignorado, entao ele e escrito aqui em vez de commitado.
+      - name: Point the production build at the dev environment
+        shell: bash
+        run: |
+          cat > .env.production.local <<'EOF'
+          APP_API_BASE_URL=https://api-dev.sgrande.delivery/api/admin/
+          APP_WS_BASE_URL=https://socket-dev.sgrande.delivery
+          EOF
+
+      - run: npm run build
+
+      # Falha o build se uma URL de producao vazou para os bundles: e a unica
+      # verificacao que separa "instalador de teste" de "instalador que
+      # registra a maquina como impressora em producao".
+      - name: Refuse to ship a test installer that talks to production
+        shell: bash
+        run: |
+          if grep -rq "api\.sgrande\.delivery\|socket2\.sgrande\.delivery" out/; then
+            echo "::error::a production URL leaked into the bundles"
+            grep -rn "api\.sgrande\.delivery\|socket2\.sgrande\.delivery" out/ | head
+            exit 1
+          fi
+          if ! grep -rq "api-dev\.sgrande\.delivery" out/; then
+            echo "::error::the dev API URL is not in the bundles"
+            exit 1
+          fi
+          echo "ok: bundles point at dev"
+
+      - run: npx electron-builder --win --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-dev-${{ github.sha }}
+          path: |
+            release/*.exe
+            release/*.blockmap
+          if-no-files-found: error
+          retention-days: 7
