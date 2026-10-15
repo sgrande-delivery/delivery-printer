@@ -23,9 +23,9 @@ Aviso ao operador usa o que já existe: `useMessaging().handleOpen(...)` para a 
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Log em arquivo com rotação, nos dois processos | [#12](https://github.com/sgrande-delivery/delivery-printer/issues/12) | [12-file-logging-with-rotation.md](./tasks/12-file-logging-with-rotation.md) | — | executada |
-| 02 | Mostrar falha de impressão ao operador | [#13](https://github.com/sgrande-delivery/delivery-printer/issues/13) | [13-visible-print-failures.md](./tasks/13-visible-print-failures.md) | 01 | executada |
-| 03 | Exportar os logs para o suporte | [#14](https://github.com/sgrande-delivery/delivery-printer/issues/14) | [14-export-logs.md](./tasks/14-export-logs.md) | 01 | executada |
+| 01 | Log em arquivo com rotação, nos dois processos | [#12](https://github.com/sgrande-delivery/delivery-printer/issues/12) | [12-file-logging-with-rotation.md](./tasks/12-file-logging-with-rotation.md) | — | shipped |
+| 02 | Mostrar falha de impressão ao operador | [#13](https://github.com/sgrande-delivery/delivery-printer/issues/13) | [13-visible-print-failures.md](./tasks/13-visible-print-failures.md) | 01 | shipped |
+| 03 | Exportar os logs para o suporte | [#14](https://github.com/sgrande-delivery/delivery-printer/issues/14) | [14-export-logs.md](./tasks/14-export-logs.md) | 01 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
