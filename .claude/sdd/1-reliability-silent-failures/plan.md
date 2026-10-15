@@ -32,7 +32,7 @@ O que será reaproveitado:
 | 02 | Aguardar o patch de impresso e parar de reimprimir | [#3](https://github.com/sgrande-delivery/delivery-printer/issues/3) | [3-await-printed-patch.md](./tasks/3-await-printed-patch.md) | — | executada |
 | 03 | Fazer o `printer_exited` chegar ao admin | [#4](https://github.com/sgrande-delivery/delivery-printer/issues/4) | [4-printer-exited-reaches-admin.md](./tasks/4-printer-exited-reaches-admin.md) | — | executada |
 | 04 | Estado de sem conexão e `ProtectedRoute` de verdade | [#5](https://github.com/sgrande-delivery/delivery-printer/issues/5) | [5-offline-state-and-protected-route.md](./tasks/5-offline-state-and-protected-route.md) | — | executada |
-| 05 | Error boundary com recuperação | [#6](https://github.com/sgrande-delivery/delivery-printer/issues/6) | [6-react-error-boundary.md](./tasks/6-react-error-boundary.md) | — | pendente |
+| 05 | Error boundary com recuperação | [#6](https://github.com/sgrande-delivery/delivery-printer/issues/6) | [6-react-error-boundary.md](./tasks/6-react-error-boundary.md) | — | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -93,5 +93,12 @@ Da task 04 (#5):
 - **Dívida vizinha, para a task que fizer o `Login` consumir `sessionStatus`:** o `checkEmail` mapeia 401 → "E-mail não encontrado" e deixa qualquer outro erro subir cru para a tela de login — a mesma leitura frouxa de status que esta task corrigiu no provider. Hoje um 500 da API aparece como erro de axios na tela.
 
 - **`applySession(data)` é afirmação, não prova:** `response.data` é `any` do axios. Se a API devolver usuário sem `restaurant`, o provider chega a `authenticated` com `restaurant` `undefined`, **nenhum socket conecta** (`useAdminSocket.ts:11` exige `restaurant`) e voltamos à tela calada que a RN-04 quer matar. O `CLAUDE.md` manda manter opcional o campo que pode vir nulo; o formato durável é tratar a ausência como falha explícita.
+
+Da task 05 (#6):
+
+- **A fronteira de um error boundary é sincrônico vs. agendado, não render vs. efeito.** Medido com sonda: throw sincrônico no **corpo** de um `useEffect` **é** capturado (commit phase, `captureCommitPhaseError`); o que escapa é `.catch` de promessa, timer e handler de evento. O enunciado da task #6 afirmava o contrário e foi corrigido. Consequência prática desta base: o `AuthProvider` fala com a API em `.then().catch()`, então **falha de rede nunca chega à tela de erro** — esse caminho é o `window.onerror`/`unhandledrejection` da spec [#11](https://github.com/sgrande-delivery/delivery-printer/issues/11).
+- **Teste de posição na árvore é diferente de teste de comportamento.** Os três primeiros testes do boundary passariam com ele em qualquer lugar da árvore; o que prova a decisão é renderizar o `App` inteiro com o provider mockado para lançar, e a prova de que o teste discrimina é mover o boundary e vê-lo falhar. Sempre que a decisão de uma task é **onde** algo fica, o teste tem de falhar quando o lugar muda.
+- **Agora são quatro telas sem região de arraste:** login, `loading`, `unreachable` e a de erro. O único `-webkit-app-region: drag` está em `Main.module.css:11`, dentro do `Main`, que só monta autenticado. Uma task de UI que suba a barra de título para cima das rotas resolve as quatro de uma vez.
+- **O reload volta para a rota que quebrou** (o hash sobrevive ao `location.reload()` sob `file://`). Com erro determinístico, o operador entra no laço tela-de-erro → reload → tela-de-erro. Hoje é quase neutro (só há duas rotas), mas a saída durável é o log da #11, para o suporte descobrir **o que** quebrou.
 
 - **Decisão de produto em aberto, levada ao dev:** no boot, o app sobe **minimizado na barra de tarefas** (é o que o `START_MINIMIZED` sempre fez e o que está implementado), não escondido na bandeja. Para um app que vive na bandeja, "escondido" talvez seja o esperado — mas mudar isso altera o comportamento de uma flag pré-existente, então ficou como pergunta.
