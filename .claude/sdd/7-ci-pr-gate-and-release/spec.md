@@ -1,6 +1,6 @@
 # Spec — Esteira: checagem em PR e publicação só a partir de release
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-10-15
 **Escopo:** build/empacotamento
 **Issue:** [#7](https://github.com/sgrande-delivery/delivery-printer/issues/7)

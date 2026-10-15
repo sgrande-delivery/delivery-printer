@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** build
 **Depende de:** 08
-**Status:** pendente
+**Status:** shipped
 
 ## Objetivo
 
@@ -71,6 +71,59 @@ Verificação empírica, com rascunho de teste que é **apagado** depois (e nunc
 - Atualizar o `delivery_printer_version` no admin por API — documentado como passo manual na task [#10](https://github.com/sgrande-delivery/delivery-printer/issues/10)
 - Assinatura de código — spec [#26](https://github.com/sgrande-delivery/delivery-printer/issues/26)
 
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos alterados
+
+- `.github/workflows/publish.yml` — reescrito: gatilho `release: [published]`, job `gate` (ubuntu) + job `publish` (windows)
+- `package.json` — **só** `build.publish.releaseType: "prerelease"`. `appId`, `owner`, `repo`, `private`, `productName`, arquitetura e `version` intocados
+
+### As duas decisões pendentes da spec, resolvidas
+
+**Decisão 1 — qual atividade dispara.** `created` está fora: a documentação do GitHub diz que draft **não** dispara workflow para `created`/`edited`/`deleted`. O gatilho é `published`, e a segurança vem de a release nascer pré-release.
+
+**Decisão 2 — o que o electron-builder faz com release já existente.** Medido no código: ele sobe para draft; para não-draft **só** se `releaseType != "draft"`; e recusa release publicada há mais de 2 h. As duas últimas recusas são `log.warn` + `return null` + **exit 0**.
+
+### O gate, e por que ele não infere intenção pelo evento
+
+A documentação **não** diz quais activity types disparam na promoção de uma pré-release. Então o gate olha o estado real:
+
+| Estado da release | Decisão |
+| --- | --- |
+| pré-release | `build=true` → builda e publica |
+| não-pré, **com** `latest.yml` nos assets | `build=false` → promoção, nada a buildar, sai 0 |
+| não-pré, **sem** `latest.yml` | **exit 1** com `::error::` — a release já é a Latest e todo app instalado tomaria 404 |
+| payload de assets ilegível | **exit 1** com mensagem **própria** |
+
+Correto nos dois cenários possíveis de semântica do evento. Verificado em **12 direções** pelo review e em 3 por mim, extraindo o `run:` do próprio YAML.
+
+### Correções que o review fez, e por que cada uma importa
+
+- **`EP_GH_IGNORE_TIME: 'true'`** — *o diff é que abriu essa exposição*: com draft, a regra das 2 h era inalcançável (draft retorna antes da checagem). Com pré-release ela vale, e recusa com run **verde e zero asset**
+- **O comentário de cabeçalho era falso e perigoso:** afirmava que o electron-builder só anexa a draft ou pré-release. Com `releaseType: prerelease` ele anexa a release normal igual — alguém poderia remover o `gate` confiando nessa frase, e o gate é a única proteção
+- **Mensagem de tag divergente** passou a dizer qual é a tag esperada: com a tag `2.7.0` (sem o `v`) ela lia "a tag 2.7.0, mas o package.json está em 2.7.0"
+- **Payload ilegível ganhou mensagem própria**, em vez de herdar o conselho destrutivo de apagar e recriar a release
+- **Mensagem do caso perigoso** passou a mandar **marcar como pré-release agora** — o único ato que tira a release da `Latest` imediatamente — antes de separar os dois casos
+
+### Decisões mantidas pelo review
+
+Dois jobs (promoção não acorda runner Windows; o caso perigoso vira job vermelho); comparação de tag no `publish`, porque ali ela lê o `package.json` **do mesmo checkout que vai ser empacotado`; `node -e` em vez de `jq` (mesmo interpretador no teste e no runner); `toJSON(...)` por `env` (nome de tag e de asset chegam como dado, testado com `"; rm -rf`); `concurrency` sem cancelamento (cancelar no meio do upload deixaria `.exe` parcial ou `latest.yml` sem `.blockmap`); `shell: bash` (o default do windows-latest é PowerShell).
+
+### Verificação
+
+- typecheck 0 · lint 0 erros e 1 aviso (o da base) · 3 testes
+- **Empacotamento rodado:** `npm run build` + `npx electron-builder --linux dir` saem 0 com o `releaseType` novo; `app.asar` 5,0 MB, 24 pacotes, zero devDependency, com `electron-updater`, `electron-log` e `socket.io-client` presentes. `release/` apagado depois
+- Invariantes de `.claude/rules/autoupdate.md` conferidas uma a uma, por mim e pelo review
+- `releaseType` confirmado **inerte** no cliente: zero ocorrências em `node_modules/electron-updater/out/`
+
+### O que NÃO é verificável antes do merge
+
+Para o evento `release`, o workflow que vale é o que está em `master`. Então **nada** aqui prova o comportamento real: nem que `published` dispara na promoção, nem que o electron-builder anexa os três arquivos à pré-release, nem a reprovação por tag divergente ponta a ponta.
+
+Isso se fecha na primeira release depois do merge, e o procedimento está na task [#10](https://github.com/sgrande-delivery/delivery-printer/issues/10). **Se a esteira terminar verde e sem assets, não promova** — o suspeito é a regra do `releaseType` ou a das 2 h.
+
 ## Branch
 
-`feat/7-ci-pr-gate-and-release`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/7-ci-pr-gate-and-release`, cortada de `refactor/remove-erb-boilerplate` em 2026-10-15, com um commit por task.

@@ -45,8 +45,16 @@ npm run package    # instalador local, sem publicar
 npm run release    # build + publica no GitHub Releases
 ```
 
-O release também roda automaticamente no push para `master`
-(`.github/workflows/publish.yml`).
+O push para `master` **não publica**: ele só roda a checagem
+(`.github/workflows/ci.yml`). Publicar é criar a release com a tag
+`v<version>` marcada como **pré-release** — a esteira
+(`.github/workflows/publish.yml`) confere a tag, builda e anexa o
+instalador, o `.blockmap` e o `latest.yml` a ela. **Promover a pré-release
+é o que entrega a atualização** aos PDVs, e deve ser feito só depois de
+instalar e conferir o `.exe`.
+
+O checklist completo, as armadilhas do publisher e o procedimento de
+rollback estão em `.claude/rules/autoupdate.md`.
 
 ## Configuração por ambiente
 

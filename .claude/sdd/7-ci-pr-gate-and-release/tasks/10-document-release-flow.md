@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** build
 **Depende de:** 09
-**Status:** pendente
+**Status:** shipped
 
 ## Objetivo
 
@@ -60,6 +60,46 @@ Não há código. A verificação é:
 - Mexer no `delivery-admin` para tirar o link hardcoded — se virar trabalho, é issue de lá
 - Documentação de instalação para o suporte — task [#29](https://github.com/sgrande-delivery/delivery-printer/issues/29)
 
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos alterados
+
+| Arquivo | O que mudou |
+| --- | --- |
+| `CLAUDE.md` | "Condições de release" reescrita com o fluxo de seis passos; a linha do `/ship` na seção SDD |
+| `.claude/rules/autoupdate.md` | "Como o release sai" reescrita: tabela do fluxo, por que pré-release e não draft, **as três armadilhas do `getOrCreateRelease`**, o gate, o que o cliente faz, **rollback** e **checklist de release**. Mais a correção da receita do asar |
+| `.claude/commands/ship.md` | os dois avisos do topo, o passo da versão, a orientação do corpo do PR e os "Próximos passos" — e a **descrição do frontmatter** |
+| `.claude/agents/git-agent.md` | "Estado da infra" reescrita, a orientação do corpo do PR, a regra de nunca criar tag/release, o formato de saída — e a **descrição do frontmatter** |
+| `README.md` | o parágrafo que dizia que o release roda no push para `master` |
+
+### O que o `grep` pegou, e que eu tinha deixado passar
+
+O critério de aceitação desta task é `grep` não trazer afirmação velha, e ele **funcionou contra mim**: depois da primeira rodada de reescrita, sobravam **seis** lugares dizendo que o push para `master` publica ou que a esteira cria um draft — incluindo as **descrições de frontmatter** do `/ship` e do `git-agent`, que são o que um agente lê antes de decidir se o comando serve. Todas corrigidas.
+
+É o caso exemplar de por que esta task existe separada: reescrever as seções óbvias é fácil, e são as frases espalhadas que mentem depois.
+
+### O rollback, escrito pela primeira vez
+
+O ponto central é o que ele **não** faz: **o electron-updater não faz downgrade.** Marcar a release anterior como `Latest` faz com que ela volte a ser oferecida a quem **ainda não atualizou**; quem já atualizou **não volta sozinho**. As duas saídas, nessa ordem: tirar a nova da `Latest` (marcando-a como pré-release) para estancar a propagação, e publicar uma versão nova com número maior e o conteúdo revertido para recuperar quem já atualizou.
+
+### A correção de medição na receita do asar
+
+A rule mandava `npx asar extract-file … app-update.yml`, que **falha** com *"was not found in this archive"*: nesta versão o `app-update.yml` fica ao lado, em `resources/`, não dentro do `app.asar`. Medido ao empacotar durante a task #9. A receita agora usa `cat` no caminho certo e a correção está datada.
+
+### Verificação
+
+Não há código. A verificação é:
+
+- `grep -rn "push.*master.*publica\|draft"` nos cinco arquivos não traz afirmação velha (só as menções corretas, que explicam **por que** draft não serve)
+- o checklist de release cabe numa tela e é o que o `/ship` passa a imprimir no relatório
+- teste de mesa do rollback: o procedimento diz o que fazer, em que ordem, e o que ele não resolve
+
+### O que não foi verificado
+
+O rollback nunca foi executado — e não deve ser ensaiado em produção. O teste de mesa é o que existe.
+
 ## Branch
 
-`feat/7-ci-pr-gate-and-release`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/7-ci-pr-gate-and-release`, cortada de `refactor/remove-erb-boilerplate` em 2026-10-15, com um commit por task.
