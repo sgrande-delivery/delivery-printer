@@ -24,7 +24,7 @@ Aviso ao operador usa o que já existe: `useMessaging().handleOpen(...)` para a 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | Log em arquivo com rotação, nos dois processos | [#12](https://github.com/sgrande-delivery/delivery-printer/issues/12) | [12-file-logging-with-rotation.md](./tasks/12-file-logging-with-rotation.md) | — | executada |
-| 02 | Mostrar falha de impressão ao operador | [#13](https://github.com/sgrande-delivery/delivery-printer/issues/13) | [13-visible-print-failures.md](./tasks/13-visible-print-failures.md) | 01 | pendente |
+| 02 | Mostrar falha de impressão ao operador | [#13](https://github.com/sgrande-delivery/delivery-printer/issues/13) | [13-visible-print-failures.md](./tasks/13-visible-print-failures.md) | 01 | executada |
 | 03 | Exportar os logs para o suporte | [#14](https://github.com/sgrande-delivery/delivery-printer/issues/14) | [14-export-logs.md](./tasks/14-export-logs.md) | 01 | pendente |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
@@ -56,6 +56,16 @@ Da task 01 (#12):
 - **Dois pontos de log do interceptor que a task parecia não pedir, e que ficam:** eles só são alcançáveis depois de `error.response?.status === 401`, então oscilação de rede (sem `response`) volta antes e **não** escreve nada — a preocupação de ruído não se aplica. E a flag `isRefresing` limita a linha do refresh a uma por rajada.
 - **A dívida do `ipc-channels.ts` cresceu:** o canal `log` é o **quinto** com o nome duplicado como literal nos dois lados e **sem nada testando o par**.
 - **Dois sites de `console.*` ficaram de fora desta task, de propósito, e um deles importa:** `ErrorBoundary.tsx:32` — ou seja, **erro de render, que é justamente o que o boundary pega, não chega ao arquivo de log**. Candidato à task 02 (#13) ou a follow-up. O outro é `useAdminSocketEvents.ts:44`.
+Da task 02 (#13):
+
+- **Os `failureReason` reais do `webContents.print` no Electron 43 são `"Invalid printer settings"`, `"Print job canceled"` e `"Print job failed"`** — medidos nos typings (`node_modules/electron/electron.d.ts:18486`) **e** como literais no binário distribuído. A primeira versão mapeava `failed`/`cancelled`, que **não existem**: toda falha real chegaria ao operador em inglês cru, na tela, justamente no caso para o qual a task existe. **E o teste passava**, porque mockava um motivo que o Electron nunca emite — ficção autoconsistente. É o padrão a desconfiar: teste que inventa a entrada prova que o código concorda com a nossa imaginação, não com a realidade.
+- **O `ipcRenderer.invoke` embrulha a rejeição do main em `Error invoking remote method '<canal>': <motivo>`**, e o main serializa com `r.toString()`. Como o `onRawPrint` rejeita com **string** (o `reason` do callback), o que chega ao renderer não tem "Error:" interno — mas um `Error` lançado no main chega com prefixo duplo. Quem for ler motivo de falha vindo de IPC precisa tirar esse prefixo.
+- **Aviso é por evento de impressão, não por polling — e é essa a linha entre aviso e ruído.** Falha do `rawPrint` **e** falha da busca do HTML avisam (o comprovante não saiu nos dois casos, e na mesa não há varredura que tente de novo). A varredura `/orders/print/list` e as falhas de token ficam **só no log**: a primeira re-dispara a cada reconexão e avisaria a cada oscilação de rede; a segunda é o exemplo literal da RN-03.
+- **Rajada conhecida, não resolvida:** se a varredura devolver N pedidos pendentes e o GET do layout falhar em todos, saem N snackbars e N notificações — e com o `handleOpen` instável (fecha-e-reabre em 350 ms) só a última é legível. Limitado pelo número de pedidos pendentes, não por rede. Candidato a agregação, e material para a spec [#15](https://github.com/sgrande-delivery/delivery-printer/issues/15).
+- **Erro de render agora chega ao arquivo** (`ErrorBoundary` passou de `console.error` para `log.error`), com teste que afirma o caminho até a ponte — e que cai se alguém voltar o `console.error`. Fecha o buraco que a spec #1 deixou: o boundary pegava o erro e ninguém conseguia ler.
+- **A forma do payload de notificação está declarada três vezes** (helper, literal do preload, tipo do handler no main) e **nada testa o par**: acrescentar campo de um lado não é pego. O durável é um `import type` de `src/shared/`, que a task 01 criou exatamente para isso.
+- **Dívida de rede no `/board`:** o teste novo do hook de mesa era a chance de cobrir montar/desmontar/remontar e contar emissões (o vazamento de listener que a `printing.md` descreve). O `off` existe e esta task não tocou no efeito, então não é achado dela — mas a rede continua ausente.
+
 - **Mensagem de log em inglês, texto de tela em pt-BR.** As tasks 02 e 03 precisam seguir isso para não divergir.
 
 

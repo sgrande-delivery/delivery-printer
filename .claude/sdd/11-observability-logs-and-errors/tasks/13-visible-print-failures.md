@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 12
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -66,6 +66,56 @@ Um mapa pequeno, no renderer, do motivo técnico para a frase em pt-BR, com fall
 - Reenviar a impressão (retry) — spec [#15](https://github.com/sgrande-delivery/delivery-printer/issues/15)
 - Detectar falta de papel: o Electron não expõe isso (ver task [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25))
 - Notificar o painel — task [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25)
+
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/renderer/helpers/printFailure.ts`, `src/renderer/hooks/__tests__/usePrintingBoard.test.ts`, `src/renderer/components/error/__tests__/ErrorBoundary.test.tsx` (o teste do log, escrito pelo review).
+Alterados: `usePrintingOrder.ts`, `usePrintingBoard.ts`, `src/main/ipc-events/onNotification.ts`, `src/main/preload.ts`, `src/renderer/components/error/ErrorBoundary.tsx`, `usePrintingOrder.test.ts`.
+
+### O erro que o review mediu, e que é o achado da task
+
+A primeira versão traduzia os motivos `failed` e `cancelled`. **Eles não existem.** O Electron 43 produz `"Invalid printer settings"`, `"Print job canceled"` e `"Print job failed"` — medidos nos typings (`electron.d.ts:18486`) **e** como literais no binário distribuído.
+
+Consequência se tivesse passado: toda falha real apareceria ao operador **em inglês cru**, na tela, exatamente no caso para o qual a task existe. **E o teste passava**, porque mockava um motivo que o Electron nunca emite.
+
+Isso é o padrão a desconfiar em toda esta base: teste que inventa a entrada prova que o código concorda com a nossa imaginação, não com a realidade. Verificado por mim: com as chaves antigas de volta, o teste do pedido cai.
+
+### O que avisa, e o que fica só no log
+
+| Caminho | Tela + notificação | Log |
+| --- | --- | --- |
+| `rawPrint` falha | sim | sim |
+| busca do HTML falha | sim | sim |
+| `PATCH /printed` falha (task #3 da spec #1) | sim (texto próprio) | sim |
+| varredura `/orders/print/list` falha | **não** | sim |
+| falha de renovação de token | **não** | sim |
+
+A regra é **frequência**: aviso é por evento de impressão (um `printOrder` = no máximo um aviso); a varredura re-dispara a cada reconexão e avisaria a cada oscilação de rede.
+
+A notificação nativa importa porque o app vive na **bandeja**: snackbar sozinho não é visto.
+
+### Decisões, e o veredito do review
+
+- **Avisar falha antes da impressora** (escopo além do enunciado): aprovado — o comprovante também não sai, e **na mesa não há varredura** que tente de novo
+- **Dois avisos mutuamente exclusivos** com a task #3: confirmado lendo o fluxo (o `catch` novo faz `return` antes do PATCH), e preso pelos dois lados nos testes
+- **`ErrorBoundary` no escopo**: entrada aprovada, mas o "sem teste" **não** — o review escreveu o teste que afirma o caminho até a ponte, e ele cai se o `console.error` voltar
+- **`.catch(() => undefined)` na notificação**: corrigido para logar. Engolir calado é o padrão que esta spec existe para matar, e a assinatura do canal **acabou de mudar** — se ela perder o handler, ninguém descobre
+
+### Testes
+
+66 em 14 arquivos (baseline da spec: 59/13). Mutações: remover o aviso do pedido derruba 3; do board, 2; remover só a notificação do board, 1; **voltar as chaves antigas do mapa derruba 1** (verificado por mim); voltar o `console.error` do boundary derruba 1.
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · par do canal `notification` conferido nos três lugares depois da mudança de assinatura.
+
+### O que não foi verificado
+
+O critério manual: impressora desligada → snackbar + notificação; janela na bandeja → só a notificação. Exige Windows com impressora. Os valores de `failureReason` vieram dos typings **e** do binário, não de uma impressão real.
 
 ## Branch
 

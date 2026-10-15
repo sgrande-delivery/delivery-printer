@@ -31,7 +31,8 @@ const electronHandler = {
   log: (level: 'error' | 'warn' | 'info', message: string, context?: Record<string, unknown>): void =>
     ipcRenderer.send('log', level, message, context),
 
-  notification: (orderSequence: string): Promise<void> => ipcRenderer.invoke('notification', orderSequence),
+  notification: (payload: { title: string; body: string }): Promise<void> =>
+    ipcRenderer.invoke('notification', payload),
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

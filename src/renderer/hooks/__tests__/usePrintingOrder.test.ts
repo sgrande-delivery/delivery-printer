@@ -52,6 +52,7 @@ describe('usePrintingOrder', () => {
     await waitFor(() => expect(mocks.handleOpen).toHaveBeenCalledTimes(1));
     expect(mocks.handleOpen.mock.calls[0][0]).toContain('#42');
     expect(window.electron.rawPrint).toHaveBeenCalledTimes(1);
+    expect(window.electron.notification).not.toHaveBeenCalled();
 
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(unhandled).not.toHaveBeenCalled();
@@ -75,15 +76,66 @@ describe('usePrintingOrder', () => {
     expect(window.electron.rawPrint).toHaveBeenCalledTimes(1);
   });
 
-  it('não marca como impresso quando a impressão falha', async () => {
-    vi.mocked(window.electron.rawPrint).mockRejectedValue(new Error('sem impressora'));
+  it('não marca como impresso e avisa uma vez, na tela e na notificação, quando a impressão falha', async () => {
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === '/orders/print/list') {
+        return { data: [order] };
+      }
+      return { data: [{ content: '<p>x</p>', copies: 1, device_name: 'Cozinha' }] };
+    });
+    vi.mocked(window.electron.rawPrint).mockRejectedValue(
+      new Error("Error invoking remote method 'rawPrint': Print job failed")
+    );
 
     renderHook(() => usePrintingOrder());
 
-    await waitFor(() => expect(window.electron.rawPrint).toHaveBeenCalled());
+    await waitFor(() => expect(mocks.handleOpen).toHaveBeenCalledTimes(1));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(mocks.patch).not.toHaveBeenCalled();
+    expect(mocks.handleOpen).toHaveBeenCalledTimes(1);
+
+    const message = mocks.handleOpen.mock.calls[0][0] as string;
+    expect(message).toContain('#42');
+    expect(message).toContain('Cozinha');
+    expect(message).toContain('impressora não respondeu');
+    expect(window.electron.notification).toHaveBeenCalledTimes(1);
+    expect(window.electron.notification).toHaveBeenCalledWith(
+      expect.objectContaining({ title: expect.any(String), body: message })
+    );
+  });
+
+  it('mostra o motivo cru quando ele não está mapeado', async () => {
+    vi.mocked(window.electron.rawPrint).mockRejectedValue(new Error('spooler travado'));
+
+    renderHook(() => usePrintingOrder());
+
+    await waitFor(() => expect(mocks.handleOpen).toHaveBeenCalledTimes(1));
+    expect(mocks.handleOpen.mock.calls[0][0]).toContain('spooler travado');
+  });
+
+  it('avisa quando o comprovante não chega do servidor', async () => {
+    mocks.get.mockImplementation(async (url: string) => {
+      if (url === '/orders/print/list') {
+        return { data: [order] };
+      }
+      throw new Error('503');
+    });
+
+    renderHook(() => usePrintingOrder());
+
+    await waitFor(() => expect(mocks.handleOpen).toHaveBeenCalledTimes(1));
+    expect(mocks.handleOpen.mock.calls[0][0]).toContain('#42');
+    expect(window.electron.rawPrint).not.toHaveBeenCalled();
+    expect(window.electron.notification).toHaveBeenCalledTimes(1);
+  });
+
+  it('impressão bem-sucedida não gera aviso nenhum', async () => {
+    renderHook(() => usePrintingOrder());
+
+    await waitFor(() => expect(mocks.patch).toHaveBeenCalled());
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(mocks.handleOpen).not.toHaveBeenCalled();
+    expect(window.electron.notification).not.toHaveBeenCalled();
   });
 
   it('a varredura ainda imprime o print-created que falhou, mesmo após um print-dispatched bem-sucedido', async () => {
