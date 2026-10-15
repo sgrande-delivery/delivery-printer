@@ -6,6 +6,7 @@ import Typography from 'renderer/base/Typography';
 import { cx } from 'renderer/base/cx';
 import FailedJobList from 'renderer/components/print-queue/FailedJobList';
 import { usePrintQueue } from 'renderer/hooks/usePrintQueue';
+import { history } from 'renderer/services/history';
 import { log } from 'renderer/services/log';
 import packageJson from '../../../../package.json';
 import styles from './Status.module.css';
@@ -102,6 +103,9 @@ const Status: React.FC<StatusProps> = ({ wsConnected, handleLogout }) => {
         </Typography>
         <button type="button" className={styles.linkLogs} onClick={handleRevealLogs}>
           abrir logs
+        </button>
+        <button type="button" className={styles.linkLogs} onClick={() => history.push('/printers')}>
+          impressoras
         </button>
       </div>
     </div>

@@ -1,0 +1,26 @@
+.item {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--color-divider);
+  border-radius: 4px;
+}
+
+/* A name that matches no device is the failure this screen exists to show. */
+.itemMissing {
+  border-color: var(--color-error);
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.found {
+  color: var(--color-success);
+}
+
+.missing {
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}

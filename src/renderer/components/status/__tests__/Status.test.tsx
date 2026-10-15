@@ -96,3 +96,13 @@ describe('Status print queue', () => {
     expectNoUndefinedClasses(container);
   });
 });
+
+describe('Status printers link', () => {
+  it('is a button that navigates to the printers screen', () => {
+    renderStatus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'impressoras' }));
+
+    expect(window.location.hash).toBe('#/printers');
+  });
+});

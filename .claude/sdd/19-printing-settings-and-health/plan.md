@@ -29,7 +29,7 @@ As telas seguem a skill `add-screen`: componente + CSS Module, screen, rota no `
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | executada |
-| 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | pendente |
+| 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | executada |
 | 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | pendente |
 | 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | pendente |
 | 05 | Imprimir teste local | [#24](https://github.com/sgrande-delivery/delivery-printer/issues/24) | [24-local-test-print.md](./tasks/24-local-test-print.md) | 01 | pendente |
@@ -60,6 +60,35 @@ A 01 é base de três outras. A 02 entrega valor sozinha (diagnóstico) e cria o
 - a 06 só se verifica com o relay no ar, e a verificação é o painel, não o nosso log
 
 ## Aprendizados que valem para as próximas tasks
+
+Da task 02 (#21), e **esta é a mais caníbal da spec**:
+
+- **`GET /printers` com `rows: 200` responde 422 em TODA chamada.** Medido em `app/Modules/Printer/Request/GetPrintersRequest.php:14,27` (branch `feature/product-engineering-rebased`): `private const array ALLOWED_ROWS = [10, 20, 50, 100];` com `Rule::in(self::ALLOWED_ROWS)`, e `failedValidation` lança `UnprocessableEntityException(422)`. A tela teria nascido com um botão "tentar novamente" que falha para sempre — **e os testes não pegaram, porque mockam o `fetchPrinters`**. É o mesmo padrão de ficção autoconsistente que as specs #11 e #15 registraram três vezes.
+- **A correção é mandar MENOS, não mais:** `GetPrintersInput.php:21` faz `isPaginated = isset($payload['page']) || isset($payload['rows'])`, então **omitindo os dois** o `GetPrintersUseCase` chama `searchAll()` e o controller responde um **array puro**, não `{ data, total }`. Sem `rows` não há limite para estourar, nem `total` para ignorar, nem 201ª impressora invisível.
+- **Lição de processo, para a #22 e a #23:** a medição funda foi feita no módulo do `printerSettings` (assunto da #23) e **o FormRequest ao lado da rota da própria task passou batido**. Antes de chamar rota do `delivery-api`, ler o **FormRequest dela** — a #22 vai mexer em `PUT /printers/{id}`, cujo `UpdatePrinterRequest` tem `Rule::in` em `station`.
+- **O critério de cruzamento virou único, em `src/shared/printerMatch.ts`.** Comentário dizendo "o mesmo critério do `printReceipt`" é prosa, e prosa não obriga os dois lados a mudarem juntos — que é exatamente o que este plan exige. O `printReceipt` do main e o hook do renderer agora chamam a **mesma** função genérica, e ela tem teste próprio (o `printReceipt` nunca teve: é mockado).
+- **`PrinterStationEnum` tem SETE casos**, não quatro: `kitchen, bar, pizza, counter, cashier, dessert, sushi` (medido em `core/Printer/Domain/Enums/`). O mapa de tradução com 4 deixaria "dessert" aparecer cru numa UI pt-BR. **`station` fica `string \| null`** mesmo assim: união literal travaria este app num enum de outro repo, e o presenter emite `station?->value`, nulável de verdade.
+- **Duas impressoras com o mesmo nome são duas linhas legítimas na tela**, e isso agora tem teste. Dois tickets de estação na mesma impressora física é cadastro válido; o cruzamento pega o primeiro, que é o que a impressão faz. Nada é fundido e nada é escondido.
+- **`paper_width` é enum de dois casos (58, 80)** e `copies` é int. Para leitura `number` serve; a #22, que vai **oferecer escolha**, se beneficia de `58 | 80`.
+- **A barra de arraste deve subir para o `DefaultLayout`, não ser copiada.** `InsideLoading`, `NoConnection` e a tela de erro renderizam **todas** dentro dele (`ProtectedRoute.tsx:17,26,35`), então um bloco lá paga **três** das quatro telas da dívida registrada e apaga as cópias do `Main` e da `Printers`; só o login, que é `AuthLayout`, precisa da sua. **A #22 e a #23 não devem fazer a terceira e a quarta cópia.**
+- **`listPrinters()` devolvendo `[]`** (spooler caído, Linux, dev) pinta **todas** as cadastradas de vermelho com "não encontrada nesta máquina". É defensável, mas é o único estado em que a tela afirma mais do que mediu: com N cadastradas e zero devices, o certo é dizer "não foi possível ler as impressoras deste computador".
+- **A dívida do `base/LinkButton` chegou a CINCO call sites** (`.linkLogout`, `.linkLogs`, `.linkRetry` ×2, `.linkBack`).
+
+Para a task 04 (#23) — medido no `delivery-api` antes de a task começar:
+
+- **MEDIDO no `delivery-api`, e é pior do que a RN-05 diz: o `PUT /printerSettings` não "substitui o objeto", ele APAGA TODAS as linhas do restaurante e recria uma por chave do payload** (`core/Printer/Application/UpdatePrinterSettingsUseCase.php`):
+
+  ```php
+  $this->repository->deleteByRestaurantId($restaurant->id);
+  foreach (array_keys($payload) as $key) { $this->repository->create([...]); }
+  ```
+
+  As configurações são **linhas chave/valor**, não um JSON. Consequências para a task 04 (#23):
+  - **Mandar objeto parcial destrói toda chave não enviada** — não só o `delivery_printer_version`. A regra correta é mais forte que a RN-05: **ler o objeto inteiro, mesclar só o campo alterado e devolver tudo**, preservando **até chave que este app nunca ouviu falar** (o admin pode acrescentar uma amanhã).
+  - **Não há validação nenhuma:** o controller faz `$request->json()->all()` e passa direto ao use case, sem FormRequest. Chave com nome errado é aceita e gravada **em silêncio**, sem erro — então a tela não pode contar com a API para recusar payload malformado.
+  - **O delete+create NÃO está em transação** (medido: a única `DB::transaction` do módulo `Printer` está no `TogglePrinterActiveUseCase`). Se o laço de `create` falhar no meio, o restaurante fica com as configurações **parcialmente apagadas**, sem rollback. É risco do outro repo, mas quem dispara o `PUT` é este app — **vale issue na `delivery-api`**.
+- **A lista fechada de chaves de `printerSettings`**, medida em `core/Printer/Application/GetPrinterSettingsUseCase.php` (o mapa de `casts`): `font_size` (int), `shipment_template_copies` (int), `production_template_copies` (int), `no_margin` (bool), `max_width` (int), **`delivery_printer_version` (string)** e `margin_size` (int). São **sete**. O `delivery_printer_version` é o que o `delivery-admin` lê para o link de download — perdê-lo quebra o botão de baixar o instalador no painel.
+
 
 Da task 01 (#20):
 
