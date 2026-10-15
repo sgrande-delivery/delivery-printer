@@ -1,6 +1,6 @@
 # Spec — Tirar as falhas silenciosas do app de impressão
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-10-15
 **Escopo:** main+renderer
 **Issue:** [#1](https://github.com/sgrande-delivery/delivery-printer/issues/1)

@@ -3,18 +3,7 @@ import Login from '../renderer/components/login/Login';
 import Status from '../renderer/components/status/Status';
 import MessagingProvider from '../renderer/providers/messaging';
 import AuthProvider from '../renderer/providers/auth';
-
-/**
- * A misspelled CSS Modules key resolves to undefined and lands in the DOM as
- * class="undefined", silently losing the styling. These assert it never does.
- */
-function expectNoUndefinedClasses(container: HTMLElement) {
-  const broken = Array.from(container.querySelectorAll('*')).filter(el =>
-    el.className?.toString().split(/\s+/).includes('undefined')
-  );
-
-  expect(broken.map(el => `${el.tagName}: ${el.className}`)).toEqual([]);
-}
+import { expectNoUndefinedClasses } from '../renderer/__tests__/cssModules';
 
 describe('Login', () => {
   it('renders the e-mail step with styled classes', () => {

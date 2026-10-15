@@ -8,7 +8,8 @@ Object.defineProperty(window, 'electron', {
   value: {
     arch: 'x64',
     rawPrint: vi.fn().mockResolvedValue(undefined),
-    socketRegister: vi.fn().mockResolvedValue(undefined),
+    onBeforeQuit: vi.fn().mockReturnValue(() => undefined),
+    beforeQuitDone: vi.fn(),
     notification: vi.fn().mockResolvedValue(undefined),
   },
 });

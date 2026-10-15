@@ -23,7 +23,7 @@ Para combinar classes, `cx()` (`src/renderer/base/cx.ts`), que descarta falsy �
 className={cx(styles.avatar, !user.image && styles.avatarFallback)}
 ```
 
-**A armadilha central de CSS Modules:** chave digitada errada não dá erro. `styles.contianer` é `undefined`, vira `class="undefined"` no DOM e o estilo desaparece calado. Existe rede para isso: `expectNoUndefinedClasses()` em `src/__tests__/ui.test.tsx:11`. **Componente novo com estilo entra num teste que chama esse helper** — é o único jeito de o erro aparecer antes do PDV.
+**A armadilha central de CSS Modules:** chave digitada errada não dá erro. `styles.contianer` é `undefined`, vira `class="undefined"` no DOM e o estilo desaparece calado. Existe rede para isso: `expectNoUndefinedClasses()`, exportado de `src/renderer/__tests__/cssModules.ts` (o nome não casa com o `include` do Vitest, então ele não é coletado como suíte). **Componente novo com estilo entra num teste que chama esse helper** — é o único jeito de o erro aparecer antes do PDV.
 
 Nada de `style={{}}` para layout (só valor calculado em runtime) e nada de CSS global novo fora de `src/renderer/app.css`.
 
@@ -65,8 +65,10 @@ Variante nova de primitivo entra no primitivo (mais uma classe no `.module.css` 
 
 - A navegação é **hash** (`createHashHistory` em `services/history.ts`), porque em produção o renderer é carregado por `file://` e history de path não resolve. Link e `navigate` continuam normais; o que muda é a URL ter `#`
 - **Não existe nenhum componente de navegação neste app.** Rota nova sem um caminho para chegar nela é tela morta — a entrada (link, botão, item de menu na tray) é parte da task, não um "depois"
-- `ProtectedRoute` tem **`const authenticated = true;` hardcoded** (`routes/ProtectedRoute.tsx:10`): a rota protegida não protege nada hoje. Já existe `authenticated` no `useAuth()`, então a correção é de uma linha — mas ela **muda o fluxo de login** (quem não está logado passa a ser redirecionado), então é task própria, com teste. Não corrija de passagem dentro de outra entrega
-- Quem redireciona hoje é o interceptor de erro do axios: `401` sem `access_token.expired` faz `history.push('/login')` (`services/apiErrorInterceptor.ts`)
+- **`ProtectedRoute` protege de verdade desde a task [#5](https://github.com/sgrande-delivery/delivery-printer/issues/5)** (o `const authenticated = true;` saiu). Ele ramifica pelo `sessionStatus` do `useAuth()`: `loading` → `InsideLoading`; `unreachable` → a tela de sem conexão, **sem** redirecionar (quem está logado e perdeu a rede não é deslogado); `unauthenticated` → `Navigate to="/login" replace`; `authenticated` → o conteúdo no `DefaultLayout`
+- **Só 401 conta como "não logado".** `isSessionRefused` em `providers/auth.tsx` é 401 estrito, e isso é regra, não detalhe: 403 vem do middleware `Role` da `delivery-api` **depois** da autenticação (sessão válida sem permissão), e 5xx/404/erro de rede são o servidor não respondendo a pergunta. Tratar qualquer um deles como "não logado" manda o parque inteiro para uma tela de login onde a mesma credencial falha igual. Há 8 testes que caem se esse mapeamento voltar a ser frouxo
+- **Dívida: o `Login.tsx` ainda chama `me()` ao montar** e navega por conta própria, em vez de consumir o `sessionStatus`. Por isso o `me()` precisa adotar a sessão (senão o `ProtectedRoute` honesto devolve o `Login` para um laço infinito de requisição + navegação) e por isso sobrevive o aviso `react-hooks/set-state-in-effect` em `Login.tsx:23`. O conserto durável é o `Login` ler `sessionStatus`, o que apagaria o `me()` do contrato — task própria, com teste
+- **Dois donos da navegação, e eles discordam num canto.** O interceptor de erro do axios ainda empurra `/login` por conta própria (`services/apiErrorInterceptor.ts`): no 401 sem `access_token.expired` e quando o refresh falha. No 401 os dois concordam com o `ProtectedRoute`; quando o **refresh falha por rede**, o interceptor ganha e o operador vê o formulário de login em vez da tela de sem conexão. Fechar isso é tirar o `history.push` do interceptor e deixar a navegação com o `sessionStatus` — task própria, com teste
 
 ## Estado e dados
 
