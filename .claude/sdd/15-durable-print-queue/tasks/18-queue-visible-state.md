@@ -68,4 +68,4 @@ Reaproveita o `useMessaging()` e a notificação da task [#13](https://github.co
 
 ## Branch
 
-`feat/15-durable-print-queue`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/15-durable-print-queue`, cortada de `feat/11-observability-logs-and-errors` em 2026-10-15, com um commit por task.
