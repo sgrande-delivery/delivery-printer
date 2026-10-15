@@ -73,4 +73,4 @@ Verificação empírica, com rascunho de teste que é **apagado** depois (e nunc
 
 ## Branch
 
-`feat/7-ci-pr-gate-and-release`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/7-ci-pr-gate-and-release`, cortada de `refactor/remove-erb-boilerplate` em 2026-10-15, com um commit por task.
