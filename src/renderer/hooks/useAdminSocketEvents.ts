@@ -3,6 +3,8 @@ import { useAuth } from 'renderer/providers/auth';
 import packageJson from '../../../package.json';
 import { useAdminSocket } from './useAdminSocket';
 
+type PrinterExitedAck = { event: string; message: 'OK' | 'IGNORED' };
+
 let timer: NodeJS.Timeout;
 
 export function useAdminSocketEvents(): void {
@@ -28,6 +30,25 @@ export function useAdminSocketEvents(): void {
   }, [restaurant, setRestaurantIsOpen, socket]);
 
   useEffect(() => {
+    if (!restaurant) {
+      return;
+    }
+
+    return window.electron.onBeforeQuit(() => {
+      // The gateway compares the raw uuid with the one from the handshake; an
+      // object makes it answer IGNORED without any visible error.
+      // The ack is the gateway's return value; the main process keeps its own
+      // timeout for a dead socket, so quitting never depends on this callback.
+      socket?.emit('printer_exited', restaurant.uuid, (ack?: PrinterExitedAck) => {
+        if (ack?.message === 'IGNORED') {
+          console.error('O servidor recusou o printer_exited (IGNORED): o restaurante não casa com a sala do socket.');
+        }
+        window.electron.beforeQuitDone();
+      });
+    });
+  }, [restaurant, socket]);
+
+  useEffect(() => {
     if (restaurant && isConnected) {
       socket?.emit('printer_ping', {
         restaurant_id: restaurant.id,
@@ -42,8 +63,6 @@ export function useAdminSocketEvents(): void {
           version: packageJson.version,
         });
       }, 30000);
-
-      window.electron.socketRegister(restaurant.uuid);
     }
 
     return () => {

@@ -14,7 +14,18 @@ const electronHandler = {
 
   rawPrint: (payload: RawPrint): Promise<void> => ipcRenderer.invoke('rawPrint', payload),
 
-  socketRegister: (restaurantUuid: string): Promise<void> => ipcRenderer.invoke('socket-register', restaurantUuid),
+  // First channel in the main -> renderer direction. The renderer must call the
+  // returned function on cleanup and send the ack once it has emitted.
+  onBeforeQuit: (listener: () => void): (() => void) => {
+    const handler = (): void => listener();
+    ipcRenderer.on('app:before-quit', handler);
+
+    return () => {
+      ipcRenderer.removeListener('app:before-quit', handler);
+    };
+  },
+
+  beforeQuitDone: (): void => ipcRenderer.send('app:before-quit-done'),
 
   notification: (orderSequence: string): Promise<void> => ipcRenderer.invoke('notification', orderSequence),
 };
