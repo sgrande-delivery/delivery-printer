@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { EnqueueRequest, EnqueueResult, PrintJobSummary } from 'shared/printQueue';
+import type { WindowsPrinter } from 'shared/windowsPrinter';
 
 type RawPrint = {
   content: string;
@@ -14,6 +15,9 @@ const electronHandler = {
   arch: process.arch,
 
   rawPrint: (payload: RawPrint): Promise<void> => ipcRenderer.invoke('rawPrint', payload),
+
+  // Resolves to [] when the machine has none or the spooler fails; it never rejects.
+  listPrinters: (): Promise<WindowsPrinter[]> => ipcRenderer.invoke('listPrinters'),
 
   enqueue: (request: EnqueueRequest): Promise<EnqueueResult> => ipcRenderer.invoke('enqueue', request),
 

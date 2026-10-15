@@ -2,7 +2,7 @@
 
 **Spec:** [spec.md](./spec.md)
 **Issue da feature:** [#19](https://github.com/sgrande-delivery/delivery-printer/issues/19)
-**Branch de trabalho:** `feat/19-printing-settings-and-health`: uma por spec, com todas as tasks em sequência, um commit por task e um PR no fim. O `/execute` completa com a base e a data
+**Branch de trabalho:** `feat/19-printing-settings-and-health`, cortada de `feat/15-durable-print-queue` em 2026-10-15: todas as tasks em sequência, um commit por task e um PR no fim
 
 ## Abordagem técnica
 
@@ -28,7 +28,7 @@ As telas seguem a skill `add-screen`: componente + CSS Module, screen, rota no `
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | pendente |
+| 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | executada |
 | 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | pendente |
 | 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | pendente |
 | 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | pendente |
@@ -61,5 +61,13 @@ A 01 é base de três outras. A 02 entrega valor sozinha (diagnóstico) e cria o
 
 ## Aprendizados que valem para as próximas tasks
 
-<!-- Preenchido ao longo da execução. Candidatos: o shape real de getPrintersAsync no Windows
-     (campos além de name e isDefault), e se o usuário do PDV tem as permissões. -->
+Da task 01 (#20):
+
+- **`Electron.PrinterInfo` no Electron 43 tem QUATRO campos, e `isDefault` não é um deles.** Medido em `node_modules/electron/electron.d.ts:11246`: `description`, `displayName`, `name`, `options` — e `options` é declarado como `interface Options {}`, **vazia**, então os typings não dizem nada sobre o conteúdo. A única ocorrência de `isDefault*` em todo o arquivo é `isDefaultProtocolClient`, sem relação.
+  - **Consequência para a task 02 (#21):** não dá para prometer na tela "esta é a impressora padrão" com base em tipo. O handler lê `isDefault` por narrowing (`'isDefault' in printer && printer.isDefault === true`) e cai para `false` quando o campo falta — então, se o Electron 43 não o preencher no Windows, a tela simplesmente **não** destaca a padrão, em vez de mentir. **Medir no Windows antes de a tela depender disso.**
+  - **Consequência para a task 06 (#25):** `status` **não** está declarado, então não dá para contar com ele para dizer se a impressora está online. O que sobra é o que a própria task #25 já previa: presença do device na lista, e falha de impressão. O `no_paper`/`overheat` continuam fora.
+- **`event.sender` dispensa criar janela.** O handler usa o `webContents` de quem chamou (a janela principal), em vez de uma `BrowserWindow` invisível como o `onRawPrint` faz para imprimir: listar impressoras não precisa de página. Isso também evita mover o registro dos handlers para dentro do `boot` — eles ficam no nível do módulo, que é o mais cedo possível.
+- **Nada de dedupe na lista.** `printers.name` não tem índice único (medido na #17), então dois itens com o mesmo nome continuam dois itens — e é isso que a tela da #21 tem de mostrar, porque é exatamente o caso em que a impressão cai na padrão sem ninguém perceber.
+- **O canal nunca rejeita:** spooler caído devolve `[]` e loga. A tela de impressão não pode quebrar porque o serviço de impressão do Windows engasgou, e `[]` é o contrato de "nada a mostrar" — que também cobre Linux e dev.
+
+

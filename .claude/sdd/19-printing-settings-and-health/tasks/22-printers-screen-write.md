@@ -77,4 +77,4 @@ Se o dev não confirmar, a task entrega só a edição, e a decisão fica regist
 
 ## Branch
 
-`feat/19-printing-settings-and-health`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/19-printing-settings-and-health`, cortada de `feat/15-durable-print-queue` em 2026-10-15, com um commit por task.

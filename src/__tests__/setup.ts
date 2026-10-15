@@ -8,6 +8,10 @@ Object.defineProperty(window, 'electron', {
   value: {
     arch: 'x64',
     rawPrint: vi.fn().mockResolvedValue(undefined),
+    listPrinters: vi.fn().mockResolvedValue([
+      { name: 'EPSON TM-T20', displayName: 'EPSON TM-T20', isDefault: true },
+      { name: 'Cozinha', displayName: 'Cozinha', isDefault: false },
+    ]),
     enqueue: vi.fn().mockResolvedValue('enqueued'),
     queueState: vi.fn().mockResolvedValue([]),
     retryFailed: vi.fn().mockResolvedValue(0),
