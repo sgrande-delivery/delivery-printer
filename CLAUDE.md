@@ -81,12 +81,20 @@ Este arquivo guarda só o que vale para o repositório inteiro. O resto são reg
 
 ## Condições de release
 
-**O push para `master` publica.** O `.github/workflows/publish.yml` roda em `push: branches: [master]`, faz typecheck + test + build e chama `npx electron-builder --win --publish always`. Consequências:
+**Push para `master` não publica mais nada.** O `.github/workflows/publish.yml` roda no evento **`release: [published]`**; quem checa PR e `master` é o `.github/workflows/ci.yml`, que não publica. O fluxo, do começo ao fim:
 
-1. **O release nasce como `draft`** — é o default do publisher do GitHub no electron-builder (`releaseType` default `draft`, verificado em `builder-util-runtime`). Enquanto for draft, **nenhum cliente atualiza**.
-2. **O que entrega a atualização é a release virar a "Latest" do repo.** O electron-updater pede `https://github.com/<owner>/<repo>/releases/latest` com `Accept: application/json` (`GitHubProvider.getLatestTagName`), e essa URL **ignora draft e pré-release**. Então marcar como pré-release também segura o rollout — mas o caminho normal é publicar.
-3. **A versão é o `package.json`.** O nome da tag e do release saem dela; não existe Action que faça bump aqui. Subir a versão é parte do trabalho, e ela só cresce.
-4. **Um push, um release.** Dois pushes na mesma versão fazem o electron-builder reusar o draft e sobrescrever os assets. Push com a versão de um release **já publicado** falha ou corrompe o conjunto — cheque `gh release list` antes.
+1. **bump da `version` no `package.json`** → PR (checado pelo `ci.yml`) → merge em `master`. **Nada é publicado.**
+2. **criar a release com a tag `v<version>`, marcada como PRÉ-RELEASE.** Draft não serve: o GitHub **não dispara workflow** para release em draft (`created`, `edited` e `deleted` não disparam).
+3. a esteira confere que a tag bate com o `package.json`, builda e anexa `Setup-<version>.exe`, `.blockmap` e `latest.yml` **à mesma pré-release**.
+4. **instalar o `.exe` anexado e conferir.** Se a esteira terminou verde e **sem assets**, não promova: o suspeito é o `releaseType` ou a regra das 2 horas (ver `.claude/rules/autoupdate.md`).
+5. **promover a pré-release a release normal.** É isto que entrega a atualização: o electron-updater pede `/releases/latest`, que **ignora draft e pré-release**.
+6. **atualizar o `delivery_printer_version`** no `delivery-admin` (`PUT /printerSettings`), senão o link de download do painel continua oferecendo a versão anterior.
+
+Três consequências que não se deduzem do YAML:
+
+- **A versão vem do `package.json` e só cresce.** Não há Action de bump aqui, e ela também é digitada à mão no admin (passo 6) — por isso continua manual.
+- **Criar a release direto como normal é o erro perigoso**, e a esteira o recusa: nesse instante ela já é a `Latest` **sem `latest.yml`**, e todo app instalado tomaria 404 na checagem de atualização, em silêncio. O job `gate` falha com a instrução de marcar como pré-release imediatamente.
+- **A atualização chega quando o operador fecha o app pela bandeja**, e ele vive lá. Pode levar dias. Fechar pela janela (X) só esconde e **não** produz `quit`, então não aplica atualização nenhuma.
 
 ## Padrões de Desenvolvimento
 
@@ -127,7 +135,7 @@ O trabalho é organizado por **feature**, não por task solta. Cada feature vive
 
 1. `/create-spec` escreve spec e plan **e materializa todas as tasks**: abre a issue de cada uma, vincula como sub-issue da feature e escreve o arquivo.
 2. `/execute <feature>` roda **todas as tasks da spec em sequência**, na branch da spec, com **um commit por task**, e exibe a tabela de situação a cada etapa.
-3. `/ship <feature>` faz push, abre o PR contra `master` e, depois do merge, a esteira publica o draft — é o `/ship` que diz ao dev o que resta fazer à mão. `/ship-pr <feature>` é o mesmo sem nada de release, para PR contra branch que não é `master`.
+3. `/ship <feature>` faz push e abre o PR contra `master`. O merge **não publica**: quem dispara a esteira é o dev criando a release como pré-release, e é o `/ship` que lhe diz, no relatório, os passos que restam (ver "Condições de release"). `/ship-pr <feature>` é o mesmo sem nada de versão, para PR contra branch que não é `master`.
 
 O `/create-task` acrescenta ou refaz uma task numa spec que já existe. Fora do ciclo, `/report-bug` e `/request-feature` abrem issue a partir do relato do tester ou do pedido do dev.
 

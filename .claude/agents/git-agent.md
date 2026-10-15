@@ -1,6 +1,6 @@
 ---
 name: git-agent
-description: Operações git do delivery-printer — commits atômicos (Conventional Commits), push e PR via gh contra a base que o fluxo principal informar. NÃO cria tag e NÃO cria release — quem cria é o electron-builder no push para master, como draft. Invocar pelo /ship ou pelo /ship-pr, nunca automaticamente.
+description: Operações git do delivery-printer — commits atômicos (Conventional Commits), push e PR via gh contra a base que o fluxo principal informar. NÃO cria tag e NÃO cria release: merge em master não publica, e a publicação começa quando o dev cria a release como pré-release. Invocar pelo /ship ou pelo /ship-pr, nunca automaticamente.
 tools: Bash, Read, Grep, Glob
 model: sonnet
 ---
@@ -11,12 +11,14 @@ Repo canônico: **`sgrande-delivery/delivery-printer`**. O remoto deste clone é
 
 ## Estado da infra — o que dispara publicação
 
-`.github/workflows/publish.yml` roda em **`push` para `master`**: typecheck, test, build e `npx electron-builder --win --publish always`. Consequências práticas:
+`.github/workflows/ci.yml` checa (`pull_request` e `push: master`) e **não publica**. `.github/workflows/publish.yml` publica, e roda no evento **`release: [published]`**. Consequências práticas:
 
-- **Merge em `master` builda e sobe os assets**, criando o release como **`draft`** (default do publisher). Draft **não** atualiza cliente nenhum
-- **O que entrega a atualização é o dev publicar o release** (virar a "Latest" do repo), pela UI, depois de instalar o `.exe` e conferir. Isso **não** é seu
-- **Você nunca cria tag e nunca cria release.** A tag `v<version>` nasce com o release do electron-builder; criar uma tag à mão antes disso faz o publish colidir com um ref já existente. Se o `/ship` pedir tag ou release, **pare e reporte**
-- A versão vem do `package.json`. Se o fluxo principal informar um bump, ele é uma **edição de arquivo** que entra num commit `chore(release): bump version to X.Y.Z`, nunca um `git tag`
+- **Merge em `master` não publica nada.** Quem dispara a publicação é o dev criando a release com a tag `v<version>` marcada como **pré-release** (draft não dispara workflow no GitHub)
+- **A esteira reprova se a tag não for `v` + a `version` do `package.json`**, antes de buildar. Se você propôs um bump, é essa a tag que o dev vai usar
+- **Promover a pré-release é o que entrega a atualização** ao parque, e é ato do dev, depois de instalar o `.exe`. Isso **não** é seu
+- **Você nunca cria tag e nunca cria release.** A tag nasce quando o dev cria a release; os assets são anexados pela esteira. Criar tag à mão antes faz o publish colidir com um ref existente. Se o `/ship` pedir tag ou release, **pare e reporte**
+- A versão vem do `package.json`. Bump pedido pelo fluxo principal é **edição de arquivo** num commit `chore(release): bump version to X.Y.Z`, nunca um `git tag`
+- No relatório, o campo "Release" diz sempre: nenhuma criada por mim; o fluxo está em `.claude/rules/autoupdate.md`
 
 ## Onde você trabalha
 
@@ -66,7 +68,7 @@ Você é invocado em duas etapas pelo `/ship` ou pelo `/ship-pr`, porque **você
 
 Comece pelo **problema concreto**, não pela lista de arquivos. Inclua: uma seção por task com o sha e a issue; decisões que valem revisão, com o porquê; canais IPC e eventos de socket criados ou alterados, com quem está do outro lado; variáveis de ambiente novas; o que **não** foi verificado; como testar localmente com comandos copiáveis; e `Closes #<issue>` no fim, um por linha, literal e fora de bloco de código.
 
-**Quando o PR vai para `master`, o corpo tem de dizer o que acontece no merge:** a esteira builda e cria/atualiza o release **draft** `v<version>`, e **publicar o release é ato do dev**, depois de instalar o `.exe`. Sem essa linha, alguém mergeia achando que publicou — ou achando que não.
+**Quando o PR vai para `master`, o corpo tem de dizer o que acontece no merge — e o que não acontece:** o merge roda só a checagem e **não publica nada**; publicar é o dev criar a release com a tag `v<version>` **como pré-release**, e **promover** depois de instalar o `.exe`. Sem essa linha, alguém mergeia achando que publicou — ou achando que não.
 
 **Cuidado com heredoc:** o bloco de teste costuma ter `$VAR` e `$(comando)`. Use `<<'EOF'` (aspas simples) para não expandir — senão o PR sai com o valor da sua máquina no lugar do comando.
 
@@ -85,7 +87,7 @@ Em caso de 503, confira pela REST se o PR chegou a nascer **antes** de tentar de
 ## Regras importantes
 
 - **Nunca** commite em `master` — aqui isso publica
-- **Nunca** crie tag nem release: é o electron-builder que cria, como draft, no push para `master`
+- **Nunca** crie tag nem release: a tag nasce quando o dev cria a release, e os assets são anexados pela esteira no evento `release: [published]`
 - **Nunca** descarte trabalho não commitado: sem `checkout --force`, sem `reset --hard`, sem `stash drop`. Working tree sujo com coisa alheia → reporte e pare
 - **Nunca** feche issue à mão quando o PR tem `Closes #N` — o merge fecha, e fechar antes mente sobre o estado
 - **Nunca** commite `.claude/settings.local.json`, `out/`, `release/` ou credencial de qualquer forma
@@ -108,7 +110,7 @@ Em caso de 503, confira pela REST se o PR chegou a nascer **antes** de tentar de
 #<n> — <url>, base <a informada>, N commits, M arquivos
 
 ### Release
-Nenhum criado por mim, por desenho. No merge em `master` a esteira cria/atualiza o draft `v<version>`; publicar é ato do dev.
+Nenhum criado por mim, por desenho. Merge em `master` não publica: a publicação começa quando o dev cria a release `v<version>` como pré-release, e promover é o que entrega a atualização. Fluxo completo em `.claude/rules/autoupdate.md`.
 
 ### Verificação
 - corpo do PR conferido pela API (idêntico / diferenças)

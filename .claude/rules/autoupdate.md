@@ -47,16 +47,74 @@ Cada instalador carrega `resources/app-update.yml` com o owner/repo do momento d
 
 ## Como o release sai
 
-`.github/workflows/publish.yml`, em `push` para `master`: `npm ci` → `npm run typecheck` → `npm test` → `npm run build` → `npx electron-builder --win --publish always`, com `GH_TOKEN: ${{ secrets.TOKEN }}`.
+Dois workflows. `ci.yml` checa (`pull_request` e `push: master`: `npm ci`, typecheck, lint, test, build) e **não publica**. `publish.yml` publica, no evento **`release: [published]`**, e é onde moram as armadilhas abaixo.
 
-1. O electron-builder cria o release como **`draft`** (default do publisher, confirmado no schema do `builder-util-runtime`), com tag `v<version>` do `package.json`, e sobe `Setup-<version>.exe`, `.blockmap` e `latest.yml`.
-2. **Draft não atualiza ninguém.** O `GitHubProvider` do electron-updater pede `https://github.com/<owner>/<repo>/releases/latest` com `Accept: application/json` e lê o `tag_name` — essa URL ignora draft **e** pré-release.
-3. Publicar o release (virar a **Latest** do repo) é o que entrega a atualização. É ato do dev, pela UI, depois de instalar o `.exe` e conferir.
-4. O app checa no boot: `AppUpdater.run()` → `autoUpdater.checkForUpdates()`, com `autoDownload` e `autoInstallOnAppQuit` ligados (`src/main/updater.ts`). O usuário vê uma notificação pedindo para fechar o app; a troca acontece no quit.
+### O fluxo
 
-Corolário: **a atualização chega quando o operador fecha o app**, e o app vive na bandeja. Pode levar dias. Não prometa "atualiza na hora" em nenhuma task.
+| # | Ato | Quem |
+| --- | --- | --- |
+| 1 | bump da `version`, PR, merge em `master` (**não publica**) | dev |
+| 2 | criar a release com a tag `v<version>`, **como PRÉ-RELEASE** | dev |
+| 3 | conferir tag × `package.json`, buildar, anexar `.exe`/`.blockmap`/`latest.yml` | esteira |
+| 4 | instalar o `.exe` anexado e conferir | dev |
+| 5 | **promover** a pré-release a release normal → rollout | dev |
+| 6 | atualizar `delivery_printer_version` no `delivery-admin` | dev |
+
+### Por que pré-release e não draft
+
+**Draft não dispara workflow.** Documentação do GitHub, literal: *"Workflows are not triggered for the `created`, `edited`, or `deleted` activity types for draft releases."* A segurança do portão vem então de a release ser **pré-release**, que o `GitHubProvider` do electron-updater ignora do mesmo jeito que ignora draft — ele pede `https://github.com/<owner>/<repo>/releases/latest` com `Accept: application/json` e lê o `tag_name`, e essa URL pula draft **e** pré-release.
+
+### As três armadilhas do `getOrCreateRelease`
+
+`node_modules/electron-publish/out/gitHubPublisher.js`, achando a release pela tag:
+
+1. **release não-draft com `releaseType === "draft"`** (o default, quando o `package.json` não declara) → `log.warn("GitHub release not created")` e **`return null`**: nada anexado, **exit 0**. Fechado por `"releaseType": "prerelease"` em `build.publish`.
+2. **release publicada há mais de 2 horas** → recusa igual, só com warn. **Esta só passou a existir quando saímos de draft** (draft retorna antes da checagem de tempo). Re-rodar o job no dia seguinte basta para cair nela. Fechado por `EP_GH_IGNORE_TIME: 'true'` no step de empacotamento.
+3. **release inexistente** → criada, porque `--publish always`.
+
+**`releaseType: "prerelease"` não é guarda:** com ele o publisher sobe para draft, pré-release **e release normal** igualmente. Quem recusa o caso perigoso é o job `gate` do workflow.
+
+### O gate, e por que ele olha estado e não evento
+
+A documentação **não** diz quais activity types disparam quando uma pré-release é promovida. Então o `gate` não infere intenção pelo tipo do evento — ele lê o estado real da release:
+
+| Estado | Decisão |
+| --- | --- |
+| pré-release | builda e publica |
+| não-pré, **com** `latest.yml` nos assets | promoção: não builda, sai verde |
+| não-pré, **sem** `latest.yml` | **falha** — já é a `Latest` sem `latest.yml`, e todo app instalado tomaria 404 em silêncio |
+| payload de assets ilegível | **falha**, com mensagem própria (não mande apagar release por erro de leitura) |
+
+Esse desenho é correto nos dois cenários possíveis de semântica do evento. **Quando um gatilho do GitHub tiver semântica incerta, copie esta abordagem.**
+
+### O que o cliente faz
+
+`AppUpdater.run()` → `autoUpdater.checkForUpdates()` no boot, com `autoDownload` e `autoInstallOnAppQuit` ligados (`src/main/updater.ts`). O usuário vê uma notificação pedindo para fechar o app; a troca acontece no `quit`.
+
+Corolário duplo, e os dois importam: **a atualização chega quando o operador fecha o app**, que vive na bandeja — pode levar dias; e **fechar pela janela (X) não produz `quit`** (`src/main/window.ts` dá `preventDefault` enquanto `isQuiting` for falso, e o `app.quit()` do Electron aborta quando uma janela impede o próprio fechamento), então só o "Fechar" da bandeja aplica atualização. Não prometa "atualiza na hora" em nenhuma task.
+
+`releaseType` atravessa para o `app-update.yml` embarcado no pacote, e é **inerte** no cliente: zero ocorrências em `node_modules/electron-updater/out/`, e `allowPrerelease` é `false` por default. Nenhum PDV instala pré-release.
 
 `secrets.TOKEN` é o nome do secret que existe no repo — não renomeie para `GITHUB_TOKEN` nem para `GH_TOKEN` no workflow sem criar o secret novo antes.
+
+### Rollback
+
+**O electron-updater não faz downgrade.** Marcar a release anterior como `Latest` faz com que ela volte a ser oferecida a quem **ainda não atualizou**; quem já atualizou **não volta sozinho**. As duas saídas:
+
+- **voltar a anterior para `Latest`** (marcar a nova como pré-release) — estanca a propagação em minutos, e é o primeiro ato em qualquer incidente;
+- **publicar uma versão nova com número maior e o conteúdo revertido** — é o único jeito de recuperar quem já atualizou.
+
+As duas juntas, nessa ordem. E antes de qualquer uma: **se a esteira terminou verde e sem assets, não promova** — o problema é uma das armadilhas acima, não o código.
+
+### Checklist de release
+
+- [ ] `version` do `package.json` subiu, e é maior que a última tag publicada (`gh release list`)
+- [ ] PR mergeado em `master` com o `ci.yml` verde
+- [ ] release criada com a tag **`v<version>`** e marcada como **pré-release**
+- [ ] run do `publish.yml` verde **e com os três arquivos anexados** à pré-release
+- [ ] `.exe` instalado e conferido numa máquina
+- [ ] release promovida (sai da pré-release, vira `Latest`)
+- [ ] `delivery_printer_version` atualizado no `delivery-admin`
 
 ## Verificação, quando a task encostar nisto
 
@@ -66,8 +124,10 @@ Não dá para confiar em leitura: empacote e abra o asar.
 npm run build
 npx electron-builder --linux dir            # rápido, não precisa de Windows nem de wine
 npx asar list release/linux-unpacked/resources/app.asar | head -40
-npx asar extract-file release/linux-unpacked/resources/app.asar app-update.yml
+cat release/linux-unpacked/resources/app-update.yml
 ```
+
+**Correção medida em 2026-10-15:** o `app-update.yml` **não** está dentro do `app.asar` nesta versão — `npx asar extract-file … app-update.yml` falha com *"was not found in this archive"*. Ele fica ao lado, em `resources/`.
 
 O que tem de aparecer: `out/main`, `out/preload`, `out/renderer`, `package.json`, `node_modules/electron-updater`, `node_modules/electron-log`, `node_modules/socket.io-client` — e **nenhuma** devDependency. A última medição (2026-10-15, Electron 43.7.11) deu 24 pacotes e `app.asar` de 5,0 MB. Apague `release/` depois: ela é gitignorada, mas 200 MB atrapalham.
 
