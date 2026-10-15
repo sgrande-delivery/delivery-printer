@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 20
-**Status:** pendente
+**Status:** bloqueada (socket-api#50 aberta em 2026-10-15)
 
 ## Objetivo
 

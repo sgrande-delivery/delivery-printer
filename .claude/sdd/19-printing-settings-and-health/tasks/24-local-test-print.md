@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 20
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

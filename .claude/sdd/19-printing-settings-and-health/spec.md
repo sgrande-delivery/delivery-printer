@@ -1,6 +1,6 @@
 # Spec — Configuração de impressão e saúde das impressoras no PDV
 
-**Status:** rascunho
+**Status:** entregue, menos a task 06 (#25), bloqueada por `socket-api#50`
 **Criada em:** 2026-10-15
 **Escopo:** main+renderer (cross-repo nas duas últimas tasks)
 **Issue:** [#19](https://github.com/sgrande-delivery/delivery-printer/issues/19)

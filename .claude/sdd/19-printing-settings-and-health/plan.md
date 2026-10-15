@@ -28,12 +28,12 @@ As telas seguem a skill `add-screen`: componente + CSS Module, screen, rota no `
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | executada |
-| 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | executada |
-| 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | executada |
-| 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | executada |
+| 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | shipped |
+| 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | shipped |
+| 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | shipped |
+| 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | shipped |
 | 05 | Imprimir teste local | [#24](https://github.com/sgrande-delivery/delivery-printer/issues/24) | [24-local-test-print.md](./tasks/24-local-test-print.md) | 01 | pendente |
-| 06 | Emitir `printer:status` por impressora | [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25) | [25-emit-printer-status.md](./tasks/25-emit-printer-status.md) | 01 | pendente |
+| 06 | Emitir `printer:status` por impressora | [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25) | [25-emit-printer-status.md](./tasks/25-emit-printer-status.md) | 01 | **bloqueada** |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -164,4 +164,12 @@ Da task 01 (#20):
 - **Nada de dedupe na lista.** `printers.name` não tem índice único (medido na #17), então dois itens com o mesmo nome continuam dois itens — e é isso que a tela da #21 tem de mostrar, porque é exatamente o caso em que a impressão cai na padrão sem ninguém perceber.
 - **O canal nunca rejeita:** spooler caído devolve `[]` e loga. A tela de impressão não pode quebrar porque o serviço de impressão do Windows engasgou, e `[]` é o contrato de "nada a mostrar" — que também cobre Linux e dev.
 
+## A task 06 (#25) NÃO foi entregue, e o motivo
 
+**Status: ⛔ bloqueada por dependência de outro repo**, verificada em 2026-10-15: [`sgrande-delivery/delivery-socket-api#50`](https://github.com/sgrande-delivery/delivery-socket-api/issues/50) (*"Repassar `printer:status` no namespace `/admin`"*) continua **aberta**.
+
+O gateway do `/admin` **não repassa** `printer:status`, então emitir daqui seria mandar evento que **ninguém recebe** — sem consumidor, sem critério verificável e sem como distinguir "funcionou" de "não funcionou". Entregar nessas condições seria exatamente a afirmação sem prova que o `CLAUDE.md` proíbe, e as cinco ocorrências de ficção autoconsistente desta execução foram todas dessa família.
+
+O que a medição da task 01 (#20) acrescenta, e que **muda o enunciado** da #25 quando ela for feita: **`status` não existe no `PrinterInfo` do Electron 43** (só `description`, `displayName`, `name` e `options`, com `Options` declarado vazio). Então a #25 não pode prometer "impressora online" a partir do device. O que sobra é o que ela já previa: **presença do nome na lista** e **falha de impressão** — e `no_paper`/`overheat` seguem fora.
+
+Quando a `socket-api#50` fechar, a #25 roda sem nenhuma mudança nas outras cinco tasks: ela só acrescenta emissão.
