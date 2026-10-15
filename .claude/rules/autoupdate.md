@@ -23,6 +23,7 @@ Esta é a regra em que um erro **não aparece no seu computador**: ele aparece s
 | `build.publish` | `github`, owner `raphaelcarreiro`, repo `delivery-printer-2`, `private: true` | É o que gera o `app-update.yml` **embarcado**; instalação antiga continua consultando o valor antigo para sempre |
 | `electron-updater` e `electron-log` | em **`dependencies`** | São externalizados do bundle do main; em `devDependencies` o electron-builder não os empacota e o `require` falha em runtime, **em silêncio** |
 | `build.win.target[].arch` | `["ia32", "x64"]` numa invocação | Builds separados por arquitetura **sobrescrevem o `latest.yml`** e quebram o update de uma delas |
+| `build.nsis.perMachine` | `false`, explícito (com `oneClick: false` e `allowElevation: false`) | `true` faz o instalador declarar `RequestExecutionLevel admin` (`installer.nsi:20-25`), então o update silencioso do `quit` abre UAC sem ninguém na frente e o PDV sem senha de admin para de atualizar em silêncio. Com `oneClick: true` soma-se o `isAdminRightsRequired` no `latest.yml` (`NsisTarget.js:311` — só quando `oneClick` **ou** `packElevateHelper` explícito; com o assistente e o default, ele **não** é gravado), que manda o updater pelo `elevate.exe` sem retry nem fallback (`NsisUpdater.js:123-129`). E `allowElevation: false` só desabilita a opção "todos os usuários" quando o instalador **não** roda elevado: instalação escolhida como admin ainda quebra o update daquela máquina (`installer.nsi:101-115`) |
 | `version` | sempre crescente | É a única coisa que o updater compara |
 | Electron | **43.x** | O 44 removeu `win32-ia32`: PDV 32-bit para de instalar e de atualizar |
 
@@ -127,7 +128,9 @@ npx asar list release/linux-unpacked/resources/app.asar | head -40
 cat release/linux-unpacked/resources/app-update.yml
 ```
 
-**Correção medida em 2026-10-15:** o `app-update.yml` **não** está dentro do `app.asar` nesta versão — `npx asar extract-file … app-update.yml` falha com *"was not found in this archive"*. Ele fica ao lado, em `resources/`.
+**Correção medida em 2026-10-15:** o `app-update.yml` **não** está dentro do `app.asar` nesta versão — `npx asar extract-file … app-update.yml` falha com *"was not found in this archive"*. Ele fica ao lado, em `resources/`, então basta `cat release/linux-unpacked/resources/app-update.yml`.
+
+> **Cuidado com o `extract-file`, medido do jeito ruim em 2026-10-15:** ele **escreve o arquivo extraído no diretório atual**, com o nome original. Rodado na raiz do repo para conferir o `package.json` empacotado, ele **sobrescreve o `package.json` do repo** — e, como o do asar não tem `scripts` nem `devDependencies`, o estrago é silencioso até o próximo `npm run`. Para inspecionar conteúdo, use `npx asar list` (não escreve nada); precisando do arquivo, rode o `extract-file` **de dentro de um diretório temporário**, nunca da raiz.
 
 O que tem de aparecer: `out/main`, `out/preload`, `out/renderer`, `package.json`, `node_modules/electron-updater`, `node_modules/electron-log`, `node_modules/socket.io-client` — e **nenhuma** devDependency. A última medição (2026-10-15, Electron 43.7.11) deu 24 pacotes e `app.asar` de 5,0 MB. Apague `release/` depois: ela é gitignorada, mas 200 MB atrapalham.
 

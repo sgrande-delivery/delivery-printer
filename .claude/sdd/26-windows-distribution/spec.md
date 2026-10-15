@@ -28,10 +28,11 @@ A instalação e a atualização param de avisar que o editor é desconhecido, o
 ## Requisitos funcionais
 
 - **RF-01** — O instalador e o executável são assinados, e o Windows mostra a empresa.
-- **RF-02** — A instalação é per-machine, com atalho na área de trabalho e opção de escolher a pasta.
+- **RF-02** — ~~A instalação é per-machine~~, **com atalho na área de trabalho e opção de escolher a pasta**.
+  > **A parte per-machine foi DESCARTADA na execução da task #27, pela RN-02 desta própria spec.** Medido: instalação per-machine faz o instalador declarar `RequestExecutionLevel admin` (`installer.nsi:20-25`), então o Windows pede UAC **na criação do processo** quando o updater aplica a atualização no `quit` — e num PDV sem senha de administrador o parque **para de atualizar em silêncio**. A regra venceu o requisito, que é o desenho certo. O resto da RF-02 foi entregue. **Preço aceito e declarado: o app NÃO abre para um segundo usuário do Windows na mesma máquina.** Reverter é uma linha (`build.nsis.perMachine`), mas aí a #27 precisa de Windows real, usuário não-admin e o cenário de migração do parque que hoje está em `%LOCALAPPDATA%`. Detalhe completo nos Aprendizados do `plan.md`.
 - **RF-03** — Existe instalação silenciosa documentada para suporte remoto.
 - **RF-04** — O nome do artefato continua `SGrande-Delivery-Printer-Setup-<version>.exe`.
-- **RF-05** — A atualização automática continua funcionando depois da mudança para per-machine.
+- **RF-05** — A atualização automática continua funcionando depois da mudança de instalador. **É a RF que sobreviveu à colisão com a RF-02, e foi ela que decidiu.**
 
 ## Regras de negócio
 
@@ -51,8 +52,8 @@ A instalação e a atualização param de avisar que o editor é desconhecido, o
 ## Critérios de aceitação
 
 - [ ] Em máquina limpa, instalar o `.exe` publicado não mostra "editor desconhecido", e as propriedades do arquivo mostram a empresa.
-- [ ] Instalado por um usuário do Windows, o app abre para outro usuário da mesma máquina.
-- [ ] Uma atualização automática conclui sozinha sobre a instalação per-machine, sem intervenção.
+- [x] ~~Instalado por um usuário do Windows, o app abre para outro usuário da mesma máquina.~~ **NÃO ATENDIDO, por decisão registrada** — é o preço de preservar a atualização silenciosa (ver RF-02 e os Aprendizados do `plan.md`).
+- [ ] Uma atualização automática conclui sozinha, sem intervenção. **Exige Windows e duas versões publicadas pela esteira** — é a verificação que ainda não foi feita, e a única que fecha a RN-02 empiricamente. Até lá, o que existe é a leitura do fonte (`installer.nsi`, `assistedInstaller.nsh`, `multiUser.nsh`, `NsisUpdater.js`) dizendo que o caminho per-user atualiza no lugar, sem elevação.
 - [ ] O nome do arquivo publicado continua o que o painel espera.
 - [ ] A instalação silenciosa está documentada e funciona.
 
@@ -62,4 +63,4 @@ A instalação e a atualização param de avisar que o editor é desconhecido, o
 |---|------|----------------------|
 | 1 | Qual certificado | **Decisão do dono do negócio, não técnica.** OV tradicional (na casa de US$ 200–400/ano, e com a chave em token físico pelas regras novas da CA/B Forum, o que complica assinar em CI) ou **Azure Trusted Signing** (assinatura na nuvem, mais barato, exige a empresa verificada e um plano Azure). A recomendação é o Azure Trusted Signing, por assinar na esteira sem token físico — e a task [#28](https://github.com/sgrande-delivery/delivery-printer/issues/28) fica bloqueada até a escolha |
 | 2 | `oneClick` ou assistente | Assistente (`oneClick: false`) com `allowToChangeInstallationDirectory`, porque instalação em PDV às vezes vai para outro disco. O custo é um clique a mais |
-| 3 | Manter `perMachine: true` se a atualização automática exigir UAC | Se a RN-02 falhar na verificação, **voltar para per-user** e registrar: atualização silenciosa vale mais que instalação compartilhada entre logins |
+| 3 | ~~Manter `perMachine: true` se a atualização automática exigir UAC~~ | **DECIDIDA em 2026-10-15, na execução da #27: per-user (`perMachine: false`).** A medição no fonte mostrou que per-machine exige elevação no `quit`, então valeu o que esta linha já previa — atualização silenciosa vale mais que instalação compartilhada entre logins. Fica para o dev reverter se, na prática, os PDVs tiverem mais de um usuário do Windows em uso |

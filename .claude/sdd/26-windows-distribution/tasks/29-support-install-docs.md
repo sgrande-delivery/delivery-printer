@@ -60,4 +60,4 @@ Não há código. A verificação é a que importa para um documento:
 
 ## Branch
 
-`feat/26-windows-distribution`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/26-windows-distribution`, cortada de `feat/7-ci-pr-gate-and-release` em 2026-10-15, com um commit por task.

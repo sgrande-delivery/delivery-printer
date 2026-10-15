@@ -7,6 +7,7 @@
     "email": "contato@sgrande.delivery"
   },
   "license": "MIT",
+  "//": "build.nsis.perMachine=false de proposito: per-machine faz o instalador exigir elevacao (RequestExecutionLevel admin), e a atualizacao automatica e aplicada em silencio no quit do app - UAC sem ninguem na frente, e num PDV sem senha de admin o autoupdate para em silencio. allowElevation=false desabilita a opcao \"todos os usuarios\" no assistente quando o instalador nao roda elevado; rodando como admin ela continua disponivel, e a instalacao resultante quebra o update daquela maquina. Ver .claude/rules/autoupdate.md.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/raphaelcarreiro/delivery-printer-2.git"
@@ -77,6 +78,15 @@
     "directories": {
       "buildResources": "assets",
       "output": "release"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SGrande Delivery Printer"
     },
     "win": {
       "target": [
