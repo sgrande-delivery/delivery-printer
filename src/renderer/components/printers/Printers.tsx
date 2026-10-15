@@ -8,7 +8,7 @@ import PrintersNotice from './PrintersNotice';
 import styles from './Printers.module.css';
 
 const Printers: React.FC = () => {
-  const { status, printers, unregistered, devicesRead, reload } = usePrinters();
+  const { status, printers, unregistered, devices, devicesRead, refresh, reload } = usePrinters();
 
   const header = (
     <>
@@ -74,7 +74,7 @@ const Printers: React.FC = () => {
               onRetry={reload}
             />
           )}
-          <PrinterList printers={printers} devicesRead={devicesRead} />
+          <PrinterList printers={printers} devices={devices} devicesRead={devicesRead} onChanged={refresh} />
         </>
       )}
       {unregistered.length > 0 && (

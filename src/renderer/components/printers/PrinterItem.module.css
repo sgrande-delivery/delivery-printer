@@ -24,3 +24,14 @@
   color: var(--color-error);
   font-weight: var(--font-weight-medium);
 }
+
+/* A failed write, which is not the same claim as "this name matches no device". */
+.error {
+  color: var(--color-error);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

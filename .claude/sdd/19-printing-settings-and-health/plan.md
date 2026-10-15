@@ -30,7 +30,7 @@ As telas seguem a skill `add-screen`: componente + CSS Module, screen, rota no `
 |---|------|-------|---------|------------|--------|
 | 01 | Expor as impressoras do Windows ao renderer | [#20](https://github.com/sgrande-delivery/delivery-printer/issues/20) | [20-list-windows-printers-ipc.md](./tasks/20-list-windows-printers-ipc.md) | — | executada |
 | 02 | Tela de impressoras conferindo o nome contra o device | [#21](https://github.com/sgrande-delivery/delivery-printer/issues/21) | [21-printers-screen-read-only.md](./tasks/21-printers-screen-read-only.md) | 01 | executada |
-| 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | pendente |
+| 03 | Editar a impressora na API, com 403 tratado | [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22) | [22-printers-screen-write.md](./tasks/22-printers-screen-write.md) | 02 | executada |
 | 04 | Tela de configurações de impressão (`printerSettings`) | [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) | [23-printer-settings-screen.md](./tasks/23-printer-settings-screen.md) | 02 | pendente |
 | 05 | Imprimir teste local | [#24](https://github.com/sgrande-delivery/delivery-printer/issues/24) | [24-local-test-print.md](./tasks/24-local-test-print.md) | 01 | pendente |
 | 06 | Emitir `printer:status` por impressora | [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25) | [25-emit-printer-status.md](./tasks/25-emit-printer-status.md) | 01 | pendente |
@@ -80,6 +80,7 @@ Para a task 03 (#22) — medido no `delivery-api` **antes** de a task começar, 
 - **`copies` tem `min:1` e `max:3`.** Oferecer 4 cópias na interface é 422 garantido. O seletor tem de parar em 3.
 - **`paper_width` é `Rule::in` do `PrinterPaperWidthEnum`**, que tem exatamente dois casos: **58 e 80**. Aqui a união literal `58 | 80` vale, porque é escolha oferecida pela interface, não leitura de valor alheio.
 - **`station` é `sometimes, nullable` + `Rule::in`** dos 7 valores do enum. Nulo é válido.
+- **EMENDA, medida depois que o texto abaixo induziu a erro: `sometimes` nesta API NÃO significa "preserva" — significa "opcional no request", e aí o DTO aplica o DEFAULT dele.** `core/Printer/Application/DTO/UpdatePrinterInput.php` declara `public bool $activated = true;` (e `station = null`, `paper_width = 80`, `copies = 1`), o `Dto::handleMap` faz `if (!array_key_exists($property, $payload)) return;` — mantendo o default — e o `PrinterRepository::update()` grava **as seis colunas**. Então **`PUT` sem `activated` escreve `activated = true`**: o operador desativava uma impressora pelo toggle, editava o nome dela e **a impressora voltava a ligar sozinha**. O `PUT` tem de carregar **todos** os seis campos, não só os dois `required`. Vale para a #23 numa forma ainda pior: lá as chaves ausentes são **apagadas**.
 - **Existe rota dedicada para ativar/desativar: `PATCH /printers/{id}/toggle-active`** — e o `TogglePrinterActiveUseCase` é **o único use case do módulo `Printer` envolvido em `DB::transaction`**. Ativar/desativar deve ir por ela, **não** por `PUT` com `activated`: é atômica e dispensa mandar `name`/`address` junto.
 - **As rotas e os papéis** (`app/Modules/Printer/routes/admin-routes.php`), todas sob `assign.guard:admin` + `admin.jwt.auth`:
 
@@ -89,6 +90,18 @@ Para a task 03 (#22) — medido no `delivery-api` **antes** de a task começar, 
   | `GET/PUT /printerSettings` | **`role:printer-setting`** |
 
   São **dois papéis diferentes**, então um restaurante pode ter um e não o outro: a tela de impressoras e a de configurações podem dar 403 **independentemente**, e cada uma precisa do seu estado de permissão.
+
+Da task 03 (#22):
+
+- **`PATCH /printers/{id}/toggle-active` NÃO é idempotente:** o use case faz `update(['activated' => DB::raw('NOT activated')])`. Sem guarda de voo, dois cliques voltam ao estado original — e para o operador isso parece "o botão não fez nada", o que convida ao terceiro clique. Os botões têm `toggling` + `disabled`, com teste de duplo clique.
+- **O corpo de erro desta API NÃO é o do Laravel.** Medido ponta a ponta: `UpdatePrinterRequest::failedValidation` → `UnprocessableEntityException($msg, 422, $validator->errors()->toArray())` → o terceiro argumento é o `array $detail` do `HttpException` → `toArray()` emite **`{ error, status_code, detail, internal_code }`** → `bootstrap/app.php:135` faz `response()->json($e->toArray(), $status)`, e o `BaseException` ainda tem `render()` próprio devolvendo o mesmo. **Nem `message` nem `errors` existem nesse endpoint**, então ler o formato do Laravel descartava a mensagem que o operador precisava ver.
+  - `errors` **não** é ficção: é o formato do handler de `ValidationException` (`bootstrap/app.php:85`), que atende os endpoints que **não** sobrescrevem `failedValidation`. Vale manter como alternativa.
+- **Código morto achado de carona:** `src/renderer/services/apiErrorInterceptor.ts:28` testa `data.code === 'login.invalid_credentials'`, mas o `toArray()` emite isso como **`internal_code`** — o `if` nunca é verdadeiro. Hoje é inócuo (o 401 cai no `history.push('/login')` e já se está no login), mas é **task própria com teste**. O `access_token.expired` logo abaixo funciona, porque o handler de `UnauthorizedHttpException` emite `code` literalmente (`bootstrap/app.php:147`).
+- **Erro de formulário fica inline; sucesso vai pelo snackbar.** A task pedia os dois pelo `useMessaging()`, e o review aprovou a divisão por mérito: erro de formulário tem de **ficar** ao lado do campo, e o snackbar é mau veículo para isso (o `handleOpen` é instável e rajada deixa só o último legível — Aprendizados #1 e #11). O que não podia era o sucesso ficar **mudo**, e ele estava: o único sinal era a tela piscar.
+- **`refresh` (sem `loading`) para refletir mudança, `reload` (com `loading`) para o "tentar novamente".** Esvaziar a tela inteira para atualizar uma linha é flash desnecessário — mas só se pode tirar o flash **depois** de dar sinal próprio ao sucesso, senão o salvamento fica sem retorno nenhum.
+- **Teste que renderiza componente pelado e código desenhado em volta disso são coisas diferentes.** A primeira versão evitou o `useMessaging()` com o argumento de que "sem o provider o `handleOpen` seria `undefined`" — verdade **nos testes**, falso na tela real, porque o `MessagingProvider` envolve o `Routes` (`App.tsx:13`). A saída é embrulhar o teste no provider, não desenhar o código em volta da limitação do teste.
+- **`base/Select` está ganho para task própria:** o padrão `label + select` se repete **4 vezes dentro de um arquivo**, e o `<select>` do form usa *caption acima* enquanto o `base/TextField` usa *label flutuante* — hoje não aparecem juntos, mas **na #23 vão**, e aí a diferença fica visível.
+- **A dívida do `base/LinkButton` chegou a SEIS call sites.**
 
 Para a task 04 (#23) — medido no `delivery-api` antes de a task começar:
 

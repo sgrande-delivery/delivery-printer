@@ -1,0 +1,42 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.label {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.select {
+  padding: 6px 0 7px;
+  border: 0;
+  border-bottom: 1px solid var(--color-input-border);
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-size: 1rem;
+}
+
+.select:focus {
+  outline: 0;
+  border-bottom: 2px solid var(--color-primary);
+  /* keep the text from shifting when the border thickens, as base/TextField does */
+  padding-bottom: 6px;
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}

@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 21
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -74,6 +74,69 @@ Se o dev não confirmar, a task entrega só a edição, e a decisão fica regist
 - Criar e excluir impressora
 - Editar `address`
 - Configurações do restaurante (`printerSettings`) — task [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23)
+
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/renderer/components/printers/PrinterForm.tsx` + `.module.css`, `stations.ts`, `src/renderer/services/apiMessage.ts`, e três arquivos de teste (`PrinterForm`, `PrinterItem`, `apiMessage`).
+Alterados: `src/renderer/services/printers.ts`, `usePrinters.ts`, `PrinterItem.tsx` + `.module.css`, `PrinterList.tsx`, `Printers.tsx`, `printers.test.ts`, `Printers.test.tsx`.
+
+`src/main/` **não** foi tocado (conferido: `git status --porcelain src/main` vazio).
+
+### O corpo do `PUT`, e por que leva os seis campos
+
+```
+{ name, address, activated, copies, paper_width, station }
+```
+
+A primeira versão omitia o `activated`, com o argumento de que ele é `sometimes` no FormRequest e que ativar/desativar tem rota própria. **`sometimes` nesta API não preserva — significa "opcional no request", e aí o DTO aplica o default dele.** Medido: `UpdatePrinterInput` declara `public bool $activated = true;`, o `Dto::handleMap` faz `return` quando a chave falta (mantendo o default), e o `PrinterRepository::update()` grava **as seis colunas**.
+
+Consequência que isso teria tido em produção: o operador desativa uma impressora pelo toggle, depois edita o nome dela, e **a impressora volta a ligar sozinha**.
+
+O `address` nunca se perde: é `string` não-nulo no schema, o `GET` sempre o traz e o form só o repassa, nos dois caminhos (com e sem lista de devices).
+
+### O 422 que não aparecia
+
+O `apiMessage.ts` lia `{ message, errors }` — o formato do Laravel. **Esta API emite `{ error, status_code, detail, internal_code }`**, medido ponta a ponta até o `response()->json($e->toArray(), $status)` do `bootstrap/app.php:135`. Nem `message` nem `errors` existem nesse endpoint, então a mensagem caía no texto genérico: o operador punha 4 cópias, causava o erro, e recebia "não foi possível salvar" em vez de "cópias não pode ser maior que 3".
+
+Agora lê `detail` → `errors` → `error`, e **o teste usa o corpo real desta API**, copiado do `toArray()`. O `errors` fica como alternativa legítima: é o formato do handler de `ValidationException`, que atende os endpoints que não sobrescrevem `failedValidation`.
+
+### O toggle
+
+`PATCH /printers/{id}/toggle-active`, sem corpo — a rota atômica (`DB::transaction` sobre `NOT activated`), que dispensa mandar `name`/`address`.
+
+Ela **não é idempotente**, e por isso os botões ganharam guarda de voo: dois cliques voltavam ao estado original, o que para o operador parece "não fez nada". Há teste de duplo clique.
+
+### Sucesso e falha
+
+| | Onde aparece |
+| --- | --- |
+| erro de validação (422) | **inline no formulário**, com o texto da API, e o form fica aberto com o que foi digitado |
+| 403 | inline, "nada foi salvo" |
+| sucesso | **snackbar** pelo `useMessaging()` |
+
+A task pedia os dois pelo `useMessaging()`; a divisão foi aprovada por mérito: erro de formulário tem de **ficar** ao lado do campo, e o snackbar é mau veículo para isso. O que não podia era o sucesso ficar mudo — e estava, porque o único sinal era a tela piscar.
+
+Por isso o `refresh` (sem `loading`) substituiu o `reload` no caminho de salvar e no do toggle: esvaziar a tela inteira para refletir uma linha é flash desnecessário, mas só se pode tirá-lo **depois** de dar sinal próprio ao sucesso. O `reload` ficou no "tentar novamente", onde o `loading` faz sentido.
+
+### Testes
+
+**176 em 29 arquivos** (baseline da task: 152/26).
+
+Mutações verificadas: `PUT` só com `name` → cai o teste de payload; `activated` fora do `PUT` → cai; sem a leitura de `detail` → caem 4 em 2 arquivos; sem a guarda do toggle → cai o de duplo clique; `onChanged={reload}` de volta → caem os dois de "sem passar por loading".
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · `ui.test.tsx` verde · contrato conferido no fonte da `delivery-api`: `UpdatePrinterRequest`, `UpdatePrinterInput`, `Dto::handleMap`, `PrinterRepository`, `TogglePrinterActiveUseCase`, `PrinterPresenter`, as três classes de exceção, os handlers do `bootstrap/app.php`, `admin-routes.php` e as duas migrations de `printers`.
+
+### O que não foi verificado
+
+Nada contra a `api-dev` nem no Electron real. **O teste manual que mais importa é o do bug corrigido:** desativar uma impressora, editar o nome dela e conferir no painel que ela **continua desativada**. A aparência do select ao lado do `TextField` também não teve olhar humano — e é o que motiva a task do `base/Select` antes da #23.
+
+A rajada de snackbar (salvar e alternar em sequência rápida) cai no `setTimeout` de 350 ms do provider, comportamento conhecido da spec #1.
 
 ## Branch
 

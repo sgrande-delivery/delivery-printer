@@ -20,8 +20,14 @@ interface PrintersState {
   printers: ResolvedPrinter[];
   // Installed on this machine but registered under no name.
   unregistered: WindowsPrinter[];
+  // Every device of this computer: the only names the edit form offers.
+  devices: WindowsPrinter[];
   // False when this computer's printer list came back empty (or could not be read).
   devicesRead: boolean;
+  // Reads again without leaving 'ready': for a change made on a row, where blanking the
+  // whole screen to reflect one line would hide the very confirmation the operator waits for.
+  refresh(): void;
+  // Reads again from 'loading': for the retry, where there is nothing on screen to keep.
   reload(): void;
 }
 
@@ -54,6 +60,7 @@ export function usePrinters(): PrintersState {
   const [status, setStatus] = useState<PrintersLoadStatus>('loading');
   const [printers, setPrinters] = useState<ResolvedPrinter[]>([]);
   const [unregistered, setUnregistered] = useState<WindowsPrinter[]>([]);
+  const [devices, setDevices] = useState<WindowsPrinter[]>([]);
   const [devicesRead, setDevicesRead] = useState(true);
   const requestRef = useRef(0);
 
@@ -70,6 +77,7 @@ export function usePrinters(): PrintersState {
 
         setPrinters(result.printers);
         setUnregistered(result.unregistered);
+        setDevices(devices);
         setDevicesRead(devices.length > 0);
         setStatus('ready');
       })
@@ -110,5 +118,5 @@ export function usePrinters(): PrintersState {
     };
   }, [load]);
 
-  return { status, printers, unregistered, devicesRead, reload };
+  return { status, printers, unregistered, devices, devicesRead, refresh: load, reload };
 }
