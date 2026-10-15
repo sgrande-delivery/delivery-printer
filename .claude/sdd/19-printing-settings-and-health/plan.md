@@ -74,6 +74,22 @@ Da task 02 (#21), e **esta é a mais caníbal da spec**:
 - **`listPrinters()` devolvendo `[]`** (spooler caído, Linux, dev) pinta **todas** as cadastradas de vermelho com "não encontrada nesta máquina". É defensável, mas é o único estado em que a tela afirma mais do que mediu: com N cadastradas e zero devices, o certo é dizer "não foi possível ler as impressoras deste computador".
 - **A dívida do `base/LinkButton` chegou a CINCO call sites** (`.linkLogout`, `.linkLogs`, `.linkRetry` ×2, `.linkBack`).
 
+Para a task 03 (#22) — medido no `delivery-api` **antes** de a task começar, que é a lição de processo da #21:
+
+- **`PUT /printers/{id}` exige `name` E `address` em TODA chamada** (`app/Modules/Printer/Request/UpdatePrinterRequest.php`): as duas são `required`. Trocar só o nome do device **sem mandar o endereço dá 422** — mesma armadilha do `printerSettings`, por outro motivo. A tela tem de mandar o registro completo, partindo do que o `GET` devolveu.
+- **`copies` tem `min:1` e `max:3`.** Oferecer 4 cópias na interface é 422 garantido. O seletor tem de parar em 3.
+- **`paper_width` é `Rule::in` do `PrinterPaperWidthEnum`**, que tem exatamente dois casos: **58 e 80**. Aqui a união literal `58 | 80` vale, porque é escolha oferecida pela interface, não leitura de valor alheio.
+- **`station` é `sometimes, nullable` + `Rule::in`** dos 7 valores do enum. Nulo é válido.
+- **Existe rota dedicada para ativar/desativar: `PATCH /printers/{id}/toggle-active`** — e o `TogglePrinterActiveUseCase` é **o único use case do módulo `Printer` envolvido em `DB::transaction`**. Ativar/desativar deve ir por ela, **não** por `PUT` com `activated`: é atômica e dispensa mandar `name`/`address` junto.
+- **As rotas e os papéis** (`app/Modules/Printer/routes/admin-routes.php`), todas sob `assign.guard:admin` + `admin.jwt.auth`:
+
+  | Rota | Papel |
+  | --- | --- |
+  | `GET/POST /printers`, `GET/PUT /printers/{id}`, `PATCH /printers/{id}/toggle-active` | `role:printer` |
+  | `GET/PUT /printerSettings` | **`role:printer-setting`** |
+
+  São **dois papéis diferentes**, então um restaurante pode ter um e não o outro: a tela de impressoras e a de configurações podem dar 403 **independentemente**, e cada uma precisa do seu estado de permissão.
+
 Para a task 04 (#23) — medido no `delivery-api` antes de a task começar:
 
 - **MEDIDO no `delivery-api`, e é pior do que a RN-05 diz: o `PUT /printerSettings` não "substitui o objeto", ele APAGA TODAS as linhas do restaurante e recria uma por chave do payload** (`core/Printer/Application/UpdatePrinterSettingsUseCase.php`):
