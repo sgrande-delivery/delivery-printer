@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** build
 **Depende de:** (nenhuma)
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

@@ -26,9 +26,9 @@ A conferência tag × versão é um passo de shell lendo `package.json` com `nod
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Rodar typecheck, lint, test e build em PR | [#8](https://github.com/sgrande-delivery/delivery-printer/issues/8) | [8-ci-on-pull-request.md](./tasks/8-ci-on-pull-request.md) | — | executada |
-| 02 | Publicar só quando a release for criada, conferindo tag e versão | [#9](https://github.com/sgrande-delivery/delivery-printer/issues/9) | [9-publish-on-release-created.md](./tasks/9-publish-on-release-created.md) | 01 | executada |
-| 03 | Atualizar a documentação do fluxo de release e o rollback | [#10](https://github.com/sgrande-delivery/delivery-printer/issues/10) | [10-document-release-flow.md](./tasks/10-document-release-flow.md) | 02 | executada |
+| 01 | Rodar typecheck, lint, test e build em PR | [#8](https://github.com/sgrande-delivery/delivery-printer/issues/8) | [8-ci-on-pull-request.md](./tasks/8-ci-on-pull-request.md) | — | shipped |
+| 02 | Publicar só quando a release for criada, conferindo tag e versão | [#9](https://github.com/sgrande-delivery/delivery-printer/issues/9) | [9-publish-on-release-created.md](./tasks/9-publish-on-release-created.md) | 01 | shipped |
+| 03 | Atualizar a documentação do fluxo de release e o rollback | [#10](https://github.com/sgrande-delivery/delivery-printer/issues/10) | [10-document-release-flow.md](./tasks/10-document-release-flow.md) | 02 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
