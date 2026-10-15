@@ -13,6 +13,9 @@ export const aliases = [
   { find: /^renderer\//, replacement: `${resolve(__dirname, 'src/renderer')}/` },
   { find: /^constants\//, replacement: `${resolve(__dirname, 'src/constants')}/` },
   { find: /^main\//, replacement: `${resolve(__dirname, 'src/main')}/` },
+  // src/shared is the home of code both sides import: it is in the `include` of
+  // both tsconfigs, so a Node-only import there fails the web typecheck.
+  { find: /^shared\//, replacement: `${resolve(__dirname, 'src/shared')}/` },
 ];
 
 const REQUIRED_ENV = ['APP_API_BASE_URL', 'APP_WS_BASE_URL'] as const;

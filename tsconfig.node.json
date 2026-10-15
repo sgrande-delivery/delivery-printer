@@ -4,5 +4,5 @@
     "lib": ["ES2022"],
     "types": ["node"]
   },
-  "include": ["src/main", "src/constants", "electron.vite.config.ts", "build-config.ts", "env.d.ts"]
+  "include": ["src/main", "src/constants", "src/shared", "electron.vite.config.ts", "build-config.ts", "env.d.ts"]
 }

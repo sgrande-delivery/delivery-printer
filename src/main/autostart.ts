@@ -1,6 +1,8 @@
 import { app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
+import { describeError } from 'shared/describeError';
+import { logger } from './logger';
 
 export const START_MINIMIZED_ARG = '--start-minimized';
 
@@ -37,7 +39,7 @@ function writeMark(): void {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
     fs.writeFileSync(markPath(), JSON.stringify({ configured: true }));
   } catch (err: unknown) {
-    console.error('autostart: could not write the configured mark', err);
+    logger.error('autostart: could not write the configured mark', describeError(err));
   }
 }
 
@@ -54,7 +56,7 @@ export function registerAutostart(): void {
     const mark = readMark();
 
     if (mark === 'unreadable') {
-      console.error('autostart: the mark file is unreadable, leaving the current login item untouched');
+      logger.error('autostart: the mark file is unreadable, leaving the current login item untouched');
       return;
     }
 
@@ -70,6 +72,6 @@ export function registerAutostart(): void {
 
     writeMark();
   } catch (err: unknown) {
-    console.error('autostart: registration failed', err);
+    logger.error('autostart: registration failed', describeError(err));
   }
 }

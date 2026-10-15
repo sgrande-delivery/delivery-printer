@@ -1,6 +1,10 @@
+import './logger';
 import { app, ipcMain } from 'electron';
 import { onRawPrint } from './ipc-events/onRawPrint';
 import { onNotification } from './ipc-events/onNotification';
+import { onLog } from './ipc-events/onLog';
+import { describeError } from 'shared/describeError';
+import { logger } from './logger';
 import { onBeforeQuit } from './app-events/onBeforeQuit';
 import { onSecondInstance } from './app-events/onSecondInstance';
 import { onWindowAllClosed } from './app-events/onWindowAllClosed';
@@ -10,6 +14,7 @@ import { registerAutostart } from './autostart';
 
 ipcMain.handle('rawPrint', onRawPrint);
 ipcMain.handle('notification', onNotification);
+ipcMain.on('log', onLog);
 
 app.on('window-all-closed', () => onWindowAllClosed(app));
 
@@ -30,7 +35,7 @@ function boot(): void {
       app.on('before-quit', event => onBeforeQuit(event, window));
       app.on('second-instance', () => onSecondInstance(window));
     })
-    .catch(console.log);
+    .catch((err: unknown) => logger.error('boot failed', describeError(err)));
 }
 
 if (!app.requestSingleInstanceLock()) {

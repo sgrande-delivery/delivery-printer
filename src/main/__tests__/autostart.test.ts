@@ -21,6 +21,12 @@ vi.mock('electron', () => ({
   },
 }));
 
+const log = vi.hoisted(() => ({ error: vi.fn() }));
+
+// electron-log/main needs the real electron, so the logger is replaced here; the
+// describeError it used to re-export now lives in src/shared and stays real.
+vi.mock('../logger', () => ({ logger: log }));
+
 import { registerAutostart, START_MINIMIZED_ARG } from '../autostart';
 
 describe('registerAutostart', () => {
@@ -71,13 +77,11 @@ describe('registerAutostart', () => {
   });
 
   it('does not throw nor re-enable when the mark file is corrupted, and reports it', () => {
-    const reported = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    log.error.mockClear();
     fs.writeFileSync(path.join(electron.userData, 'autostart.json'), '{not json');
 
     expect(() => registerAutostart()).not.toThrow();
     expect(electron.setLoginItemSettings).not.toHaveBeenCalled();
-    expect(reported).toHaveBeenCalled();
-
-    reported.mockRestore();
+    expect(log.error).toHaveBeenCalled();
   });
 });

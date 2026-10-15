@@ -64,4 +64,4 @@ Dar ao operador um botão que entregue o log ao suporte, sem acesso remoto à m�
 
 ## Branch
 
-`feat/11-observability-logs-and-errors`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/11-observability-logs-and-errors`, cortada de `feat/1-reliability-silent-failures` em 2026-10-15, com um commit por task.

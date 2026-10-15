@@ -27,6 +27,10 @@ const electronHandler = {
 
   beforeQuitDone: (): void => ipcRenderer.send('app:before-quit-done'),
 
+  // Fire-and-forget on purpose: logging must never reject into the caller.
+  log: (level: 'error' | 'warn' | 'info', message: string, context?: Record<string, unknown>): void =>
+    ipcRenderer.send('log', level, message, context),
+
   notification: (orderSequence: string): Promise<void> => ipcRenderer.invoke('notification', orderSequence),
 };
 

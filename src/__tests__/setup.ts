@@ -10,6 +10,7 @@ Object.defineProperty(window, 'electron', {
     rawPrint: vi.fn().mockResolvedValue(undefined),
     onBeforeQuit: vi.fn().mockReturnValue(() => undefined),
     beforeQuitDone: vi.fn(),
+    log: vi.fn(),
     notification: vi.fn().mockResolvedValue(undefined),
   },
 });

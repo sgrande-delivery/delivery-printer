@@ -69,4 +69,4 @@ Um mapa pequeno, no renderer, do motivo técnico para a frase em pt-BR, com fall
 
 ## Branch
 
-`feat/11-observability-logs-and-errors`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/11-observability-logs-and-errors`, cortada de `feat/1-reliability-silent-failures` em 2026-10-15, com um commit por task.
