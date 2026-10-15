@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** 12
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -61,6 +61,64 @@ Dar ao operador um botão que entregue o log ao suporte, sem acesso remoto à m�
 - Zipar, enviar por e-mail ou subir o log para algum lugar
 - Visualizador de log dentro do app
 - Rotina de limpeza manual (a rotação da task [#12](https://github.com/sgrande-delivery/delivery-printer/issues/12) resolve o crescimento)
+
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/main/ipc-events/onRevealLogs.ts`, `src/main/__tests__/onRevealLogs.test.ts`, `src/renderer/components/status/__tests__/Status.test.tsx`.
+Alterados: `src/main/preload.ts`, `src/main/main.ts`, `src/__tests__/setup.ts`, `src/renderer/components/status/Status.tsx`, `Status.module.css`.
+
+### Canal
+
+| Canal | Direção | Preload | Main | Stub |
+| --- | --- | --- | --- | --- |
+| `revealLogs` | renderer → main | `preload.ts:38` | `main.ts:19` | `setup.ts:15` |
+
+É o **sexto** nome de canal duplicado à mão e sem teste do par.
+
+### O caminho do log não é codificado — e passa a se medir sozinho
+
+O handler resolve em runtime (`logger.transports.file.getFile().path`), então nada aqui depende da **previsão** registrada nos Aprendizados. E ele registra `log file resolved to <caminho>` na primeira chamada: a medição que falta ao repo chega com o primeiro clique num Windows, e é esse valor que entra na documentação do suporte.
+
+### O defeito que o review pegou, medido duas vezes
+
+**`getFile()` cria o arquivo** (`FileRegistry.js:71-72`: `mkdirSync` + `writeFileSync` com flag `a`, dentro do `testFileWriting`). Probe:
+
+```
+antes do getFile  -> existe: false
+depois do getFile -> existe: true | tamanho: 0
+depois do info    -> existe: true | tamanho: 49
+```
+
+Então o `existsSync` da primeira versão era **sempre** verdadeiro: o `return false` era código morto, e instalação nova sem incidente abriria o Explorer com um `main.log` de 0 byte em vez do aviso.
+
+**E o teste passava** — porque o mock devolvia `getFile: () => ({ path })`, objeto sem o efeito colateral da biblioteca. Quarto caso de ficção autoconsistente da sessão.
+
+Correção em duas frentes:
+
+1. **Código:** mede por `statSync(file).size > 0`, e a leitura vem **antes** da linha de log, porque ela escreve nesse mesmo arquivo. Os dois pontos estão comentados, porque a ordem é contraintuitiva.
+2. **Teste:** o mock passou a replicar os dois efeitos reais (o `getFile` cria o arquivo vazio, o `info` faz append), e o caso negativo usa o **arquivo real vazio** do tempdir.
+
+Mutações, verificadas por mim de forma independente: trocar `size > 0` por `existsSync` derruba o teste do caso negativo; mover a leitura para depois do `logger.info` derruba o mesmo teste.
+
+### Correções que o review fez
+
+- `useRef`/`useEffect` do `handleOpen` removidos: o handler já fecha sobre o valor atual, a maquinaria não comprava nada
+- o `catch` do clique passou a **logar** a causa — engolir calado é o que esta spec existe para matar, e a assinatura do canal é nova
+- `<a href="#">` → `<button type="button">`: é ação, não navegação, e num app de hash history o `href="#"` é navegação de verdade sendo barrada à mão
+- o teste do componente usa `getByRole('button', …)` e `mockClear()` do stub compartilhado (que carrega histórico entre testes)
+- o teste da linha de log virou honesto com `vi.resetModules()`, e agora também trava que ela não pode ficar atrás de um `return` antecipado
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · **71 testes em 16 arquivos** (baseline da spec: 50/11) · `ui.test.tsx` verde.
+
+### O que não foi verificado
+
+O Explorer abrindo com o arquivo selecionado, o clique real na janela, e o caminho do `main.log` no app empacotado — que é justamente o que a linha de log vai medir no primeiro uso.
 
 ## Branch
 

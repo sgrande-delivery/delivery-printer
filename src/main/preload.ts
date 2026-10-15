@@ -33,6 +33,9 @@ const electronHandler = {
 
   notification: (payload: { title: string; body: string }): Promise<void> =>
     ipcRenderer.invoke('notification', payload),
+
+  // Resolves to false when there is no record yet (file absent or empty), so the UI can say so.
+  revealLogs: (): Promise<boolean> => ipcRenderer.invoke('revealLogs'),
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

@@ -12,5 +12,6 @@ Object.defineProperty(window, 'electron', {
     beforeQuitDone: vi.fn(),
     log: vi.fn(),
     notification: vi.fn().mockResolvedValue(undefined),
+    revealLogs: vi.fn().mockResolvedValue(true),
   },
 });

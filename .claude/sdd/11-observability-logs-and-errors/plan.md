@@ -25,7 +25,7 @@ Aviso ao operador usa o que já existe: `useMessaging().handleOpen(...)` para a 
 |---|------|-------|---------|------------|--------|
 | 01 | Log em arquivo com rotação, nos dois processos | [#12](https://github.com/sgrande-delivery/delivery-printer/issues/12) | [12-file-logging-with-rotation.md](./tasks/12-file-logging-with-rotation.md) | — | executada |
 | 02 | Mostrar falha de impressão ao operador | [#13](https://github.com/sgrande-delivery/delivery-printer/issues/13) | [13-visible-print-failures.md](./tasks/13-visible-print-failures.md) | 01 | executada |
-| 03 | Exportar os logs para o suporte | [#14](https://github.com/sgrande-delivery/delivery-printer/issues/14) | [14-export-logs.md](./tasks/14-export-logs.md) | 01 | pendente |
+| 03 | Exportar os logs para o suporte | [#14](https://github.com/sgrande-delivery/delivery-printer/issues/14) | [14-export-logs.md](./tasks/14-export-logs.md) | 01 | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -65,6 +65,14 @@ Da task 02 (#13):
 - **Erro de render agora chega ao arquivo** (`ErrorBoundary` passou de `console.error` para `log.error`), com teste que afirma o caminho até a ponte — e que cai se alguém voltar o `console.error`. Fecha o buraco que a spec #1 deixou: o boundary pegava o erro e ninguém conseguia ler.
 - **A forma do payload de notificação está declarada três vezes** (helper, literal do preload, tipo do handler no main) e **nada testa o par**: acrescentar campo de um lado não é pego. O durável é um `import type` de `src/shared/`, que a task 01 criou exatamente para isso.
 - **Dívida de rede no `/board`:** o teste novo do hook de mesa era a chance de cobrir montar/desmontar/remontar e contar emissões (o vazamento de listener que a `printing.md` descreve). O `off` existe e esta task não tocou no efeito, então não é achado dela — mas a rede continua ausente.
+
+Da task 03 (#14):
+
+- **`logger.transports.file.getFile()` CRIA o arquivo.** `electron-log/src/node/transports/file/FileRegistry.js:71-72` faz `mkdirSync` + `writeFileSync(path, '', { flag: 'a' })` dentro de `testFileWriting()`. Medido por probe: `antes do getFile → existe: false`; `depois → existe: true, tamanho 0`. **Consequência:** `existsSync` depois de `getFile()` é sempre verdadeiro, então "tem registro?" se mede por **tamanho**, nunca por existência — e a leitura tem de vir **antes** da linha de log que escreve nesse mesmo arquivo. Sem isso, instalação nova sem incidente abre o Explorer com um `main.log` de 0 byte em vez de avisar.
+- **O quarto caso de ficção autoconsistente da sessão, e o mais sutil:** o teste do caso negativo passava porque o mock devolvia `getFile: () => ({ path })` — um objeto **sem o efeito colateral da biblioteca**. A correção não foi só no código: o mock passou a replicar os dois efeitos reais (o `getFile` cria o arquivo vazio, o `info` faz append). **Regra que sai disto: mock de biblioteca que tem efeito colateral precisa ter o efeito colateral, ou o teste prova só que o código concorda com o mock.**
+- **O caminho do log se mede sozinho em campo:** o handler resolve em runtime e registra `log file resolved to <caminho>` na primeira chamada (`grep "log file resolved"` no `main.log`). Então a medição que falta chega com o primeiro clique de "abrir logs" num Windows — e **é esse valor observado que entra aqui e na documentação do suporte** (task #29 da spec #26), não a previsão.
+- **"Link que é ação" agora aparece em dois lugares** (`desconectar`, pré-existente, e `abrir logs`, que o review trocou por `<button type="button">`). O `desconectar` continua `<a href="#">` com `preventDefault`, que num app de hash history é navegação de verdade sendo barrada à mão. Dois lugares é o gatilho da regra "primitivo novo quando o padrão aparece em dois lugares" — e o primitivo `Button` não serve sem override, porque ele é botão MUI de texto (uppercase, `min-width: 64px`). Follow-up natural.
+- **`src/__tests__/ui.test.tsx` renderiza o `Status` sem `MessagingProvider`**, e funciona porque o `MessagingContext` tem default `{} as MessagingContextData`, então o guard do `useMessaging()` não dispara e o `handleOpen` fica `undefined`. Inofensivo hoje (aquele teste não clica), mas é uma rede frouxa esperando alguém.
 
 - **Mensagem de log em inglês, texto de tela em pt-BR.** As tasks 02 e 03 precisam seguir isso para não divergir.
 

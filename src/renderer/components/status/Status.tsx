@@ -1,8 +1,10 @@
 import React, { MouseEvent } from 'react';
 import { useAuth } from 'renderer/providers/auth';
+import { useMessaging } from 'renderer/providers/messaging';
 import RestaurantStatus from 'renderer/components/restaurant-status/RestaurantStatus';
 import Typography from 'renderer/base/Typography';
 import { cx } from 'renderer/base/cx';
+import { log } from 'renderer/services/log';
 import packageJson from '../../../../package.json';
 import styles from './Status.module.css';
 
@@ -13,6 +15,21 @@ interface StatusProps {
 
 const Status: React.FC<StatusProps> = ({ wsConnected, handleLogout }) => {
   const { restaurant, user } = useAuth();
+  const { handleOpen } = useMessaging();
+
+  function handleRevealLogs() {
+    window.electron
+      .revealLogs()
+      .then(found => {
+        if (!found) {
+          handleOpen('Ainda não há registros para exportar.');
+        }
+      })
+      .catch((err: unknown) => {
+        log.error('reveal logs failed', err);
+        handleOpen('Não foi possível abrir a pasta dos registros.');
+      });
+  }
 
   function handleClick(e: MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
@@ -58,6 +75,9 @@ const Status: React.FC<StatusProps> = ({ wsConnected, handleLogout }) => {
         <Typography variant="caption" color="textSecondary">
           v{packageJson.version} - {window.electron.arch}
         </Typography>
+        <button type="button" className={styles.linkLogs} onClick={handleRevealLogs}>
+          abrir logs
+        </button>
       </div>
     </div>
   );
