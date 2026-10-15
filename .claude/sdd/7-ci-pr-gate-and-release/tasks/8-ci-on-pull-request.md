@@ -115,13 +115,17 @@ build (esteira)
 
 Os quatro comandos rodados por mim nesta máquina, na ordem do workflow: typecheck 0 · lint 0 erros e 1 aviso (o `Login.tsx:23` da base) · 3 testes em 2 arquivos · build em ~0,9 s, 176 módulos. O `npm ci` sai 0, o que confirma que o lockfile acompanha o `package.json`.
 
-### O que não foi verificado — e quando será
+### O que foi verificado no GitHub, medido em 2026-10-15
 
-O workflow **não rodou no GitHub**, porque ele só existe nesta branch. Os três critérios que faltam se fecham no PR desta spec, que é o primeiro PR a carregá-lo:
+O workflow **rodou** no PR desta spec ([#31](https://github.com/sgrande-delivery/delivery-printer/pull/31)) — run `38773521265`, sha `1e14f82`, evento `pull_request`, job `check`: **success**. Então dois dos três critérios estão fechados:
 
-- o check aparece no PR e reprova com erro de tipo
-- o `cancel-in-progress` cancela a execução anterior
-- a aba Actions **não** cria release nenhum
+- **o check aparece no PR:** ✅ apareceu e passou
+- **a aba Actions não cria release nenhum:** ✅ a `Latest` do repo continua a `2.6.0` de 2026-01-12, anterior a este trabalho — nenhum release novo
+
+### O que continua não verificado
+
+- **o check reprova com erro de tipo** — ninguém introduziu um erro para ver reprovar, então o que está provado é que ele passa quando deve passar, não que barra quando deve barrar. É a assimetria que esta execução encontrou cinco vezes em teste de unidade, e vale igual para o CI
+- **o `cancel-in-progress` cancela a execução anterior** — exige dois pushes rápidos na mesma branch, e só houve **um** run
 
 ## Branch
 
