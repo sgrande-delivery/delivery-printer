@@ -32,9 +32,9 @@ Reaproveitado: o `id` do trabalho já existe (`uuidv4()` em `usePrintingOrder.ts
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Fila persistida em userData | [#16](https://github.com/sgrande-delivery/delivery-printer/issues/16) | [16-queue-store-in-userdata.md](./tasks/16-queue-store-in-userdata.md) | — | executada |
-| 02 | Worker com retry, deduplicação e cobertura de mesa | [#17](https://github.com/sgrande-delivery/delivery-printer/issues/17) | [17-queue-worker-with-retry.md](./tasks/17-queue-worker-with-retry.md) | 01 | executada |
-| 03 | Estado da fila visível e retry manual | [#18](https://github.com/sgrande-delivery/delivery-printer/issues/18) | [18-queue-visible-state.md](./tasks/18-queue-visible-state.md) | 02 | executada |
+| 01 | Fila persistida em userData | [#16](https://github.com/sgrande-delivery/delivery-printer/issues/16) | [16-queue-store-in-userdata.md](./tasks/16-queue-store-in-userdata.md) | — | shipped |
+| 02 | Worker com retry, deduplicação e cobertura de mesa | [#17](https://github.com/sgrande-delivery/delivery-printer/issues/17) | [17-queue-worker-with-retry.md](./tasks/17-queue-worker-with-retry.md) | 01 | shipped |
+| 03 | Estado da fila visível e retry manual | [#18](https://github.com/sgrande-delivery/delivery-printer/issues/18) | [18-queue-visible-state.md](./tasks/18-queue-visible-state.md) | 02 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

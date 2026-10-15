@@ -1,6 +1,6 @@
 # Spec — Fila durável de impressão com retry
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-10-15
 **Escopo:** main+renderer
 **Issue:** [#15](https://github.com/sgrande-delivery/delivery-printer/issues/15)
