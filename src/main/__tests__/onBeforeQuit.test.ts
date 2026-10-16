@@ -14,6 +14,9 @@ vi.mock('electron', () => ({
   },
 }));
 
+// electron-log/main needs the real electron, so the logger is replaced here.
+vi.mock('../logger', () => ({ logger: { error: vi.fn() } }));
+
 type Module = typeof import('../app-events/onBeforeQuit');
 
 function makeWindow(destroyed = false) {

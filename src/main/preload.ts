@@ -27,7 +27,15 @@ const electronHandler = {
 
   beforeQuitDone: (): void => ipcRenderer.send('app:before-quit-done'),
 
-  notification: (orderSequence: string): Promise<void> => ipcRenderer.invoke('notification', orderSequence),
+  // Fire-and-forget on purpose: logging must never reject into the caller.
+  log: (level: 'error' | 'warn' | 'info', message: string, context?: Record<string, unknown>): void =>
+    ipcRenderer.send('log', level, message, context),
+
+  notification: (payload: { title: string; body: string }): Promise<void> =>
+    ipcRenderer.invoke('notification', payload),
+
+  // Resolves to false when there is no record yet (file absent or empty), so the UI can say so.
+  revealLogs: (): Promise<boolean> => ipcRenderer.invoke('revealLogs'),
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

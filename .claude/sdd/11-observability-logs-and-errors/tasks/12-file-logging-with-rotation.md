@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** (nenhuma)
-**Status:** pendente
+**Status:** shipped
 
 ## Objetivo
 
@@ -78,6 +78,75 @@ Escrita que falha não propaga (RN-05): o `electron-log` já trata, e o que a ta
 - Botão de exportar — task [#14](https://github.com/sgrande-delivery/delivery-printer/issues/14)
 - Trocar todo `console.log` do repo: só os caminhos críticos listados
 
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Processos tocados
+
+main + preload + renderer, mais um diretório novo compartilhado
+
+### Arquivos
+
+**Novos:** `src/main/logger.ts` (configura o `electron-log` uma vez, no import), `src/main/ipc-events/onLog.ts`, `src/renderer/services/log.ts`, **`src/shared/describeError.ts`** e seu teste, mais o teste do canal no renderer.
+
+**Alterados:** `src/main/main.ts` (o `import './logger'` é a **primeira** linha), `preload.ts`, `updater.ts` (saiu a configuração do construtor; o erro do `checkForUpdates`, que era descartado, agora é logado), `autostart.ts`, `app-events/onBeforeQuit.ts`, `src/__tests__/setup.ts`, `src/renderer/index.tsx`, `hooks/usePrintingOrder.ts`, `hooks/usePrintingBoard.ts`, `providers/auth.tsx`, `services/apiErrorInterceptor.ts`, `build-config.ts` e os três `tsconfig`.
+
+### Canal IPC criado
+
+| Canal | Direção | Preload | Main | Stub |
+| --- | --- | --- | --- | --- |
+| `log` | renderer → main | `preload.ts:32` (`send`) | `main.ts:16` (`ipcMain.on`) | `setup.ts:13` |
+
+`send`/`on` e não `invoke`/`handle`: log não pode devolver promessa que rejeita ao chamador. É o **quinto** canal com o nome duplicado como literal nos dois lados e sem teste do par — a dívida do `ipc-channels.ts` cresceu.
+
+### A violação de fronteira que o review pegou, e o diretório novo
+
+O `describeError` nasceu em `src/main/` e era importado pelo renderer. **Medido:** o símbolo dele aparecia **nos dois bundles** — fonte de processo principal emitida dentro do bundle do renderer, o mesmo mecanismo que a task #4 registrou para o preload.
+
+Virou **`src/shared/describeError.ts`**, com alias `shared/` e o diretório no `include` dos dois tsconfigs. Não foi para `src/constants/`, que é configuração de build e não depósito.
+
+### Três fatos medidos nesta task, todos registrados nos Aprendizados
+
+1. **O typecheck não impede Node no renderer.** DOM em `src/shared/` derruba o programa node (`TS2584`); `import fs from 'node:fs'` em `src/shared/` **passa** no web, porque `types: ["vite/client"]` arrasta `@types/node`. Quem impede é review e build.
+2. **O `externalizeDepsPlugin` externaliza só `dependencies`** (`lib-DoUt4oMD.js:1185`), e o electron-vite força `ssr.noExternal` em main/preload. Logo `import 'axios'` no main seria **bundlado** e funcionaria — a justificativa original do duck typing estava errada, e foi reescrita antes de virar aprendizado.
+3. **`ipcRenderer.send` lança sincronamente** em payload não clonável. Como o `send` do log roda dentro de `catch`, isso quebraria o próprio handler de erro: a RN-05 exige `try/catch` ali, e há teste que cai sem ele.
+
+### Decisões, e o veredito do review
+
+- **Canal explícito em vez de `electron-log/renderer`**: aprovado — o `initialize()` da biblioteca registra preload próprio nas sessões, briga com o nosso bundle único, e falharia só no instalador
+- **`errorHandler.startCatching({ showDialog: false })`**: aprovado, com a API conferida — o default é `true` e usa `showErrorBox`, ou seja caixa modal no PDV em serviço
+- **`maxSize` 2 MiB**: teto real 4 MiB, porque o `archiveLogFn` mantém um `.old.log` ao lado. `breakLength: Infinity` é o que faz o `grep` da RN-02 funcionar
+- **`describeError` tira a query string e devolve `reachedServer`**: é a distinção que a spec #1 aprendeu a valer (401 do refresh × rede caindo no refresh). Descarta `stack` de propósito: sem sourcemap em produção, stack minificada não serve a ninguém
+- **Flag `logged`** no `usePrintingOrder`: local à invocação, cada impressora que falha gera a própria linha
+- **Os dois pontos de log do interceptor ficam**: só alcançáveis depois de `status === 401`, então oscilação de rede volta antes e não escreve nada
+
+### Testes
+
+59 testes em 13 arquivos (baseline da spec: 50/11). Mutações conferidas por mim e pelo review:
+
+| Mutação | Testes que caem |
+| --- | --- |
+| `describeError` devolvendo o erro cru (RN-02) | **6** |
+| `withoutQuery` devolvendo a URL com query | 2 |
+| `try/catch` do `send` removido | 1 |
+
+O teste da RN-02 não é tautológico: `JSON.stringify` de um `AxiosError` cru passa pelo `toJSON`, que inclui `config` com `headers`.
+
+### Verificação
+
+- typecheck 0 · lint 0 erros e 1 aviso (o da base) · 59 testes · build dos três bundles com o alias novo resolvendo (renderer 522,3 kB, era 518)
+- Par do canal conferido por grep nos dois lados + stub
+- **Nenhuma dependência nova** (`electron-log` já estava em `dependencies`); invariantes de autoupdate intactas
+
+### O que NÃO foi verificado — e o que depende disso
+
+Nada rodou dentro do Electron. Ficam abertos quatro critérios: **o caminho observado do arquivo**, a rotação por `maxSize`, o `grep` de credencial no arquivo real e a rejection não tratada aparecendo nele.
+
+O caminho é **previsão**: `%APPDATA%\sgrande-delivery-printer-2\logs\main.log`. **A task #14 e a documentação do suporte não devem citá-lo como verdade** antes de alguém rodar `log.transports.file.getFile().path` num build real.
+
+E um site de `console.error` ficou fora de propósito: `ErrorBoundary.tsx:32` — ou seja, **erro de render não chega ao arquivo**. Candidato à task #13.
+
 ## Branch
 
-`feat/11-observability-logs-and-errors`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/11-observability-logs-and-errors`, cortada de `feat/1-reliability-silent-failures` em 2026-10-15, com um commit por task.

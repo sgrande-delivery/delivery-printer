@@ -22,7 +22,8 @@
     "paths": {
       "renderer/*": ["src/renderer/*"],
       "constants/*": ["src/constants/*"],
-      "main/*": ["src/main/*"]
+      "main/*": ["src/main/*"],
+      "shared/*": ["src/shared/*"]
     }
   },
   "include": ["src", "electron.vite.config.ts", "vitest.config.ts", "build-config.ts", "env.d.ts"]

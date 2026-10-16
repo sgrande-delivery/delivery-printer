@@ -1,4 +1,6 @@
 import { app, BrowserWindow, Event, ipcMain } from 'electron';
+import { describeError } from 'shared/describeError';
+import { logger } from '../logger';
 
 export const BEFORE_QUIT_CHANNEL = 'app:before-quit';
 export const BEFORE_QUIT_DONE_CHANNEL = 'app:before-quit-done';
@@ -38,6 +40,6 @@ export function onBeforeQuit(event: Event, window: BrowserWindow): void {
       window.webContents.send(BEFORE_QUIT_CHANNEL);
     }
   } catch (err) {
-    console.error(err);
+    logger.error('before-quit: could not notify the renderer', describeError(err));
   }
 }

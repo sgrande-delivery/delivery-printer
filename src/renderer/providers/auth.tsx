@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import { User } from 'renderer/types/user';
 import { Restaurant } from 'renderer/types/restaurant';
 import { api } from 'renderer/services/api';
+import { log } from 'renderer/services/log';
 
 export type SessionStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'unreachable';
 
@@ -67,7 +68,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const failSession = useCallback((err: unknown): void => {
-    console.error(err);
+    log.error('session check failed', err);
     setSessionStatus(isSessionRefused(err) ? 'unauthenticated' : 'unreachable');
   }, []);
 

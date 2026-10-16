@@ -39,6 +39,25 @@ describe('ErrorBoundary', () => {
     expectNoUndefinedClasses(container);
   });
 
+  it('sends the render error to the log, not to the console', () => {
+    vi.mocked(window.electron.log).mockClear();
+
+    render(
+      <ErrorBoundary>
+        <Bomb />
+      </ErrorBoundary>
+    );
+
+    expect(window.electron.log).toHaveBeenCalledWith(
+      'error',
+      'render error',
+      expect.objectContaining({
+        componentStack: expect.any(String),
+        error: expect.objectContaining({ message: 'boom' }),
+      })
+    );
+  });
+
   it('renders children untouched when nothing throws', () => {
     const { container } = render(
       <ErrorBoundary>

@@ -102,7 +102,8 @@ Três consequências que não se deduzem do YAML:
 
 `tsconfig.json` tem `strict: true`, mas **`noImplicitAny: false`**: parâmetro sem tipo compila. Quem cobra tipo aqui é o review, não o compilador. `@typescript-eslint/no-explicit-any` está **off** no `eslint.config.mjs` — o mesmo vale.
 
-- O typecheck é **duplo** e os dois lados têm `lib` diferente: `tsconfig.node.json` (main, sem DOM) e `tsconfig.web.json` (renderer, com DOM). `npm run typecheck` roda os dois. Código do main que usa `window` ou `document` só é pego pelo primeiro
+- O typecheck é **duplo** e os dois lados têm `lib` diferente: `tsconfig.node.json` (main + `src/constants` + `src/shared`, sem DOM) e `tsconfig.web.json` (renderer + `src/constants` + `src/shared`, com DOM). `npm run typecheck` roda os dois
+- **O guard de fronteira só existe numa direção, e isso foi medido.** DOM em código compartilhado derruba o programa node (`document.title` em `src/shared/` → `TS2584`). O contrário **não**: `import fs from 'node:fs'` em `src/shared/` **passa** no `tsconfig.web.json`, porque `types: ["vite/client"]` arrasta um `/// <reference types="node" />` e com ele o `@types/node` inteiro. Ou seja: **nenhum typecheck deste repo impede Node no renderer** — quem impede é o review e o build do renderer. Não confie no compilador para isso
 - `src/constants/constants.ts` é importado pelos **dois** lados: o que entra ali tem de compilar nos dois `lib`
 - A resposta da `delivery-api` não é validada contra o tipo declarado — `api.get<Response[]>` é uma **afirmação**, não prova. Mantenha opcional o campo que pode vir `null` (`device_name: string | null` é o exemplo real)
 - `catch (err: unknown)` com narrowing por `instanceof AxiosError`, como em `providers/auth.tsx:57`
@@ -117,7 +118,9 @@ Comentário existe para carregar o que o código não carrega: unidade que o tip
 
 ### Imports
 
-Aliases: `renderer/`, `constants/`, `main/` (declarados em `build-config.ts` e espelhados no `paths` do `tsconfig.json`). Eles são **regex** de propósito: um alias solto `constants` sombrearia o módulo nativo do Node. Alias novo entra nos dois lugares, ou o `tsc` e o Vite discordam.
+Aliases: `renderer/`, `constants/`, `main/`, `shared/` (declarados em `build-config.ts` e espelhados no `paths` do `tsconfig.json`). Eles são **regex** de propósito: um alias solto `constants` sombrearia o módulo nativo do Node. Alias novo entra nos dois lugares, ou o `tsc` e o Vite discordam.
+
+**Onde mora código que os dois lados importam:** `src/shared/`, que está no `include` dos **dois** tsconfigs. `src/constants/` é configuração de build (ele lê as constantes injetadas) e não é depósito de utilidade compartilhada. E **não** ponha em `src/main/` o que o renderer vai importar: o electron-vite bundla import relativo, então código de processo principal acaba emitido **dentro do bundle do renderer** — medido, com o símbolo aparecendo nos dois bundles.
 
 ## Fluxo de trabalho (SDD)
 

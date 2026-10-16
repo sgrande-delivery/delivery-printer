@@ -4,5 +4,5 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"]
   },
-  "include": ["src/renderer", "src/constants", "env.d.ts"]
+  "include": ["src/renderer", "src/constants", "src/shared", "env.d.ts"]
 }

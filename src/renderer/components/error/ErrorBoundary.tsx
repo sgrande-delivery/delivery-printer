@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import Typography from 'renderer/base/Typography';
 import Button from 'renderer/base/Button';
+import { log } from 'renderer/services/log';
 import styles from './ErrorBoundary.module.css';
 
 interface ErrorBoundaryProps {
@@ -28,8 +29,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Final destination is the file log of spec #11 (electron-log runs in main only).
-    console.error(error, info.componentStack);
+    log.error('render error', error, { componentStack: info.componentStack });
   }
 
   handleReload = (): void => {

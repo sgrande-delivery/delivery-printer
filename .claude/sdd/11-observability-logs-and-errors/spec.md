@@ -1,6 +1,6 @@
 # Spec — Observabilidade: log em arquivo e erro visível ao operador
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-10-15
 **Escopo:** main+renderer
 **Issue:** [#11](https://github.com/sgrande-delivery/delivery-printer/issues/11)

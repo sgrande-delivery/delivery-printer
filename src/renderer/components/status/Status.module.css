@@ -70,3 +70,18 @@
   padding-top: 15px;
   text-align: center;
 }
+
+/* An action, so it is a <button>; these reset the native button chrome to keep
+   the discreet link look next to the version. */
+.linkLogs {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-family);
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
