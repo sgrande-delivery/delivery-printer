@@ -1,26 +1,21 @@
 import React from 'react';
-import { Provider } from 'react-redux';
-import { MuiThemeProvider } from '@material-ui/core';
 import Routes from './routes/Routes';
 import AuthProvider from './providers/auth';
-import { theme } from './theme/theme';
 import MessagingProvider from './providers/messaging';
-import { store } from './store';
+import ErrorBoundary from './components/error/ErrorBoundary';
 import { BrowserRouter } from './routes/BrowserRouter';
 import { history } from './services/history';
 
 const App: React.FC = () => (
-  <BrowserRouter history={history}>
-    <Provider store={store}>
+  <ErrorBoundary>
+    <BrowserRouter history={history}>
       <AuthProvider>
-        <MuiThemeProvider theme={theme}>
-          <MessagingProvider>
-            <Routes />
-          </MessagingProvider>
-        </MuiThemeProvider>
+        <MessagingProvider>
+          <Routes />
+        </MessagingProvider>
       </AuthProvider>
-    </Provider>
-  </BrowserRouter>
+    </BrowserRouter>
+  </ErrorBoundary>
 );
 
 export default App;

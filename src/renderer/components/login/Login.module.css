@@ -1,0 +1,37 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  background-color: var(--color-primary-light);
+}
+
+.paper {
+  padding: 30px;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  position: relative;
+  background-color: #fff;
+  min-width: 400px;
+}
+
+/* theme.breakpoints.down('sm') in MUI v4 resolves to max-width 959.95px */
+@media (max-width: 959.95px) {
+  .paper {
+    min-width: 350px;
+  }
+}
+
+.logo {
+  width: 90px;
+}
+
+.title {
+  margin: 30px 0 0;
+}
+
+.footer {
+  margin-top: 30px;
+}

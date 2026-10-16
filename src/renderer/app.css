@@ -1,3 +1,32 @@
+/*
+ * Design tokens. These replace the Material-UI theme object; the values are the
+ * ones MUI v4 resolved at runtime, so the appearance is unchanged:
+ *   primary.light = lighten(primary.main, 0.2), MUI's default tonalOffset
+ *   error/success.main and the text colors are MUI v4 palette defaults
+ */
+:root {
+  --color-primary: #f0592a;
+  --color-primary-light: #f37a55;
+  --color-secondary: #404040;
+  --color-error: #f44336;
+  --color-success: #4caf50;
+
+  --color-text: rgba(0, 0, 0, 0.87);
+  --color-text-secondary: rgba(0, 0, 0, 0.54);
+
+  --color-divider: #eee;
+  --color-input-border: rgba(0, 0, 0, 0.42);
+
+  --font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+
+  /* MUI v4 typography with fontSize 14 and the project's font weights */
+  --font-weight-light: 200;
+  --font-weight-regular: 300;
+  --font-weight-medium: 400;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -15,8 +44,9 @@ body,
 body {
   background-color: #fff;
   color: #212529;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-regular);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -39,75 +69,21 @@ p {
   margin: 0;
 }
 
-@keyframes zoom {
-  from {
-    transform: scale(1.4);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@media print {
-  * {
-    page-break-before: always;
-  }
-}
-
-@page {
-  margin: 0;
-  size: 80mm auto;
-}
-
-.zoom-animation {
-  animation-name: zoom;
-  animation-duration: 0.3s;
-  animation-iteration-count: 1;
-  animation-timing-function: cubic-bezier(0.1, 0.82, 0.25, 1);
-}
-
-@keyframes placeHolderShimmer {
-  0% {
-    background-position: -468px 0;
-  }
-  100% {
-    background-position: 468px 0;
-  }
-}
-
-.animated-background {
-  animation-duration: 1s;
-  animation-fill-mode: forwards;
-  animation-iteration-count: infinite;
-  animation-name: placeHolderShimmer;
-  animation-timing-function: linear;
-  background: #f6f7f8;
-  background: linear-gradient(to right, #eee 8%, #ddd 18%, #eee 33%);
-  background-size: 800px 104px;
-  position: relative;
-}
-
 @media (min-width: 1200px) {
-  /* width */
   ::-webkit-scrollbar {
     width: 8px;
   }
 
-  /* Track */
   ::-webkit-scrollbar-track {
     background: transparent;
     border-radius: 10px;
   }
 
-  /* Handle */
   ::-webkit-scrollbar-thumb {
     background: #c6c6c6;
     border-radius: 10px;
   }
 
-  /* Handle on hover */
   ::-webkit-scrollbar-thumb:hover {
     background: #c6c6c6;
   }

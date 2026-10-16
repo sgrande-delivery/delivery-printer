@@ -1,22 +1,19 @@
-import constants from 'constants/constants';
-import { useEffect, useState } from 'react';
-import { Socket, io } from 'socket.io-client';
-import { useSelector } from 'renderer/store/selector';
-import { useDispatch } from 'react-redux';
-import { setRestaurantIsOpen } from 'renderer/store/modules/restaurant/actions';
+import { useEffect } from 'react';
+import { useAuth } from 'renderer/providers/auth';
 import packageJson from '../../../package.json';
 import { useAdminSocket } from './useAdminSocket';
+
+type PrinterExitedAck = { event: string; message: 'OK' | 'IGNORED' };
 
 let timer: NodeJS.Timeout;
 
 export function useAdminSocketEvents(): void {
-  const restaurant = useSelector(state => state.restaurant);
-  const dispatch = useDispatch();
+  const { restaurant, setRestaurantIsOpen } = useAuth();
   const { socket, isConnected } = useAdminSocket();
 
   useEffect(() => {
     socket?.on('handleRestaurantState', (response: { isOpen: boolean }) => {
-      dispatch(setRestaurantIsOpen(response.isOpen));
+      setRestaurantIsOpen(response.isOpen);
     });
 
     socket?.on('admin_ping', () => {
@@ -30,7 +27,26 @@ export function useAdminSocketEvents(): void {
       socket?.off('handleRestaurantState');
       socket?.off('admin_ping');
     };
-  }, [restaurant, dispatch, socket]);
+  }, [restaurant, setRestaurantIsOpen, socket]);
+
+  useEffect(() => {
+    if (!restaurant) {
+      return;
+    }
+
+    return window.electron.onBeforeQuit(() => {
+      // The gateway compares the raw uuid with the one from the handshake; an
+      // object makes it answer IGNORED without any visible error.
+      // The ack is the gateway's return value; the main process keeps its own
+      // timeout for a dead socket, so quitting never depends on this callback.
+      socket?.emit('printer_exited', restaurant.uuid, (ack?: PrinterExitedAck) => {
+        if (ack?.message === 'IGNORED') {
+          console.error('O servidor recusou o printer_exited (IGNORED): o restaurante não casa com a sala do socket.');
+        }
+        window.electron.beforeQuitDone();
+      });
+    });
+  }, [restaurant, socket]);
 
   useEffect(() => {
     if (restaurant && isConnected) {
@@ -47,8 +63,6 @@ export function useAdminSocketEvents(): void {
           version: packageJson.version,
         });
       }, 30000);
-
-      window.electron.socketRegister(restaurant.uuid);
     }
 
     return () => {

@@ -1,0 +1,44 @@
+.snackbar {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1400;
+  display: flex;
+  justify-content: center;
+}
+
+/* Matches MUI v4's SnackbarContent defaults */
+.content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 288px;
+  max-width: 560px;
+  padding: 6px 16px;
+  border-radius: 4px;
+  background-color: #313131;
+  color: #fff;
+  font-size: 0.875rem;
+  line-height: 1.43;
+  box-shadow:
+    0 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0 6px 10px 0 rgba(0, 0, 0, 0.14),
+    0 1px 18px 0 rgba(0, 0, 0, 0.12);
+}
+
+.messageContent {
+  display: flex;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.message {
+  margin-left: 10px;
+  padding-top: 3px;
+}
+
+.actionText {
+  color: var(--color-primary-light);
+  margin-left: auto;
+}

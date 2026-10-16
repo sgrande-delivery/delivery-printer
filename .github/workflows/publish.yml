@@ -1,45 +1,111 @@
 name: Publish
 
+# Publishing starts when a release is published as a pre-release, never on a push: GitHub
+# does not trigger workflows for draft releases at all. Promoting the pre-release to a normal
+# release is what delivers the update, because /releases/latest ignores drafts and
+# pre-releases. "releaseType": "prerelease" in package.json is what allows electron-publish to
+# upload to a release that is not a draft; under the default ("draft") it logs a warning,
+# uploads nothing and still exits 0. It is not a guard, though: it would upload to a normal
+# release just as happily, so refusing that case is the gate job's job.
 on:
-  push:
-    branches:
-      - master
+  release:
+    types: [published]
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 jobs:
+  # "published" may fire for a pre-release, for a promotion of one, or for a
+  # release created directly as normal. Only the real state of the release
+  # tells them apart: a promotion already carries latest.yml, a release created
+  # directly as normal carries nothing. That last case is the dangerous one,
+  # because /releases/latest already points at it while no latest.yml exists,
+  # so every installed app would fail to update, silently. It must fail loudly.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - name: Decide whether to build
+        id: decide
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          ASSETS: ${{ toJSON(github.event.release.assets) }}
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then
+            echo "Pre-release $RELEASE_TAG: a esteira vai buildar e publicar."
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A payload the gate cannot read is a failure of its own, with its own message: telling the
+          # operator to delete a release is wrong advice when the cause is an unreadable payload.
+          if ! HAS_LATEST_YML="$(node -e 'console.log(JSON.parse(process.env.ASSETS).some(asset => asset.name === "latest.yml"))')"; then
+            echo "::error::A esteira não conseguiu ler a lista de assets da release $RELEASE_TAG no payload do evento (erro do node acima), então não dá para saber se esta publicação é uma promoção. Nada foi buildado e a release não foi tocada."
+            exit 1
+          fi
+          if [ "$HAS_LATEST_YML" = "true" ]; then
+            echo "Promoção detectada ($RELEASE_TAG já tem latest.yml): nada a buildar."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::A release $RELEASE_TAG está publicada como release normal e não tem latest.yml, então ela já é a Latest do repositório e todo app instalado tomaria 404 ao buscar atualização. Marque-a como PRÉ-RELEASE agora, para tirá-la da Latest: se ela foi promovida antes de a esteira terminar, basta esperar o build que está rodando; se ela nasceu como release normal, apague e recrie como pré-release para a esteira rodar. Promova só depois de instalar e conferir o .exe anexado."
+          exit 1
+
   publish:
-    # To enable auto publishing to github, update your electron publisher
-    # config in package.json > "build" and remove the conditional below
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
 
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [macos-latest]
+    # Windows NSIS installers are built on Windows so no wine is involved.
+    runs-on: windows-latest
 
     steps:
       - name: Checkout git repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Node and NPM
-        uses: actions/setup-node@v3
+      - name: Show the commit being published
+        shell: bash
+        run: git log --oneline -1
+
+      - name: Check release tag against package.json version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "$RELEASE_TAG" != "v$VERSION" ]; then
+            echo "::error::A release foi criada com a tag $RELEASE_TAG, mas o package.json está em $VERSION. A tag precisa ser exatamente v$VERSION: suba a versão ou corrija a tag."
+            exit 1
+          fi
+          echo "Tag $RELEASE_TAG confere com o package.json ($VERSION)."
+
+      - name: Install Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version-file: .nvmrc
           cache: npm
 
-      - name: Install and build
-        run: |
-          npm install --legacy-peer-deps
-          npm run postinstall
-          npm run build
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Publish releases
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build renderer, preload and main
+        run: npm run build
+
+      # One electron-builder invocation covers both architectures, which keeps a
+      # single latest.yml. Publishing the architectures in separate runs would
+      # overwrite it and break auto update for one of them.
+      - name: Package and publish
         env:
-          # These values are used for auto updates signing
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASS: ${{ secrets.APPLE_ID_PASS }}
-          # CSC_LINK: ${{ secrets.CSC_LINK }}
-          # CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          # This is used for uploading release assets to github
           GH_TOKEN: ${{ secrets.TOKEN }}
-        run: |
-          npm exec electron-builder -- --publish always --win --ia32
+          # electron-publish refuses to upload to a release published more than two hours ago, and
+          # refuses with a warning only: the run would stay green with nothing attached to the
+          # release. Re-running this job the day after the pre-release went out is enough to hit it.
+          EP_GH_IGNORE_TIME: 'true'
+        run: npx electron-builder --win --publish always

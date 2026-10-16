@@ -1,49 +1,15 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { Typography, Button } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
+import Typography from 'renderer/base/Typography';
+import Button from 'renderer/base/Button';
 import { useAuth } from 'renderer/providers/auth';
 import { useMessaging } from 'renderer/providers/messaging';
 import { history } from 'renderer/services/history';
 import InsideSaving from '../loading/InsideSaving';
 import UsernameStep from './UsernameStep';
 import PasswordStep from './PasswordStep';
-
-const useStyles = makeStyles(theme => ({
-  container: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    backgroundColor: theme.palette.primary.light,
-  },
-  paper: {
-    padding: '30px',
-    boxShadow: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    flexDirection: 'column',
-    position: 'relative',
-    backgroundColor: '#fff',
-    minWidth: 400,
-    [theme.breakpoints.down('sm')]: {
-      minWidth: 350,
-    },
-  },
-  logo: {
-    width: 90,
-  },
-  title: {
-    margin: '30px 0 0',
-  },
-  footer: {
-    marginTop: 30,
-  },
-}));
+import styles from './Login.module.css';
 
 const Login: React.FC = () => {
-  const classes = useStyles({
-    src: '/images/background.jpg',
-  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -111,13 +77,13 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className={classes.container}>
-      <div className={classes.paper}>
+    <div className={styles.container}>
+      <div className={styles.paper}>
         {loading && <InsideSaving />}
         <div>
-          <img src="https://admin.sgrande.delivery/logo192.png" className={classes.logo} alt="Logo sgrande.delivery" />
+          <img src="https://admin.sgrande.delivery/logo192.png" className={styles.logo} alt="Logo sgrande.delivery" />
         </div>
-        <div className={classes.title}>
+        <div className={styles.title}>
           <Typography variant="h6">Login</Typography>
         </div>
         <form onSubmit={handleSubmit} autoComplete="on">
@@ -133,11 +99,11 @@ const Login: React.FC = () => {
               loading={loading}
             />
           )}
-          <Button disabled={loading} type="submit" variant="contained" color="primary" fullWidth>
+          <Button disabled={loading} type="submit" variant="contained" fullWidth>
             {step === 'email' ? 'Próximo' : 'Entrar'}
           </Button>
         </form>
-        <div className={classes.footer}>
+        <div className={styles.footer}>
           <Typography variant="body2" color="textSecondary">
             SGrande Delivery Printer 2023
           </Typography>
