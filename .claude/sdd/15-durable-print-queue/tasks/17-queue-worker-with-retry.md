@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** 16
-**Status:** pendente
+**Status:** shipped
 
 ## Objetivo
 
@@ -79,6 +79,48 @@ Gatilhos: boot do app, `enqueue`, e um aviso de reconexão vindo do renderer (o 
 - Reimpressão pedida pelo painel
 - Paralelismo entre impressoras (decisão registrada no plan)
 
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/main/queue/print-queue-worker.ts`, `src/main/queue/print-queue.ts`, `src/main/ipc-events/{onEnqueue,onQueueState,onRetryFailed,onNotifyConnection}.ts`, `src/renderer/services/printQueue.ts`, e quatro arquivos de teste.
+Alterados: `onRawPrint.ts` (a impressão virou `printReceipt`, chamável pelo worker), `main.ts`, `preload.ts`, `setup.ts`, `shared/printQueue.ts`, `print-queue-store.ts` (`enqueueMany`, `resetFailed`, `isPrintJob` exportado), `usePrintingOrder.ts`, `usePrintingBoard.ts`.
+
+### Canais
+
+`enqueue`, `queueState`, `retryFailed` (`invoke`/`handle`), `notifyConnection` (`send`/`on`), e **dois main → renderer**: `queue:job-printed` e `queue:job-failed`, com cleanup devolvido ao chamador. Par e stub conferidos nos seis.
+
+O `rawPrint` **continua** e imprime direto, fora da fila: o teste local da #24 precisa de resposta imediata ("a impressora respondeu?"), e um teste enfileirado sairia minutos depois.
+
+### Os três bloqueios do review
+
+**1. A dedup suprimia a reimpressão explícita do operador.** A primeira versão barrava o `printOrder` reemitido pelo painel quando havia registro `printed` — contra decisão já medida na task #3 da spec #1. Agora o `EnqueueRequest` carrega `source: 'event' | 'scan'`, e a guarda vale **só** para a varredura. O `DEDUP_AFTER_PRINT` por `kind` saiu (viraria lógica morta). Irmão `failed` com origem `'event'` passou a **enfileirar lote novo** em vez de devolver `'duplicate'` — engolir o pedido explícito sem aviso era o problema.
+
+**2. O `deviceName` na chave perdia comprovante.** `printers.name` **não tem índice único** (migration sem `unique`, request sem `unique`, formulário sem checagem), então duas impressoras "Cozinha" devolvem dois itens com o mesmo nome e conteúdos diferentes — e o segundo desaparecia. **E o teste registrava a perda como desejada.**
+
+A correção foi de desenho: **a unidade de enfileiramento é a resposta inteira**, numa chamada IPC (`enqueueMany`). Itens da mesma resposta nunca deduplicam entre si, o lote nunca fica pela metade no arquivo, e a E/S cai pela metade. O `deviceName` saiu da chave.
+
+**3. O teste de serialidade não discriminava.** Mutar o `drain()` para concorrente passava nos 12 testes: o teste provava só a reentrância do `kick()`. O cenário que pega é **dois `pending` já no arquivo no boot** (o `kill -9`), e ele foi acrescentado.
+
+### Mutações, verificadas por mim de forma independente
+
+| Mutação | Resultado |
+| --- | --- |
+| guarda de `printed` desligada | caem **2** testes, **os dois da varredura** — e o de evento **não** cai, que é o correto |
+| guard de reentrância do `drain()` desligado | cai **exatamente** o teste novo do boot |
+| dedup por `deviceName` dentro do lote | cai o teste dos dois itens "Cozinha" |
+| `toSummary` virando spread do job | cai o teste do `queueState`, com `SECRET` no fio |
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · **115 testes em 20 arquivos** (baseline da spec: 71/16) · `npm run build` com os três bundles, e `grep` no bundle do renderer por `printQueueStore`/`createPrintQueueWorker`/`print-queue.ndjson` → **zero ocorrências** (o código de fila ficou só em `out/main/main.js`).
+
+### O que não foi verificado
+
+Impressora real, restart real do Electron (o "restart" dos testes é instância nova de worker sobre o mesmo arquivo — proxy correto, porque o estado mora em disco), socket real reconectando, e o botão "Imprimir" do painel contra este app (medido **lendo** os três repos, não chamando). Um `kill -9` **entre** imprimir e gravar `markPrinted` ainda pode duplicar: não há como evitar sem transação com a impressora.
+
 ## Branch
 
-`feat/15-durable-print-queue`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/15-durable-print-queue`, cortada de `feat/11-observability-logs-and-errors` em 2026-10-15, com um commit por task.

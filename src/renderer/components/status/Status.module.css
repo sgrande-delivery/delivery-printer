@@ -85,3 +85,32 @@
   color: var(--color-text-secondary);
   text-decoration: underline;
 }
+
+.pending {
+  margin-top: 4px;
+}
+
+/* A failure is an alert, not information: error color, and it stays until retried. */
+.failed {
+  width: 400px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-error);
+  border-radius: 4px;
+}
+
+.failedTitle {
+  color: var(--color-error);
+}
+
+/* An action, so a <button> with the native chrome reset (same as .linkLogs). */
+.linkRetry {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-family);
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--color-error);
+  text-decoration: underline;
+}

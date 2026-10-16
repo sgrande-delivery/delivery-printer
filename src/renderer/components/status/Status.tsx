@@ -4,6 +4,8 @@ import { useMessaging } from 'renderer/providers/messaging';
 import RestaurantStatus from 'renderer/components/restaurant-status/RestaurantStatus';
 import Typography from 'renderer/base/Typography';
 import { cx } from 'renderer/base/cx';
+import FailedJobList from 'renderer/components/print-queue/FailedJobList';
+import { usePrintQueue } from 'renderer/hooks/usePrintQueue';
 import { log } from 'renderer/services/log';
 import packageJson from '../../../../package.json';
 import styles from './Status.module.css';
@@ -16,6 +18,7 @@ interface StatusProps {
 const Status: React.FC<StatusProps> = ({ wsConnected, handleLogout }) => {
   const { restaurant, user } = useAuth();
   const { handleOpen } = useMessaging();
+  const { pending, failed, retry } = usePrintQueue();
 
   function handleRevealLogs() {
     window.electron
@@ -50,8 +53,30 @@ const Status: React.FC<StatusProps> = ({ wsConnected, handleLogout }) => {
             {restaurant?.description}
           </Typography>
           <RestaurantStatus wsConnected={wsConnected} />
+          {pending.length > 0 && (
+            <Typography variant="body2" color="textSecondary" className={styles.pending}>
+              {pending.length === 1
+                ? '1 comprovante aguardando impressão'
+                : `${pending.length} comprovantes aguardando impressão`}
+            </Typography>
+          )}
         </div>
       </div>
+      {failed.length > 0 && (
+        <div className={styles.failed} role="alert">
+          <Typography variant="body2" className={styles.failedTitle}>
+            {failed.length === 1
+              ? 'Um comprovante não foi impresso'
+              : `${failed.length} comprovantes não foram impressos`}
+          </Typography>
+          <FailedJobList jobs={failed} onRetry={retry} />
+          {failed.length > 1 && (
+            <button type="button" className={styles.linkRetry} onClick={() => retry()}>
+              tentar todos de novo
+            </button>
+          )}
+        </div>
+      )}
       {user.id && (
         <div className={styles.user}>
           {user.image ? (

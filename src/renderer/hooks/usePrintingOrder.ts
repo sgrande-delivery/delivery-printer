@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { OrderData } from 'renderer/types/order';
 import { api } from 'renderer/services/api';
-import { uuidv4 } from 'renderer/helpers/uuid';
 import { useMessaging } from 'renderer/providers/messaging';
 import { log } from 'renderer/services/log';
+import { enqueueReceipts, ReceiptResponse } from 'renderer/services/printQueue';
 import { buildPrintFailureNotice, printFailureReason, SERVER_FETCH_REASON } from 'renderer/helpers/printFailure';
+import type { EnqueueSource, PrintJobKind } from 'shared/printQueue';
 import { useOrderSocket } from './useOrderSocket';
 
 type PrintingLayoutOptions = 'print-created' | 'print-dispatched';
 
-type Response = {
-  content: string;
-  copies: number;
-  device_name: string | null;
+const KIND: Record<PrintingLayoutOptions, PrintJobKind> = {
+  'print-created': 'order-created',
+  'print-dispatched': 'order-dispatched',
 };
+
+const QUEUE_REASON = 'não foi possível guardar o comprovante na fila de impressão';
 
 export function usePrintingOrder(): void {
   const { socket, isConnected } = useOrderSocket();
@@ -28,81 +30,64 @@ export function usePrintingOrder(): void {
     handleOpenRef.current = handleOpen;
   }, [handleOpen]);
 
-  // Defesa provisória e só em memória: uuids cujo comprovante de produção (print-created, o único
-  // layout que a varredura pede) já saiu nesta sessão, para a varredura não reimprimir quando o
-  // PATCH de impresso falhou. Morre no restart; a spec #15 (task #17) troca isto pela
-  // deduplicação em disco.
-  const printedRef = useRef<Set<string>>(new Set());
+  const notify = useCallback((subject: string, printer: string | null, reason: string) => {
+    const notice = buildPrintFailureNotice(subject, printer, reason);
+    handleOpenRef.current(notice.body);
+    window.electron.notification(notice).catch((err: unknown) => log.error('notification failed', err));
+  }, []);
 
-  const print = useCallback(async (order: Pick<OrderData, 'uuid' | 'sequence'>, layout: PrintingLayoutOptions) => {
-    const { uuid, sequence } = order;
-
-    // Quem falha em rawPrint já registra com a impressora; o catch de fora só registra o resto
-    // (a busca do HTML), para a mesma falha não entrar duas vezes no arquivo.
-    let logged = false;
-    let failedPrinter: string | null = null;
-
+  // PATCH é idempotente do lado da API (RN-03): pode repetir, ao contrário da impressão.
+  const markPrinted = useCallback(async (orderUuid: string, label: string) => {
     try {
-      const response = await api.get<Response[]>(`orders/${uuid}/${layout}`);
-
-      const promises = response.data.map(payload =>
-        window.electron
-          .rawPrint({
-            content: payload.content,
-            copies: payload.copies,
-            deviceName: payload.device_name,
-            id: uuidv4(),
-          })
-          .catch((err: unknown) => {
-            logged = true;
-            failedPrinter = payload.device_name;
-            log.error('print failed', err, { orderUuid: uuid, sequence, layout, printer: payload.device_name });
-            throw err;
-          })
-      );
-
-      await Promise.all(promises);
+      await api.patch(`/orders/${orderUuid}/printed`);
     } catch (err) {
-      // Não saiu: a API segue achando que falta imprimir e a varredura tenta de novo.
-      if (!logged) {
-        log.error('print failed before reaching the printer', err, { orderUuid: uuid, sequence, layout });
-      }
-
-      // Quem falhou antes da impressora (busca do HTML) não tem impressora a citar.
-      const notice = buildPrintFailureNotice(
-        `o pedido #${sequence}`,
-        failedPrinter,
-        logged ? printFailureReason(err) : SERVER_FETCH_REASON
-      );
-      handleOpenRef.current(notice.body);
-      window.electron.notification(notice).catch((err: unknown) => log.error('notification failed', err));
-      return;
-    }
-
-    // Só o layout que a varredura reimprimiria entra na guarda: ela sempre pede print-created,
-    // então registrar o print-dispatched aqui esconderia da varredura um print-created que falhou.
-    if (layout === 'print-created') {
-      printedRef.current.add(uuid);
-    }
-
-    try {
-      await api.patch(`/orders/${uuid}/printed`);
-    } catch (err) {
-      // Saiu, mas não foi marcado: a próxima varredura reimprimiria. O operador precisa saber.
-      log.error('printed mark failed', err, { orderUuid: uuid, sequence });
+      // Saiu e está registrado em disco: a varredura da próxima reconexão repete só a marcação.
+      log.error('printed mark failed', err, { orderUuid, label });
       handleOpenRef.current(
-        `O pedido #${sequence} foi impresso, mas não foi possível marcá-lo como impresso. Ele pode sair novamente.`
+        `Foi impresso ${label}, mas não foi possível marcá-lo como impresso. Ele não sairá de novo; a marcação será tentada outra vez.`
       );
     }
   }, []);
 
+  const print = useCallback(
+    async (order: Pick<OrderData, 'uuid' | 'sequence'>, layout: PrintingLayoutOptions, source: EnqueueSource) => {
+      const { uuid, sequence } = order;
+      const label = `o pedido #${sequence}`;
+
+      let receipts: ReceiptResponse[];
+
+      try {
+        const response = await api.get<ReceiptResponse[]>(`orders/${uuid}/${layout}`);
+        receipts = response.data;
+      } catch (err) {
+        log.error('print failed before reaching the printer', err, { orderUuid: uuid, sequence, layout });
+        notify(label, null, SERVER_FETCH_REASON);
+        return;
+      }
+
+      try {
+        const result = await enqueueReceipts(receipts, { kind: KIND[layout], source, orderUuid: uuid, label });
+
+        // Só a varredura recebe isto: já saiu antes (talvez antes de um restart) e só a
+        // marcação ficou pendente. Não reimprime, e a marcação é o que se repete.
+        if (result === 'already-printed') {
+          await markPrinted(uuid, label);
+        }
+      } catch (err) {
+        log.error('enqueue failed', err, { orderUuid: uuid, sequence, layout });
+        notify(label, null, QUEUE_REASON);
+      }
+    },
+    [markPrinted, notify]
+  );
+
   useEffect(() => {
     socket?.on('printOrder', (order: OrderData) => {
-      print(order, 'print-created');
+      print(order, 'print-created', 'event');
     });
 
     socket?.on('printShipment', (order: OrderData) => {
-      print(order, 'print-dispatched');
+      print(order, 'print-dispatched', 'event');
     });
 
     return () => {
@@ -111,17 +96,39 @@ export function usePrintingOrder(): void {
     };
   }, [print, socket]);
 
+  // O main avisa que imprimiu (isto vale para os dois layouts do pedido); a marcação é daqui
+  // porque a sessão da API mora no renderer.
+  useEffect(
+    () =>
+      window.electron.onJobPrinted(job => {
+        if (job.orderUuid && job.kind !== 'board' && job.kind !== 'board-billing') {
+          markPrinted(job.orderUuid, job.label ?? 'o pedido');
+        }
+      }),
+    [markPrinted]
+  );
+
+  // Falha além do limite, de qualquer tipo de trabalho (inclusive mesa): é o único ponto que
+  // avisa o operador, porque as tentativas anteriores o main refaz sozinho.
+  useEffect(
+    () =>
+      window.electron.onJobFailed(job => {
+        notify(job.label ?? 'um comprovante', job.deviceName, printFailureReason(job.lastError ?? ''));
+      }),
+    [notify]
+  );
+
   useEffect(() => {
     async function findOrders() {
       try {
         const response = await api.get<OrderData[]>('/orders/print/list');
-        await Promise.all(
-          response.data.filter(order => !printedRef.current.has(order.uuid)).map(order => print(order, 'print-created'))
-        );
+        await Promise.all(response.data.map(order => print(order, 'print-created', 'scan')));
       } catch (err) {
         log.error('pending orders scan failed', err);
       }
     }
+
+    window.electron.notifyConnection(isConnected);
 
     if (isConnected) {
       findOrders();

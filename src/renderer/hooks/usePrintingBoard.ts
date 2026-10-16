@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { BoardControlMovement } from 'renderer/types/boardControlMovement';
 import { api } from 'renderer/services/api';
-import { uuidv4 } from 'renderer/helpers/uuid';
 import { log } from 'renderer/services/log';
 import { useMessaging } from 'renderer/providers/messaging';
-import { buildPrintFailureNotice, printFailureReason, SERVER_FETCH_REASON } from 'renderer/helpers/printFailure';
+import { enqueueReceipts, ReceiptResponse } from 'renderer/services/printQueue';
+import { buildPrintFailureNotice, SERVER_FETCH_REASON } from 'renderer/helpers/printFailure';
+import type { PrintJobKind } from 'shared/printQueue';
 import { useBoardSocket } from './useBoardSocket';
 
 type PrintingLayoutOptions = 'billing-content' | 'content';
 
-type Response = {
-  content: string;
-  copies: number;
-  device_name: string | null;
+const KIND: Record<PrintingLayoutOptions, PrintJobKind> = {
+  content: 'board',
+  'billing-content': 'board-billing',
 };
+
+const QUEUE_REASON = 'não foi possível guardar o comprovante na fila de impressão';
 
 export function usePrintingBoard(): void {
   const { socket } = useBoardSocket();
@@ -28,39 +30,21 @@ export function usePrintingBoard(): void {
   }, [handleOpen]);
 
   const print = useCallback(async (session: BoardControlMovement, layout: PrintingLayoutOptions) => {
-    let logged = false;
-    let failedPrinter: string | null = null;
+    const label = `o comprovante da mesa ${session.board_number}`;
+    let reason = SERVER_FETCH_REASON;
 
     try {
-      const response = await api.get<Response[]>(`board-sessions/${session.id}/${layout}`);
+      const response = await api.get<ReceiptResponse[]>(`board-sessions/${session.id}/${layout}`);
 
-      const promises = response.data.map(payload =>
-        window.electron
-          .rawPrint({
-            content: payload.content,
-            copies: payload.copies,
-            deviceName: payload.device_name,
-            id: uuidv4(),
-          })
-          .catch((err: unknown) => {
-            logged = true;
-            failedPrinter = payload.device_name;
-            log.error('board print failed', err, { boardSessionId: session.id, layout, printer: payload.device_name });
-            throw err;
-          })
-      );
+      reason = QUEUE_REASON;
 
-      await Promise.all(promises);
+      // Comprovante de mesa não tem marcação na API nem varredura: a fila em disco é a
+      // única recuperação, e não leva orderUuid porque não há o que deduplicar.
+      await enqueueReceipts(response.data, { kind: KIND[layout], source: 'event', label });
     } catch (err) {
-      if (!logged) {
-        log.error('board print failed before reaching the printer', err, { boardSessionId: session.id, layout });
-      }
+      log.error('board print failed before reaching the queue', err, { boardSessionId: session.id, layout });
 
-      const notice = buildPrintFailureNotice(
-        `o comprovante da mesa ${session.board_number}`,
-        failedPrinter,
-        logged ? printFailureReason(err) : SERVER_FETCH_REASON
-      );
+      const notice = buildPrintFailureNotice(label, null, reason);
       handleOpenRef.current(notice.body);
       window.electron.notification(notice).catch((err: unknown) => log.error('notification failed', err));
     }

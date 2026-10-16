@@ -2,6 +2,7 @@ import { app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describeError } from 'shared/describeError';
+import { writeFileAtomic } from './atomicFile';
 import { logger } from './logger';
 
 export const START_MINIMIZED_ARG = '--start-minimized';
@@ -37,7 +38,7 @@ function readMark(): MarkState {
 function writeMark(): void {
   try {
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
-    fs.writeFileSync(markPath(), JSON.stringify({ configured: true }));
+    writeFileAtomic(markPath(), JSON.stringify({ configured: true }));
   } catch (err: unknown) {
     logger.error('autostart: could not write the configured mark', describeError(err));
   }

@@ -8,6 +8,13 @@ Object.defineProperty(window, 'electron', {
   value: {
     arch: 'x64',
     rawPrint: vi.fn().mockResolvedValue(undefined),
+    enqueue: vi.fn().mockResolvedValue('enqueued'),
+    queueState: vi.fn().mockResolvedValue([]),
+    retryFailed: vi.fn().mockResolvedValue(0),
+    notifyConnection: vi.fn(),
+    onJobPrinted: vi.fn().mockReturnValue(() => undefined),
+    onJobFailed: vi.fn().mockReturnValue(() => undefined),
+    onQueueChanged: vi.fn().mockReturnValue(() => undefined),
     onBeforeQuit: vi.fn().mockReturnValue(() => undefined),
     beforeQuitDone: vi.fn(),
     log: vi.fn(),
