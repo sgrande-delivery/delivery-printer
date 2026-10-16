@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs';
 import type { PrintPayload } from 'shared/printQueue';
+import { findPrinterByDeviceName } from 'shared/printerMatch';
 
 // Shared by the rawPrint channel and by the queue worker. Rejects with the
 // Electron reason when the printer refuses.
@@ -15,7 +16,7 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
     fs.writeFileSync(file, content);
 
     const printers = await win.webContents.getPrintersAsync();
-    const printer = printers.find(printer => printer.name.toLowerCase() === deviceName?.toLowerCase());
+    const printer = findPrinterByDeviceName(printers, deviceName);
 
     await win.webContents.loadFile(file);
 
@@ -50,8 +51,9 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
   }
 }
 
-// Direct print, outside the queue: the local test of the printing screen wants an
-// immediate answer, not a retry that comes out minutes later.
+// Direct print, outside the queue, and with no caller in the renderer: the local test
+// page is queued like a receipt, so it inherits the retry and the failure on screen.
+// Anything new that prints goes through the queue, not through here.
 export async function onRawPrint(event: IpcMainInvokeEvent, payload: PrintPayload): Promise<void> {
   await printReceipt(payload);
 }

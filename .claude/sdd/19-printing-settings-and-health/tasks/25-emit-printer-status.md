@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 20
-**Status:** pendente
+**Status:** bloqueada (socket-api#50 aberta em 2026-10-15)
 
 ## Objetivo
 
@@ -73,4 +73,4 @@ Esta task **não pode ser verificada** antes de [socket-api#50](https://github.c
 
 ## Branch
 
-`feat/19-printing-settings-and-health`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/19-printing-settings-and-health`, cortada de `feat/15-durable-print-queue` em 2026-10-15, com um commit por task.

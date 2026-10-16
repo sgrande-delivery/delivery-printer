@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** (nenhuma)
-**Status:** pendente
+**Status:** shipped
 
 ## Objetivo
 
@@ -63,6 +63,55 @@ O tipo vive no main e chega ao renderer pelo `typeof electronHandler` (`src/rend
 - Mudar o `onRawPrint`: ele continua resolvendo a impressora como hoje (a decisão pendente 1 da spec é da task [#22](https://github.com/sgrande-delivery/delivery-printer/issues/22))
 - Detectar papel ou estado da impressora — task [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25) explica por que não dá
 
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/main/ipc-events/onListPrinters.ts`, `src/shared/windowsPrinter.ts` (o tipo, para as tasks 02/03/05), `src/main/__tests__/onListPrinters.test.ts`.
+Alterados: `src/main/main.ts`, `src/main/preload.ts`, `src/__tests__/setup.ts`.
+
+### Canal
+
+| Canal | Direção | Preload | Main | Stub |
+| --- | --- | --- | --- | --- |
+| `listPrinters` | renderer → main | `preload.ts:20` | `main.ts:23` | `setup.ts:11` (duas impressoras, uma padrão) |
+
+É o **nono** canal com o nome duplicado como literal nos dois lados e sem teste do par.
+
+### Decisão: `event.sender`, sem criar janela
+
+O handler usa o `webContents` de quem chamou — a janela principal — em vez de criar uma `BrowserWindow` invisível como o `printReceipt` faz para imprimir. Listar impressoras precisa de um `webContents`, não de uma página.
+
+O ganho secundário é que os handlers continuam registrados no **nível do módulo** (o mais cedo possível, antes de o renderer invocar); passar a janela ao handler exigiria mover o registro para dentro do `boot`. E simplifica o teste, que passa um `sender` falso.
+
+### O achado que afeta duas tasks à frente
+
+**`Electron.PrinterInfo` no 43 tem quatro campos, e `isDefault` não é um deles** — medido nos typings: `description`, `displayName`, `name`, `options`, com `Options` declarado **vazio**. A única ocorrência de `isDefault*` no arquivo inteiro é `isDefaultProtocolClient`, sem relação.
+
+O handler lê `isDefault` por narrowing e cai para `false` quando falta: se o Electron não o preencher no Windows, a tela da task 02 **não destaca** a padrão em vez de mentir. E a task 06 não pode contar com `status` para dizer se a impressora está online.
+
+### Outras decisões
+
+- **Sem dedupe na lista:** `printers.name` não tem índice único (medido na #17), e dois itens com o mesmo nome são exatamente o caso que a tela da #21 precisa mostrar
+- **O canal nunca rejeita:** spooler caído devolve `[]` e loga com `logger.error` + `describeError`. `[]` é o contrato de "nada a mostrar", que também cobre Linux e dev
+- Ordenação por `displayName` e depois `name`; `displayName` vazio cai para `name`
+
+### Testes
+
+`src/main/__tests__/onListPrinters.test.ts`, 4 casos. **130 testes em 22 arquivos** (baseline da spec: 126/21).
+
+Mutação: propagar a rejeição do `getPrintersAsync` derruba `returns [] and logs when the spooler rejects`.
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · par conferido por grep nos três lugares. **Revisado por mim** (orquestrador), não por subagente: é um arquivo de 33 linhas mais o teste, e o fato de maior risco — o shape do `PrinterInfo` — eu conferi pessoalmente nos typings.
+
+### O que não foi verificado
+
+Nada no Windows: se `isDefault` vem em runtime, o conteúdo de `options`, e a lista comparada com o Painel de Controle. Em Linux e dev a lista real pode vir vazia, e isso não foi medido — mas é o caso que o contrato `[]` cobre.
+
 ## Branch
 
-`feat/19-printing-settings-and-health`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/19-printing-settings-and-health`, cortada de `feat/15-durable-print-queue` em 2026-10-15, com um commit por task.

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { EnqueueRequest, EnqueueResult, PrintJobSummary } from 'shared/printQueue';
+import type { EnqueueRequest, EnqueueResult, PrintJobSummary, TestPrintRequest } from 'shared/printQueue';
+import type { WindowsPrinter } from 'shared/windowsPrinter';
 
 type RawPrint = {
   content: string;
@@ -15,7 +16,13 @@ const electronHandler = {
 
   rawPrint: (payload: RawPrint): Promise<void> => ipcRenderer.invoke('rawPrint', payload),
 
+  // Resolves to [] when the machine has none or the spooler fails; it never rejects.
+  listPrinters: (): Promise<WindowsPrinter[]> => ipcRenderer.invoke('listPrinters'),
+
   enqueue: (request: EnqueueRequest): Promise<EnqueueResult> => ipcRenderer.invoke('enqueue', request),
+
+  // Queues a diagnostic page for one registered printer; same retry and failure path as a receipt.
+  printTest: (request: TestPrintRequest): Promise<EnqueueResult> => ipcRenderer.invoke('printTest', request),
 
   // The summary never carries the receipt HTML (see PrintJobSummary).
   queueState: (): Promise<PrintJobSummary[]> => ipcRenderer.invoke('queueState'),

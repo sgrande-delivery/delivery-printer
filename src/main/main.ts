@@ -1,7 +1,9 @@
 import './logger';
 import { app, ipcMain } from 'electron';
 import { onRawPrint } from './ipc-events/onRawPrint';
+import { onListPrinters } from './ipc-events/onListPrinters';
 import { onEnqueue } from './ipc-events/onEnqueue';
+import { onPrintTest } from './ipc-events/onPrintTest';
 import { onQueueState } from './ipc-events/onQueueState';
 import { onRetryFailed } from './ipc-events/onRetryFailed';
 import { onNotifyConnection } from './ipc-events/onNotifyConnection';
@@ -19,7 +21,9 @@ import { MainWindowBuilder } from './window';
 import { registerAutostart } from './autostart';
 
 ipcMain.handle('rawPrint', onRawPrint);
+ipcMain.handle('listPrinters', onListPrinters);
 ipcMain.handle('enqueue', onEnqueue);
+ipcMain.handle('printTest', onPrintTest);
 ipcMain.handle('queueState', onQueueState);
 ipcMain.handle('retryFailed', onRetryFailed);
 ipcMain.on('notifyConnection', onNotifyConnection);

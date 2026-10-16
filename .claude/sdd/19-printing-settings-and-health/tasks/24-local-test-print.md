@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 20
-**Status:** pendente
+**Status:** shipped
 
 ## Objetivo
 
@@ -64,6 +64,61 @@ Retorno pelo `useMessaging()`: sucesso, ou o motivo da falha como o Electron dev
 - Layout de comprovante de pedido: continua sendo da API
 - Enfileirar o teste (se a spec [#15](https://github.com/sgrande-delivery/delivery-printer/issues/15) já estiver na base, decidir na execução se o teste entra na fila com `kind: 'test'` ou segue direto)
 
+## Implementação
+
+**Concluída em:** 2026-10-15
+
+### Arquivos
+
+Novos: `src/main/testPrintPage.ts`, `src/main/ipc-events/onPrintTest.ts`, e dois arquivos de teste (`testPrintPage`, `test-print`).
+Alterados: `src/main/preload.ts`, `src/main/main.ts`, `src/main/ipc-events/onRawPrint.ts` (comentário invalidado por esta task), `src/shared/printQueue.ts`, `src/__tests__/setup.ts`, `src/renderer/components/printers/PrinterItem.tsx` + teste, `src/renderer/hooks/usePrintingOrder.ts` + teste.
+
+### Canal
+
+| Canal | Direção | Preload | Main | Stub |
+| --- | --- | --- | --- | --- |
+| `printTest` | renderer → main | `preload.ts:25` | `main.ts:26` | `setup.ts:16` |
+
+É o décimo canal com o nome duplicado como literal nos dois lados e sem teste do par.
+
+### Fecha uma dívida da spec #15
+
+O `kind: 'test'` foi declarado na fila pela #15 e **ficou sem produtor**. Esta task é o produtor: o teste vai por `enqueue`, passa pelo worker e **herda retry, teto de 5 tentativas e a visibilidade da #18** — conferido no código, não por promessa. O `rawPrint` direto não é usado, e com isso o canal `rawPrint` ficou **sem nenhum chamador no renderer**.
+
+### Por que é local, e onde o layout mora
+
+`POST /printers/{id}/test-print` **não existe** na `delivery-api` (issue `delivery-api#1205`: o painel já chama uma rota inexistente), e a página precisa sair com a API fora do ar. O HTML é gerado aqui.
+
+Ele mora em **`src/main/`**, e a razão é a regra: o `CLAUDE.md` proíbe layout de impressão **no renderer**, e uma string de HTML em `src/renderer/services/` fica a um refactor de virar componente — vizinha dos componentes, importável por eles. No main, para virar React precisa atravessar fronteira de processo. O comentário da exceção impõe o limite em vez de descrevê-lo, e recusa explicitamente a extensão.
+
+### A página
+
+Nome cadastrado, setor em pt-BR, device do Windows (ou "padrão do Windows"), largura, data/hora e versão do app — tudo escapado, **sem nenhum dado de cliente**.
+
+Para largura e margem: moldura **recuada 2 mm**, régua e linha de dígitos. O mecanismo (`@page { size: Xmm auto; margin: 0 }`) é o **medido em produção** no comprovante da `delivery-api`. O recuo é decisão desta task: drivers térmicos costumam reservar 2–3 mm não imprimíveis, e uma moldura colada perderia as bordas laterais **numa impressora correta** — diagnóstico que acusa a impressora certa é pior que nenhum. Por isso a frase também deixou de dar veredito e passou a dizer o que olhar.
+
+**Fato para o suporte:** `paper_width` é morto do lado da API — o comprovante é **sempre** montado para 80 mm. Então "o teste saiu certinho a 58 mm" **não** significa que o comprovante sairá assim.
+
+### Não marca na API
+
+Duas camadas: o job nasce **sem `orderUuid`** (então nem entra no bloco de dedup), e o `usePrintingOrder` só marca `kind` que **ele próprio** enfileira — era uma lista de exclusão cujo default era marcar, e virou lista de permissão derivada do `KIND` do hook, à prova do sexto tipo. O teste que prova emite `kind: 'test'` **com** `orderUuid`, que é o único arranjo em que a asserção significa algo.
+
+### Testes
+
+**211 em 34 arquivos** (baseline da task: 199/32).
+
+Mutações verificadas: desviar da fila → cai o teste que lê `printQueueStore.list()`; afrouxar a guarda de `kind` → cai o teste de marcação.
+
+### Verificação
+
+typecheck 0 · lint 0 erros e 1 aviso (o da base) · `ui.test.tsx` verde · par do canal conferido (as outras ocorrências do literal são o uso via preload, o stub e uma string de erro de teste — não um terceiro lado) · id do job igual ao do arquivo temporário · **nenhuma rota da `delivery-api` é chamada**.
+
+Empacotamento **não rodado, e não precisa**: o diff encosta em `src/main/` mas não toca `package.json`, `build-config.ts`, `electron.vite.config.ts`, `.env*` nem `tsconfig*`; `node:crypto` é builtin e as invariantes de autoupdate estão intactas.
+
+### O que não foi verificado
+
+A saída física no papel, nas duas larguras — é o que exige Windows com impressora térmica, e é critério de aceitação desta task. E imprimir com a API fora do ar: pelo desenho nenhuma rota é chamada, mas não foi exercitado com o app rodando.
+
 ## Branch
 
-`feat/19-printing-settings-and-health`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
+`feat/19-printing-settings-and-health`, cortada de `feat/15-durable-print-queue` em 2026-10-15, com um commit por task.

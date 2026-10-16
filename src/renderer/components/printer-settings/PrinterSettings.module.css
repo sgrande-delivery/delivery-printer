@@ -1,0 +1,25 @@
+.container {
+  padding-top: 40px;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+/* An action, so a <button> with the native chrome reset (same as Printers .linkBack). */
+.linkBack {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-family);
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+}
