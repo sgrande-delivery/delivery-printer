@@ -4,6 +4,9 @@ Impressão automática dos pedidos. Aplicação Electron + React, sem boilerplat
 o build é um `electron.vite.config.ts` de ~50 linhas que você controla por
 inteiro.
 
+> Instalar, dar suporte ou achar o log num restaurante? Veja o
+> [`INSTALL.md`](./INSTALL.md): este README é para quem desenvolve.
+
 ## Requisitos
 
 Node 24 (ver `.nvmrc`):
