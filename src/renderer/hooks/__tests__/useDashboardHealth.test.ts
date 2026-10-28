@@ -20,6 +20,7 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     createdAt: new Date(2026, 9, 28, 14, 32).getTime(),
     lastError: null,
     deviceName: 'Cozinha',
+    copies: 1,
     ...overrides,
   };
 }

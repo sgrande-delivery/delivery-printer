@@ -31,7 +31,7 @@ const PasswordStep: React.FC<PasswordStepProps> = ({
 
   return (
     <>
-      <Chip size="medium" className={styles.back} onClick={handleStepBack}>
+      <Chip size="medium" tone="muted" iconFirst className={styles.back} onClick={handleStepBack}>
         <Icon name="arrow_back" size={18} />
         {login.email}
       </Chip>

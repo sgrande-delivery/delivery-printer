@@ -1,12 +1,13 @@
 import { describeError } from 'shared/describeError';
 import type { EnqueueRequest, EnqueueResult, PrintJob, PrintJobSummary, PrintPayload } from 'shared/printQueue';
 import { logger } from '../logger';
+import { MAX_ATTEMPTS } from 'shared/queueLimits';
 import { isPrintJob, printQueueStore } from './print-queue-store';
 
 // The real case is a printer switched off for a few minutes. Retrying for hours
 // only hides the problem from whoever has to act, so the limit is low and the
 // failure becomes visible (RN-05): 2 s, 4 s, 8 s, 16 s between five attempts.
-export const MAX_ATTEMPTS = 5;
+export { MAX_ATTEMPTS };
 export const BACKOFF_BASE_MS = 2000;
 export const BACKOFF_MAX_MS = 30000;
 
@@ -16,7 +17,7 @@ export function backoffMs(attempts: number): number {
 
 // An explicit pick, never a spread of the job: the receipt HTML must not cross
 // to the renderer (and the test on the channel payload holds this).
-export function toSummary(job: PrintJob): PrintJobSummary {
+export function toSummary(job: PrintJob, nextAttemptAt?: number): PrintJobSummary {
   return {
     id: job.id,
     kind: job.kind,
@@ -27,6 +28,8 @@ export function toSummary(job: PrintJob): PrintJobSummary {
     createdAt: job.createdAt,
     lastError: job.lastError,
     deviceName: job.payload.deviceName,
+    copies: job.payload.copies,
+    ...(nextAttemptAt !== undefined && job.status === 'pending' ? { nextAttemptAt } : {}),
   };
 }
 
@@ -44,8 +47,8 @@ export type PrintQueueWorkerDeps = {
   print: (payload: PrintPayload) => Promise<void>;
   onPrinted: (job: PrintJobSummary) => void;
   onFailed: (job: PrintJobSummary) => void;
-  // Called after a transition that changes what is waiting or what failed, so the
-  // screen never has to poll the queue file to notice.
+  // Called once the queue file recorded a change in what is waiting or what failed, an attempt
+  // that failed included, so the screen never has to poll the file to notice.
   onChanged: () => void;
 };
 
@@ -53,6 +56,10 @@ export type PrintQueueWorker = {
   start: () => void;
   enqueue: (request: EnqueueRequest) => EnqueueResult;
   retryFailed: (id?: string) => number;
+  // Only a failed job can be discarded: a pending one is a receipt that is still going out.
+  discardFailed: (id: string) => boolean;
+  // When the backoff of a pending job ends; undefined if it is not waiting for one.
+  nextAttemptOf: (id: string) => number | undefined;
   notifyConnection: (isConnected: boolean) => void;
 };
 
@@ -99,17 +106,21 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
         announce();
         return;
       }
+
+      // Inside the try: if the store could not record the attempt, the screen has nothing new to
+      // show, and the 2 s loop would announce forever.
+      announce();
     } catch (storeErr: unknown) {
       logger.error(`print-queue: could not record the failure of ${job.id}`, describeError(storeErr));
     }
 
     const wait = backoffMs(attempts);
 
-    // No announcement between attempts: the job stays pending, so nothing the screen
-    // shows has changed, and a ping per attempt would be a ping every few seconds
-    // for as long as the printer is off.
     nextAttemptAt.set(job.id, Date.now() + wait);
     logger.warn(`print-queue: attempt ${attempts} of ${MAX_ATTEMPTS} for ${job.id} failed, reason: ${reason}`);
+    // The queue screen shows the attempts and the instant of the next one, so a failure
+    // that leaves the job pending is a change too (announced above, once recorded): at most
+    // MAX_ATTEMPTS - 1 per job.
   }
 
   async function attempt(job: PrintJob): Promise<void> {
@@ -261,6 +272,28 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     return count;
   }
 
+  function discardFailed(id: string): boolean {
+    const result = printQueueStore.removeFailed(id);
+
+    if (result === 'not-failed') {
+      logger.warn(`print-queue: refused to discard ${id}, reason: it is not failed`);
+      return false;
+    }
+
+    if (result === 'not-found') {
+      return false;
+    }
+
+    nextAttemptAt.delete(id);
+    announce();
+
+    return true;
+  }
+
+  function nextAttemptOf(id: string): number | undefined {
+    return nextAttemptAt.get(id);
+  }
+
   function notifyConnection(isConnected: boolean): void {
     if (!isConnected) {
       return;
@@ -271,5 +304,5 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     kick();
   }
 
-  return { start: kick, enqueue, retryFailed, notifyConnection };
+  return { start: kick, enqueue, retryFailed, discardFailed, nextAttemptOf, notifyConnection };
 }

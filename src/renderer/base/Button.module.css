@@ -133,3 +133,34 @@
 .hero.containedPrimary:hover:not(:disabled) {
   background-color: var(--accent-hover);
 }
+
+/* size="row": the 32 px actions inside a table row (printer-v2.dc.html:210-211). */
+.row {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.row.containedPrimary {
+  background-color: var(--accent);
+}
+
+.row.containedPrimary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+/* The quiet one next to the primary action: secondary text, regular weight. */
+.row.text {
+  padding: 0 10px;
+  color: var(--text-2);
+  font-weight: var(--font-weight-regular);
+}
+
+.row.text:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}

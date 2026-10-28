@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describeError } from 'shared/describeError';
 import { writeFileAtomic } from '../atomicFile';
 import { logger } from '../logger';
+import { MAX_AGE_MS } from 'shared/queueLimits';
 import type { PrintJob, PrintJobKind, PrintJobStatus } from 'shared/printQueue';
 
 const QUEUE_FILE = 'print-queue.ndjson';
@@ -11,7 +12,7 @@ const QUEUE_FILE = 'print-queue.ndjson';
 // Each job carries the whole receipt HTML (spec, decision 1), so the count is
 // what bounds the disk use (RN-04).
 export const MAX_JOBS = 200;
-export const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export { MAX_AGE_MS };
 
 const KINDS: readonly PrintJobKind[] = ['order-created', 'order-dispatched', 'board', 'board-billing', 'test'];
 const STATUSES: readonly PrintJobStatus[] = ['pending', 'printed', 'failed'];
@@ -225,6 +226,27 @@ export const printQueueStore = {
     }
 
     return count;
+  },
+
+  // Only a failed job leaves: anything else is a receipt that has not come out, or the
+  // ledger that keeps the scan from printing an order twice.
+  removeFailed(id: string): 'removed' | 'not-found' | 'not-failed' {
+    const { jobs } = readJobs();
+    const target = jobs.find(job => job.id === id);
+
+    if (!target) {
+      logger.warn(`print-queue: job ${id} not found`);
+      return 'not-found';
+    }
+
+    if (target.status !== 'failed') {
+      return 'not-failed';
+    }
+
+    writeJobs(jobs.filter(job => job !== target));
+    logger.info(`print-queue: discarded ${id}`);
+
+    return 'removed';
   },
 
   incrementAttempt(id: string): void {

@@ -19,7 +19,7 @@
 .medium {
   gap: 6px;
   height: 32px;
-  padding: 0 10px 0 6px;
+  padding: 0 12px;
   border-radius: 16px;
   font-size: 13px;
 }
@@ -38,9 +38,16 @@
   color: var(--text);
 }
 
-/* The back chip reads as secondary text, not as a label. */
-.neutral.medium {
+/* Secondary text on the same pill (the back chip). The tone, not the size, decides the color. */
+.muted {
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--text-2);
+}
+
+/* The padding that is asymmetric belongs to the content (an icon first), not to the size. */
+.medium.iconFirst {
+  padding: 0 10px 0 6px;
 }
 
 .ok {

@@ -1,4 +1,5 @@
 import type { PrintJobSummary } from 'shared/printQueue';
+import { printQueueWorker } from '../queue/print-queue';
 import { printQueueStore } from '../queue/print-queue-store';
 import { toSummary } from '../queue/print-queue-worker';
 
@@ -9,5 +10,5 @@ export function onQueueState(): PrintJobSummary[] {
   return printQueueStore
     .list()
     .filter(job => job.status !== 'printed')
-    .map(toSummary);
+    .map(job => toSummary(job, printQueueWorker.nextAttemptOf(job.id)));
 }

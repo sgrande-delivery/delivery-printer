@@ -8,6 +8,7 @@ interface PrintQueueState {
   // Whatever the queue still keeps as printed: at most 200 jobs and 24 h of them (RN-08).
   printed: PrintJobSummary[];
   retry(id?: string): Promise<void>;
+  discard(id: string): Promise<boolean>;
 }
 
 export function usePrintQueue(): PrintQueueState {
@@ -58,10 +59,29 @@ export function usePrintQueue(): PrintQueueState {
     [refresh]
   );
 
+  const discard = useCallback(
+    async (id: string): Promise<boolean> => {
+      let discarded = false;
+
+      try {
+        discarded = await window.electron.discardJob(id);
+      } catch (err) {
+        log.error('discard failed job failed', err, { id });
+      }
+
+      // Same reason as the retry: the main only announces when it removed something.
+      refresh();
+
+      return discarded;
+    },
+    [refresh]
+  );
+
   return {
     pending: jobs.filter(job => job.status === 'pending'),
     failed: jobs.filter(job => job.status === 'failed'),
     printed: jobs.filter(job => job.status === 'printed'),
     retry,
+    discard,
   };
 }

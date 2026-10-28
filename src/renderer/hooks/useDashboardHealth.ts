@@ -1,5 +1,6 @@
 import { printFailureReason } from 'renderer/helpers/printFailure';
-import { receiptKindLabels } from 'renderer/helpers/receiptKind';
+import { capitalize, clock } from 'renderer/helpers/text';
+import { RECEIPT_KINDS } from 'renderer/helpers/receiptKind';
 import { stations } from 'renderer/components/printers/stations';
 import { usePrintQueue } from 'renderer/hooks/usePrintQueue';
 import { usePrinters } from 'renderer/hooks/usePrinters';
@@ -45,14 +46,6 @@ interface DashboardInput {
   printers: ResolvedPrinter[];
   devicesRead: boolean;
   now: Date;
-}
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-function clock(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 // "Hoje" is since the local midnight, not the last 24 h: the label says "hoje".
@@ -106,7 +99,7 @@ export function buildDashboard({
       icon: 'check_circle',
       title: 'Imprimindo automaticamente',
       subtitle: last
-        ? `Último comprovante: ${capitalize(last.label ?? 'um comprovante')} · ${receiptKindLabels[last.kind]} às ${clock(last.createdAt)}`
+        ? `Último comprovante: ${capitalize(last.label ?? 'um comprovante')} · ${RECEIPT_KINDS[last.kind].label} às ${clock(last.createdAt)}`
         : 'Pronto e aguardando pedidos.',
       action: null,
     };

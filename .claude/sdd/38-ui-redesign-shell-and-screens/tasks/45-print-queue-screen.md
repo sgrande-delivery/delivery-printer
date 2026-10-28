@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** 03
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -129,6 +129,48 @@ Substitui o esqueleto que a task [#41](https://github.com/sgrande-delivery/deliv
 - Reimprimir do histórico — task [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46)
 - Mudar o backoff, o limite de tentativas ou o de idade
 - Pausar a fila, reordenar, mudar a impressora de um trabalho enfileirado
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Arquivos
+
+Main/shared: `ipc-events/onDiscardJob.ts` (novo), `shared/queueLimits.ts` (novo — `MAX_ATTEMPTS` e `MAX_AGE_MS` saíram do worker/store para cá, com reexport, para o renderer derivar o texto do limite sem arrastar código do main), `shared/printQueue.ts` (`copies` e `nextAttemptAt?` no summary), `main.ts`, `preload.ts`, `onQueueState.ts`, `print-queue-worker.ts`, `print-queue-store.ts`, `__tests__/setup.ts`.
+
+Renderer: `components/print-queue/` com `PrintQueue`, **`QueueTable`**, **`QueueRow`** e `queueView.ts`, mais `hooks/useNow.ts`, `types/queueTab.ts`, `helpers/text.ts` e o `receiptKind.ts` unificado em `RECEIPT_KINDS: Record<PrintJobKind, { label; icon }>`.
+
+Removidos: `FailedJobItem` e `FailedJobList` (órfãos desde a task 06, sem teste próprio). Renomeado: `QueueScreen.tsx` → `PrintQueueScreen.tsx`.
+
+### O canal novo
+
+`queue:discard` em `main.ts:33` + `preload.ts:37`, stub em `setup.ts:19`. **Só `failed` pode ser descartado**, e a recusa está no store e no worker — a tela não é a última defesa. Minha mutação: tirar a guarda de status derruba **3** testes, e um deles traz o motivo que eu não tinha visto — descartar um job `printed` faria a varredura de reconexão **imprimir o pedido de novo**, porque é o registro de impresso que deduplica.
+
+### A mudança no worker, que é a parte sensível
+
+O worker passou a anunciar `queue:changed` **entre as tentativas**, invertendo um comentário que dizia o contrário. Sem isso a tela nunca mostraria "2/5" nem a contagem. O custo foi medido pelo review (20 jobs falhando: 120 anúncios contra 40, com duas leituras do arquivo por anúncio porque a sidebar também monta o hook) e não há risco de laço — o handler é leitura pura.
+
+O review achou um furo no "é limitado": com o store falhando ao gravar, o laço pré-existente de 2 s passava a anunciar **para sempre**. O `announce()` foi para dentro do `try`, depois do incremento, e ganhou teste; mover para um `finally` derruba 2 testes.
+
+### O que o review bloqueou, e que foi corrigido
+
+**A linha da tabela não estava extraída:** 42 linhas de JSX por item com dois callbacks, quando o precedente literal desta base é `PrinterList`+`PrinterItem` — e os dois arquivos que esta task apagou eram esse mesmo par sobre o mesmo dado. Agora são `QueueTable` (cabeçalho, linhas, vazio) e `QueueRow`, com as 24 afirmações de presença repartidas entre os três módulos.
+
+Mais três itens de uma linha: o `announce()` acima, o comentário do `onChanged` que já não descrevia o gatilho, e a mensagem do descarte recusado, que **mentia** quando o canal rejeitava por disco cheio ("já não está falhado") e passou a dizer só o que sabe.
+
+### Testes
+
+55 novos (306 → 361). Três varreduras por mutação: 66 do implementador (5 sobreviventes, fechados), 71 do review (5 sobreviventes de baixo valor) e a re-varredura depois da extração.
+
+**Três chaves sobrevivem, por limitação medida da rede:** `QueueRow.grid`, `QueueRow.row` e `QueueTable.head` são afirmadas junto com outra classe, e `toHaveClass(undefined)` **passa em silêncio** quando o elemento tem outra classe. A rede pega erro de digitação na TSX, que é o caso real; não pega renome do lado do CSS. Está nos aprendizados.
+
+### Verificação
+
+typecheck **0** · lint **0 erros e 1 aviso** (o da base) · `npm test` **49 arquivos, 361 testes, 0 falhas** · `npm run build` passa e o bundle do renderer **não ganhou símbolo nenhum do main** (8 greps no bundle, zero ocorrências). JS 592,01 → 602,45 kB, CSS 32,56 → 36,13.
+
+### O que não foi verificado
+
+O roteiro manual: desligar a impressora, deixar o job falhar as cinco tentativas, conferir a aba, descartar e reiniciar o app para ver que ele não volta. A contagem "Nova tentativa em N s" ticando com impressora real. E o comportamento do contador com a janela minimizada, que o Chromium estrangula.
 
 ## Branch
 

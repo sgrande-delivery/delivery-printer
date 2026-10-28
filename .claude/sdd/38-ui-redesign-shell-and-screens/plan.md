@@ -58,7 +58,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | executada |
 | 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | executada |
 | 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | executada |
-| 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | pendente |
+| 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | executada |
 | 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | pendente |
 | 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | pendente |
 | 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | pendente |
@@ -170,6 +170,38 @@ Para as nove tasks que criam tela:
 O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### A política de anúncio da fila foi revertida, e isso é a mudança mais sensível da spec (task 07)
+
+O worker **passou a anunciar `queue:changed` entre as tentativas**, não só nas transições. Antes havia comentário dizendo o contrário ("no announcement between attempts"), e o motivo da mudança é legítimo: sem ela a tela da fila nunca mostraria "2/5" nem a contagem para a próxima tentativa.
+
+**Medido pelo review, com sonda descartável:** 20 jobs com a impressora sempre falhando dão **120 anúncios** contra 40 antes (20 do enfileiramento + 80 entre tentativas + 20 da falha final), espalhados pela janela de backoff de ~60 s. E **cada anúncio custa duas leituras completas do NDJSON**, não uma, porque o `usePrintQueue` está montado na sidebar (badge) **e** na tela — o arquivo que carrega o HTML de todos os comprovantes. Aceitável (o `drain` já lê o arquivo por tentativa), mas não é grátis.
+
+**Não há risco de laço, e isso é verificável:** `queue:changed` tem um consumidor só, e o handler é leitura pura (`list()` + um `Map.get`). Nenhum caminho reentra em `enqueue`, `kick`, `drain` ou `printReceipt`.
+
+**O furo que o review achou no "é limitado":** se o store falha ao gravar (disco cheio, permissão), `attempts` nunca cresce, o job nunca chega a `failed` e o laço de 2 s é infinito — isso é **pré-existente** — mas com o anúncio fora do `try` cada volta anunciava: 62 anúncios em 120 s, para sempre. Corrigido movendo o `announce()` para dentro do `try`, depois do incremento.
+
+**A `.claude/rules/printing.md` está afirmativamente errada**, e já estava antes desta task: ela diz *"O estado é volátil. Não há banco nem arquivo de fila: fechar o app perde o que estava em voo"*, quando a spec 15 entregou a fila durável. Agora ela também ignora a política de anúncio, o `nextAttemptAt` em memória e o canal `queue:discard`. **Merece seção própria**, e está endereçada à task 12.
+
+### A ordem das linhas divergiu do desenho, e na task 08 a divergência se inverte (task 07)
+
+A Fila lista na **ordem do arquivo** (mais antigo primeiro); o desenho faz `[novo, ...pendentes]` (`:655`), pondo o reimpresso no topo. A leitura do review, que eu aceito: o `[novo, ...]` do mock é artefato da simulação, o desenho não declara ordenação para a lista, e a ordem do arquivo é **a ordem em que o worker vai imprimir** — FIFO é mais verdadeiro que "mais novo em cima". Fica como está.
+
+**Mas a RN-15 nomeia "ordem dos elementos"**, e exige corrigir ou registrar. Registrado aqui.
+
+**Aviso para a task 08:** lá o desenho **é explícito** (`history: [{novo}, ...s.history]`, mais recente em cima) e a ordem do arquivo daria o contrário. No Histórico, ordenar por tempo decrescente é fidelidade **e** é o que o operador espera.
+
+### O limite da rede de classes: ela pega o erro real, não o renome do CSS (task 07)
+
+Medido: `toHaveClass(undefined)` **passa em silêncio** quando o elemento tem outra classe. Foi por isso que renomear `.grid` no `.module.css` sobreviveu à suíte inteira (a linha ainda tinha `styles.row`), enquanto renomear `.title` foi pego (aquele elemento não tinha outra classe).
+
+Ou seja, a rede de presença cobre **erro de digitação na TSX**, que é o caso real que morde no PDV, e **não** cobre renome do lado do CSS. É extensão dos aprendizados sobre o `expectNoUndefinedClasses`: a afirmação de presença é melhor que o helper, e ainda assim não é prova.
+
+### No Node 18 o lint estoura e sai 0 — parece limpo (task 07)
+
+Vizinho do aprendizado do `tail`: no Node 18, que é o **default do shell desta máquina**, `npm run lint` morre com `TypeError: util.styleText is not a function` dentro do formatter e **termina com código 0**. Quem não rodar `nvm use` antes vê "lint limpo" sem lint nenhum ter acontecido.
+
+Juntando os dois: a verificação honesta de lint é `nvm use` **e** ler a linha de resumo.
 
 ### Conferir lint com `tail` esconde o resumo — e um commit desta spec subiu vermelho (task 06)
 

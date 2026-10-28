@@ -22,6 +22,7 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     createdAt: Date.now(),
     lastError: null,
     deviceName: 'Cozinha',
+    copies: 1,
     ...overrides,
   };
 }

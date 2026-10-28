@@ -16,6 +16,7 @@ Object.defineProperty(window, 'electron', {
     printTest: vi.fn().mockResolvedValue('enqueued'),
     queueState: vi.fn().mockResolvedValue([]),
     retryFailed: vi.fn().mockResolvedValue(0),
+    discardJob: vi.fn().mockResolvedValue(true),
     notifyConnection: vi.fn(),
     onJobPrinted: vi.fn().mockReturnValue(() => undefined),
     onJobFailed: vi.fn().mockReturnValue(() => undefined),

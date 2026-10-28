@@ -183,7 +183,9 @@ describe('Login', () => {
     expect(screen.getByRole('button', { name: 'maria@example.com' })).toHaveClass(
       passwordStyles.back,
       chipStyles.root,
-      chipStyles.medium
+      chipStyles.medium,
+      chipStyles.muted,
+      chipStyles.iconFirst
     );
     expect(screen.getByRole('button', { name: 'Mostrar senha' })).toHaveClass(
       iconButtonStyles.root,

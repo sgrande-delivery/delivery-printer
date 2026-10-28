@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import LoginScreen from 'renderer/screens/LoginScreen';
 import MainScreen from 'renderer/screens/MainScreen';
-import QueueScreen from 'renderer/screens/QueueScreen';
+import PrintQueueScreen from 'renderer/screens/PrintQueueScreen';
 import HistoryScreen from 'renderer/screens/HistoryScreen';
 import PrintersScreen from 'renderer/screens/PrintersScreen';
 import PrinterSettingsScreen from 'renderer/screens/PrinterSettingsScreen';
@@ -16,7 +16,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/login" element={<PublicRoute element={<LoginScreen />} />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<MainScreen />} />
-        <Route path="/queue" element={<QueueScreen />} />
+        <Route path="/queue" element={<PrintQueueScreen />} />
         <Route path="/history" element={<HistoryScreen />} />
         <Route path="/printers" element={<PrintersScreen />} />
         <Route path="/printer-settings" element={<PrinterSettingsScreen />} />

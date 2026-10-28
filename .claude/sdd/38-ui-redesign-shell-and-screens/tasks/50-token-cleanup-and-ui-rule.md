@@ -55,6 +55,7 @@ Mesma estrutura e mesmo tom, conteúdo novo:
 - **Shell e rotas:** as seis rotas, o `AppShell` como dono **único** dos hooks de socket (RN-06), o `StateLayout`, a navegação por hash, e a regra de que rota nova precisa de item de menu
 - **Arrastar a janela:** onde ficam as regiões e por que botão dentro delas precisa de `no-drag` (RN-13)
 - **Dívida conhecida**, atualizada: o `Login` ainda chama `me()` ao montar; o interceptor de erro ainda empurra `/login` por conta própria; o `react-router-dom` em `6.28.1` com o advisory. **Sai** o logo remoto, que foi resolvido
+- **A fila durável, que a regra ainda nega.** Hoje a `printing.md` afirma *"O estado é volátil. Não há banco nem arquivo de fila"* — falso desde a spec 15. A seção nova cobre: o arquivo em `userData`, o `MAX_ATTEMPTS`/`MAX_AGE_MS` que agora vivem em `src/shared/queueLimits.ts` (e por que não no worker), a **política de anúncio** (`queue:changed` entre tentativas, com o custo medido de duas leituras do arquivo por anúncio porque a sidebar e a tela montam o hook), o `nextAttemptAt` que vive **em memória** e se perde no restart, e os canais `queue:discard` e `queue:reprint`. Sem isso a próxima task que tocar a fila decide no escuro
 - **Fidelidade:** que o desenho está em `.claude/sdd/38-ui-redesign-shell-and-screens/design/`, que ele é a referência de medida, e que as sete divergências estão na spec — para a próxima task não "consertar" uma delas sem saber que é deliberada
 
 ### 3. Atualizar o `CLAUDE.md` no que esta spec mudou

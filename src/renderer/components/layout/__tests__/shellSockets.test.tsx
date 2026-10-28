@@ -51,7 +51,7 @@ vi.mock('renderer/providers/theme', () => ({ useTheme: () => ({ resolved: 'light
 // The real route table, with the screens reduced to a marker: what is under test is where the shell sits.
 vi.mock('renderer/screens/LoginScreen', () => ({ default: () => <p>tela de login</p> }));
 vi.mock('renderer/screens/MainScreen', () => ({ default: () => <p>tela inicial</p> }));
-vi.mock('renderer/screens/QueueScreen', () => ({ default: () => <p>tela da fila</p> }));
+vi.mock('renderer/screens/PrintQueueScreen', () => ({ default: () => <p>tela da fila</p> }));
 vi.mock('renderer/screens/HistoryScreen', () => ({ default: () => <p>tela do histórico</p> }));
 vi.mock('renderer/screens/PrintersScreen', () => ({ default: () => <p>tela de impressoras</p> }));
 vi.mock('renderer/screens/PrinterSettingsScreen', () => ({ default: () => <p>tela de configurações</p> }));

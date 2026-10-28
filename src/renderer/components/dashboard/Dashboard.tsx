@@ -5,10 +5,8 @@ import Chip from 'renderer/base/Chip';
 import Icon from 'renderer/base/Icon';
 import { cx } from 'renderer/base/cx';
 import { useDashboardHealth } from 'renderer/hooks/useDashboardHealth';
+import type { QueueTab } from 'renderer/types/queueTab';
 import styles from './Dashboard.module.css';
-
-// The tab the queue screen opens on, passed through the navigate state (task 07 reads this key).
-export type QueueTab = 'pending' | 'failed';
 
 // printer-v2.dc.html:156-181, variant C.
 const Dashboard: React.FC = () => {

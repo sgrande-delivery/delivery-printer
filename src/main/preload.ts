@@ -32,6 +32,10 @@ const electronHandler = {
   // Resolves to how many failed jobs went back to pending.
   retryFailed: (id?: string): Promise<number> => ipcRenderer.invoke('retryFailed', id),
 
+  // Removes a failed job for good. Resolves to false when the job is gone or is not failed (a pending
+  // one is still going out, and the main process refuses it).
+  discardJob: (id: string): Promise<boolean> => ipcRenderer.invoke('queue:discard', id),
+
   // Fire-and-forget: it only wakes the worker.
   notifyConnection: (isConnected: boolean): void => ipcRenderer.send('notifyConnection', isConnected),
 

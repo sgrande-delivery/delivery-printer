@@ -13,7 +13,7 @@ const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
 vi.mock('../../logger', () => ({ logger: log }));
 
 import { printQueueStore } from '../print-queue-store';
-import { createPrintQueueWorker, MAX_ATTEMPTS, PrintQueueWorker } from '../print-queue-worker';
+import { createPrintQueueWorker, MAX_ATTEMPTS, PrintQueueWorker, toSummary } from '../print-queue-worker';
 
 function item(id: string, deviceName: string | null = 'Cozinha'): EnqueueRequest['items'][number] {
   return { id, payload: { content: `<html>${id}</html>`, copies: 1, deviceName, id: `file-${id}` } };
@@ -128,29 +128,103 @@ describe('print queue worker', () => {
     expect(print).toHaveBeenCalledTimes(MAX_ATTEMPTS);
   });
 
-  it('announces every change the screen shows, and nothing between attempts', async () => {
+  it('announces every change the screen shows, a failed attempt that leaves the job pending included', async () => {
     print.mockRejectedValue('Print job failed');
     const worker = newWorker();
 
     worker.enqueue(request('a'));
     expect(onChanged).toHaveBeenCalledTimes(1);
 
-    // Still pending between attempts: a ping per attempt would be a ping every few
-    // seconds for as long as the printer is off.
+    // The screen shows the attempts and the instant of the next one: failures at 0 s, 2 s and 6 s.
     await settle(10000);
-    expect(onChanged).toHaveBeenCalledTimes(1);
+    expect(onChanged).toHaveBeenCalledTimes(4);
 
+    // Failures at 14 s (pending) and 30 s (the fifth: failed).
     await settle(60000);
     expect(printQueueStore.list()[0].status).toBe('failed');
-    expect(onChanged).toHaveBeenCalledTimes(2);
+    expect(onChanged).toHaveBeenCalledTimes(6);
 
     print.mockResolvedValue(undefined);
     expect(worker.retryFailed()).toBe(1);
-    expect(onChanged).toHaveBeenCalledTimes(3);
+    expect(onChanged).toHaveBeenCalledTimes(7);
 
     await settle();
     expect(printQueueStore.list()[0].status).toBe('printed');
-    expect(onChanged).toHaveBeenCalledTimes(4);
+    expect(onChanged).toHaveBeenCalledTimes(8);
+  });
+
+  it('does not announce a failed attempt the store could not record', async () => {
+    print.mockRejectedValue('Print job failed');
+    const spy = vi.spyOn(printQueueStore, 'incrementAttempt').mockImplementation(() => {
+      throw new Error('ENOSPC');
+    });
+    const worker = newWorker();
+
+    worker.enqueue(request('a'));
+    onChanged.mockClear();
+    await settle(10000);
+
+    expect(onChanged).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('publishes the instant of the next attempt while the job waits, and forgets it after', async () => {
+    print.mockRejectedValueOnce('Print job failed').mockResolvedValue(undefined);
+    const worker = newWorker();
+    const start = Date.now();
+
+    worker.enqueue(request('a'));
+    expect(worker.nextAttemptOf('a')).toBeUndefined();
+
+    await settle();
+    expect(worker.nextAttemptOf('a')).toBe(start + 2000);
+
+    await settle(2000);
+    expect(printQueueStore.list()[0].status).toBe('printed');
+    expect(worker.nextAttemptOf('a')).toBeUndefined();
+  });
+
+  it('discardFailed removes a failed job from the file and announces it', async () => {
+    print.mockRejectedValue('Print job failed');
+    const worker = newWorker();
+    worker.enqueue(request('a'));
+    await settle(60000);
+    expect(printQueueStore.list()[0].status).toBe('failed');
+    onChanged.mockClear();
+
+    expect(worker.discardFailed('a')).toBe(true);
+
+    expect(printQueueStore.list()).toEqual([]);
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('discardFailed refuses a pending job: it is a receipt that is still going out', () => {
+    print.mockReturnValue(new Promise(() => undefined));
+    const worker = newWorker();
+    worker.enqueue(request('a'));
+    onChanged.mockClear();
+
+    expect(worker.discardFailed('a')).toBe(false);
+
+    expect(printQueueStore.list()).toHaveLength(1);
+    expect(printQueueStore.list()[0].status).toBe('pending');
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('refused to discard a'));
+  });
+
+  it('discardFailed refuses a printed job too: it is the ledger that keeps the scan from printing twice', () => {
+    seed([{ ...pendingJob('a'), status: 'printed' }]);
+    const worker = newWorker();
+
+    expect(worker.discardFailed('a')).toBe(false);
+    expect(printQueueStore.list()).toHaveLength(1);
+  });
+
+  it('discardFailed on an id that is gone returns false and does not throw', () => {
+    const worker = newWorker();
+
+    expect(worker.discardFailed('nope')).toBe(false);
+    expect(onChanged).not.toHaveBeenCalled();
   });
 
   it('an announcement that throws does not fail the enqueue: the receipt is already on disk', () => {
@@ -376,5 +450,26 @@ describe('print queue worker', () => {
 
     expect(() => worker.enqueue({ ...request('a'), kind: 'nope' as never })).toThrow('invalid print job');
     expect(printQueueStore.list()).toEqual([]);
+  });
+
+  describe('toSummary', () => {
+    it('carries copies and the device, and never the receipt HTML', () => {
+      const job = {
+        ...pendingJob('a'),
+        payload: { content: '<html>SECRET</html>', copies: 3, deviceName: 'Cozinha', id: 'f' },
+      };
+
+      const summary = toSummary(job);
+
+      expect(summary).toMatchObject({ copies: 3, deviceName: 'Cozinha' });
+      expect(JSON.stringify(summary)).not.toContain('SECRET');
+      expect(Object.keys(summary)).not.toContain('payload');
+    });
+
+    it('carries nextAttemptAt only for a pending job', () => {
+      expect(toSummary(pendingJob('a'), 123).nextAttemptAt).toBe(123);
+      expect(toSummary(pendingJob('a'))).not.toHaveProperty('nextAttemptAt');
+      expect(toSummary({ ...pendingJob('a'), status: 'failed' }, 123)).not.toHaveProperty('nextAttemptAt');
+    });
   });
 });

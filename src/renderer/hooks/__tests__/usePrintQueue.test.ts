@@ -13,6 +13,7 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     createdAt: 0,
     lastError: null,
     deviceName: 'Cozinha',
+    copies: 1,
     ...overrides,
   };
 }
@@ -21,6 +22,7 @@ describe('usePrintQueue', () => {
   beforeEach(() => {
     vi.mocked(window.electron.queueState).mockReset().mockResolvedValue([]);
     vi.mocked(window.electron.retryFailed).mockReset().mockResolvedValue(1);
+    vi.mocked(window.electron.discardJob).mockReset().mockResolvedValue(true);
     vi.mocked(window.electron.onQueueChanged)
       .mockReset()
       .mockReturnValue(() => undefined);
@@ -110,6 +112,36 @@ describe('usePrintQueue', () => {
       await result.current.retry();
     });
     expect(window.electron.retryFailed).toHaveBeenLastCalledWith(undefined);
+    expect(window.electron.queueState).toHaveBeenCalledTimes(3);
+  });
+
+  it('discard calls the channel with the id and reads the queue even if the main announced nothing', async () => {
+    const { result } = renderHook(() => usePrintQueue());
+    await waitFor(() => expect(window.electron.queueState).toHaveBeenCalledTimes(1));
+
+    let discarded = false;
+    await act(async () => {
+      discarded = await result.current.discard('j-9');
+    });
+
+    expect(window.electron.discardJob).toHaveBeenCalledWith('j-9');
+    expect(discarded).toBe(true);
+    expect(window.electron.queueState).toHaveBeenCalledTimes(2);
+  });
+
+  it('discard that the main refuses resolves to false, and a rejected channel is logged, not thrown', async () => {
+    const { result } = renderHook(() => usePrintQueue());
+    await waitFor(() => expect(window.electron.queueState).toHaveBeenCalledTimes(1));
+
+    vi.mocked(window.electron.discardJob).mockResolvedValueOnce(false);
+    await act(async () => {
+      expect(await result.current.discard('j-1')).toBe(false);
+    });
+
+    vi.mocked(window.electron.discardJob).mockRejectedValueOnce(new Error('no handler'));
+    await act(async () => {
+      expect(await result.current.discard('j-1')).toBe(false);
+    });
     expect(window.electron.queueState).toHaveBeenCalledTimes(3);
   });
 
