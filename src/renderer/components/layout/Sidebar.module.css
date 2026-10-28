@@ -1,0 +1,232 @@
+/* Measures from the design, printer-v2.dc.html:28-66. */
+.root {
+  width: 216px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--side);
+  color: var(--side-text);
+}
+
+/* Drag region of the window (RN-13): every button of the sidebar sits outside it and still says no-drag. */
+.brand {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.symbol {
+  width: 30px;
+  height: 30px;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.brandName {
+  color: #fff;
+  font-weight: var(--font-weight-semibold);
+  font-size: 13px;
+}
+
+.brandProduct {
+  color: var(--side-text);
+  font-size: 12px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--side-text);
+  font-size: 14px;
+  font-weight: var(--font-weight-regular);
+  text-align: left;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.item:hover {
+  background: var(--side-2);
+}
+
+.itemActive {
+  background: var(--side-2);
+  color: #fff;
+  font-weight: var(--font-weight-semibold);
+}
+
+.itemIcon {
+  color: var(--side-muted);
+}
+
+.itemActive .itemIcon {
+  color: var(--accent);
+}
+
+.itemLabel {
+  flex: 1;
+}
+
+.badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badgeFailed {
+  background: var(--err-dot);
+}
+
+/* The design's literal #5A524E (printer-v2.dc.html:643): there is no token for it, and --text-2 is
+   a different color in the dark theme, where the sidebar looks the same. */
+.badgePending {
+  background: var(--side-badge);
+}
+
+.footer {
+  margin-top: auto;
+  padding: 12px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.status {
+  background: var(--side-2);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statusLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dotOk {
+  background: var(--ok-dot);
+}
+
+.dotErr {
+  background: var(--err-dot);
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 0;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  object-fit: cover;
+  text-transform: uppercase;
+}
+
+.userText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.userName {
+  color: #fff;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userEmail {
+  color: var(--side-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--side-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.logout:hover {
+  background: var(--side-2);
+  color: #fff;
+}
+
+.version {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--side-muted);
+}
+
+.logs {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--side-muted);
+  font-family: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}

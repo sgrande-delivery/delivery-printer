@@ -6,12 +6,15 @@ import { isQuiting } from './tray';
 import { registerDevtools } from './devtools';
 import { AppUpdater } from './updater';
 import { START_MINIMIZED_ARG } from './autostart';
+import { themeArgument } from 'shared/uiTheme';
 import { currentTheme, titleBarOverlayFor } from './theme';
 
 export class MainWindowBuilder {
   private window: BrowserWindow;
 
   constructor(app: App) {
+    const { resolved } = currentTheme();
+
     this.window = new BrowserWindow({
       show: false,
       width: 1024,
@@ -21,9 +24,12 @@ export class MainWindowBuilder {
         // electron-vite emits the preload bundle next to the main bundle, so
         // this path is the same in development and packaged.
         preload: path.join(__dirname, '../preload/preload.js'),
+        // The theme has to be in the renderer before its first paint; waiting for the ui:theme
+        // round trip shows the whole shell in light for a moment, even in dark.
+        additionalArguments: [themeArgument(resolved)],
       },
       titleBarStyle: 'hidden',
-      titleBarOverlay: titleBarOverlayFor(currentTheme().resolved),
+      titleBarOverlay: titleBarOverlayFor(resolved),
     });
   }
 

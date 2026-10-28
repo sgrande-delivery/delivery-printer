@@ -1,41 +1,15 @@
 import React from 'react';
-import { useAuth } from 'renderer/providers/auth';
 import Status from '../status/Status';
-import { history } from 'renderer/services/history';
-import { useAdminSocketEvents } from 'renderer/hooks/useAdminSocketEvents';
-import InsideLoading from '../loading/InsideLoading';
-import { usePrintingOrder } from 'renderer/hooks/usePrintingOrder';
-import { usePrintingBoard } from 'renderer/hooks/usePrintingBoard';
-import { useAdminSocket } from 'renderer/hooks/useAdminSocket';
-import styles from './Main.module.css';
+import { useLogout } from 'renderer/hooks/useLogout';
+import { useShellConnection } from '../layout/shellConnection';
 
+// The socket and printing hooks are NOT here: they live in the AppShell, which stays mounted across
+// routes. Mounting one of them in a screen makes the screen's unmount disconnect the shared store.
 const Home: React.FC = () => {
-  const auth = useAuth();
+  const logout = useLogout();
+  const isConnected = useShellConnection();
 
-  useAdminSocketEvents();
-  const { isConnected } = useAdminSocket();
-
-  usePrintingOrder();
-  usePrintingBoard();
-
-  function handleLogout() {
-    auth.logout().then(() => {
-      history.push('/login');
-    });
-  }
-
-  if (auth.loading) {
-    return <InsideLoading />;
-  }
-
-  return (
-    <>
-      <div className={styles.titleBar}>
-        <span>sgrande delivery printer</span>
-      </div>
-      <Status wsConnected={isConnected} handleLogout={handleLogout} />
-    </>
-  );
+  return <Status wsConnected={isConnected} handleLogout={logout} />;
 };
 
 export default Home;

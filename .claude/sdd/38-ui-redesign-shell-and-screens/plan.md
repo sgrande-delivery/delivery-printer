@@ -54,7 +54,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 |---|------|-------|---------|------------|--------|
 | 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | executada |
 | 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | executada |
-| 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | pendente |
+| 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | executada |
 | 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | pendente |
 | 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | pendente |
 | 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | pendente |
@@ -151,6 +151,38 @@ O `titleBarOverlay` foi de 50 para 56 px, e há **duas barras de título falsas*
 ### A fonte de ícones não usa `liga` (task 01)
 
 As ligaduras do recorte vivem num *extension lookup* (GSUB tipo 7) nas features **`rlig`** e **`rclt`**. O desenho declara `-webkit-font-feature-settings: 'liga'`, que para esta fonte é inerte: quem liga os ícones é o `rlig`, *required*, que o Chromium aplica por padrão. Ferramenta que lê ligadura por `liga` (o `opentype.js`) reporta **zero** nesta fonte, o que é limitação dela. Detalhes em `src/renderer/fonts/README.md`.
+
+### O contrato de composição de rota mudou, e a skill `add-screen` mandava quebrá-lo (task 03)
+
+O `ProtectedRoute` virou **rota de layout**: ele renderiza `<Outlet/>` dentro do `AppShell`, e as seis telas são filhas dele. Isso não é estilo — **envolver uma tela num `ProtectedRoute` próprio remonta o `AppShell` a cada navegação**, e o cleanup dos hooks de socket derruba a conexão. Era o defeito que esta spec consertou, e subir os hooks não bastava: com um `ProtectedRoute` por rota, o `disconnect()` rodava de qualquer jeito.
+
+Para as nove tasks que criam tela:
+
+- a rota entra **como filha** do `ProtectedRoute` que já existe. Nunca aninhe um segundo;
+- a tela **não monta hook de socket** (`useAdminSocket`, `useOrderSocket`, `useBoardSocket`, `usePrintingOrder`, `usePrintingBoard`). O `AppShell` é o dono único (RN-06); quem precisa saber da conexão lê `useShellConnection()` de `components/layout/shellConnection.ts`;
+- a tela **não põe título, padding nem região de arraste**: o cabeçalho do shell dá o título (mapa em `components/layout/navigation.ts`), o `.content` dá o `padding: 24px 28px`;
+- a entrada é um item em `NAV_ITEMS` **e** no mapa de títulos — faltar no segundo dá tela com título vazio.
+
+**A skill `.claude/skills/add-screen/SKILL.md` foi corrigida nesta task**, e isso era urgente: ela é carregada automaticamente quando alguém cria tela, e mandava, literalmente, `<Route path="/x" element={<ProtectedRoute element={<XScreen />} />} />`. Nove tasks desta spec criam tela; seguir a skill desfaria o conserto. Ela também afirmava que "não existe nenhum componente de navegação neste app", que havia "duas rotas", que o `ProtectedRoute` tem `const authenticated = true` (falso desde a task #5) e que o `expectNoUndefinedClasses` é "a única rede" contra chave errada (falso, ver abaixo).
+
+### O `expectNoUndefinedClasses()` é inerte onde não há concatenação (task 03)
+
+O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
+
+A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### PNG abaixo de 4 kB entra inlinado no JS (task 03)
+
+O `assetsInlineLimit` default do Vite é 4 kB, e os dois símbolos da marca (3 730 e 3 821 bytes) ficam **embutidos em base64 no bundle do renderer** — nenhum `.png` é emitido em `out/renderer/assets/`. São ~10 kB dos +30,6 kB de JS desta task. O `logo-horizontal-negativo.png` (12 kB) e o woff2 (20,9 kB) passam do limite e saem como arquivo. Não é problema; é como ler o número do bundle sem se assustar.
+
+### Dívidas transitórias que as próximas tasks fecham (task 03)
+
+Nenhuma é defeito novo; todas somem quando a tela dona for redesenhada, e nenhuma pode ficar calada:
+
+- **na rota `/`**, a sidebar e o `Status` mostram os dois o usuário com e-mail, a versão com arquitetura e **dois botões "abrir logs" com o mesmo nome acessível** — teste futuro que use `getByRole('button', { name: 'abrir logs' })` nessa rota fica ambíguo. Fecha na task 06;
+- **`/printers` e `/printer-settings` exibem título duas vezes**, o `<h1>` do shell e o `Typography` da própria tela. Fecha nas tasks 09 e 10;
+- **não há rota catch-all:** hash desconhecido rende o shell com título e conteúdo vazios (antes não renderizava nada, então não é regressão);
+- **o badge de Impressoras reconsulta `GET /printers` a cada navegação**, nas seis, quando só `/printers` pode torná-lo obsoleto; e entrar em `/printers` dispara **dois** `GET /printers` (a instância do sidebar e a da tela). Guardar o pathname anterior num ref e só chamar `refresh()` quando o anterior era `/printers` elimina 5 de 6. **Deixado de propósito para a task 09**, que é a dona da tela de impressoras, porque é mudança de política de busca e merece teste próprio em vez de carona aqui.
 
 ### Todo ícone passa pelo primitivo `Icon` (task 01)
 

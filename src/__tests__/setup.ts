@@ -25,6 +25,7 @@ Object.defineProperty(window, 'electron', {
     log: vi.fn(),
     notification: vi.fn().mockResolvedValue(undefined),
     revealLogs: vi.fn().mockResolvedValue(true),
+    initialTheme: null,
     uiTheme: vi.fn().mockResolvedValue({ preference: 'system', resolved: 'light' }),
     setUiTheme: vi.fn().mockResolvedValue('light'),
     onUiThemeChanged: vi.fn().mockReturnValue(() => undefined),

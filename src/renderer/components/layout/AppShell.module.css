@@ -1,0 +1,83 @@
+/* Measures from the design, printer-v2.dc.html:27-73. */
+.root {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The right padding is the room of the three native window buttons (titleBarOverlay, RN-04). */
+.header {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 152px 0 28px;
+  border-bottom: 1px solid var(--line);
+  user-select: none;
+  /* Drag region of the window (RN-13); nothing clickable lives in the header. */
+  -webkit-app-region: drag;
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.chipOnline,
+.chipOffline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+}
+
+.chipOnline {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.chipOffline {
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.chipOnline .chipDot {
+  background: var(--ok-dot);
+}
+
+.chipOffline .chipDot {
+  background: var(--err-dot);
+}
+
+/* position: relative is the containing block of the absolute elements the screens still carry. */
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px;
+}

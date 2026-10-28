@@ -34,6 +34,7 @@
   --side-2: #3a3431;
   --side-text: #d9d0ca;
   --side-muted: #9c918b;
+  --side-badge: #5a524e;
   --page: #ddd6d1;
   --paper: #ffffff;
   --paper-ink: #2b2725;
@@ -84,6 +85,8 @@
   --side-2: #35302d;
   --side-text: #d9d0ca;
   --side-muted: #8f847e;
+  /* Same value in both themes, as the design does (:643): the badge sits on --side-2. */
+  --side-badge: #5a524e;
   --page: #151312;
   --paper: #faf7f5;
   --paper-ink: #2b2725;

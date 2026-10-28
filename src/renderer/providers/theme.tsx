@@ -11,7 +11,7 @@ interface ThemeContextData {
 const ThemeContext = React.createContext({} as ThemeContextData);
 
 // Only 'dark' is written: in light the attribute is removed so :root applies by itself.
-function applyTheme(resolved: ResolvedTheme): void {
+export function applyTheme(resolved: ResolvedTheme): void {
   if (resolved === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
     return;
@@ -22,7 +22,7 @@ function applyTheme(resolved: ResolvedTheme): void {
 
 const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
-  const [resolved, setResolved] = useState<ResolvedTheme>('light');
+  const [resolved, setResolved] = useState<ResolvedTheme>(window.electron.initialTheme ?? 'light');
 
   useEffect(() => {
     let active = true;

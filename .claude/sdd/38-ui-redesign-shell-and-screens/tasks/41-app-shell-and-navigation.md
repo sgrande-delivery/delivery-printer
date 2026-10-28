@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 01, 02
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -116,6 +116,41 @@ Título pelo mapa da rota ativa (`:636`), em 18 px/600, e o chip de conexão (`:
 - O conteúdo das telas de estado — task [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43)
 - Sidebar recolhível, atalho de teclado, item de menu na bandeja
 
+### O que o review pegou, e que eu corrigi antes do commit
+
+Dois bloqueadores, nenhum deles no código do shell:
+
+1. **27 das 41 chaves de CSS Module sem rede**, medido chave por chave, inclusive as estruturais. Como não há concatenação nenhuma nos três componentes, as três chamadas de `expectNoUndefinedClasses()` eram **inertes**. Entraram 15 afirmações de presença (2 testes novos), e a varredura por mutação confirma que cada chave derruba ao menos um teste.
+2. **A skill `.claude/skills/add-screen/SKILL.md` instruía o padrão que re-quebra a RN-06** — `<Route element={<ProtectedRoute element={<XScreen />} />} />`, que remonta o shell a cada navegação. Ela é carregada automaticamente quando alguém cria tela, e **nove tasks desta spec criam tela**. Corrigida, junto com quatro outras afirmações que tinham deixado de ser verdade.
+
+Mais cinco itens de atenção aplicados: `process.argv ?? []` no preload (sem isso, argv ausente lançaria **antes** do `contextBridge.exposeInMainWorld` e `window.electron` ficaria `undefined` — o app inteiro); `--side-badge` como token nos dois temas, no lugar do hex enterrado no módulo (RN-11, e a limpeza da task 12 varre o `app.css`, não os módulos); `Record<string, Badge | undefined>`, porque 4 dos 6 itens não têm badge; o cast gratuito e o reset fora de `finally` no teste do tema; e `firstPath` → `isFirstRun`, que é o que a variável guarda.
+
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Processos tocados
+
+renderer; main e preload (só a piscada de tema)
+
+### Arquivos criados/alterados
+
+- `components/layout/{AppShell,Sidebar,StateLayout}.tsx` + `.module.css`, `navigation.ts`, `shellConnection.ts` — o shell; `hooks/useLogout.ts`
+- `routes/ProtectedRoute.tsx` virou rota de layout (`Outlet`); `routes/Routes.tsx` aninha as seis telas; `screens/{Queue,History,PrintTest}Screen.tsx` são esqueletos
+- `components/main/Main.tsx` perdeu os hooks e a barra falsa; `Main.module.css`, `DefaultLayout.*` removidos; `Printers.*` e `PrinterSettings.module.css` perderam barra falsa e `padding-top`
+- Piscada: `shared/uiTheme.ts` (`themeArgument`/`themeFromArgv`), `main/window.ts` (`additionalArguments`), `main/preload.ts` (`initialTheme`), `providers/theme.tsx`, `index.tsx`, stub em `__tests__/setup.ts`
+
+### Decisões que tomei por conta própria
+
+- `ProtectedRoute` precisou virar rota de layout: com um por tela, o shell remontava a cada navegação e o conserto não existiria
+- Piscada de tema paga agora (argumento de linha de comando lido de forma síncrona no preload)
+- Badge de Impressoras reconsulta ao trocar de rota, para não manter acusação já corrigida
+- Badge "só pendente" usa o `#5a524e` literal do desenho: não há token e `--text-2` muda no escuro
+
+### Verificação
+
+- typecheck 0; lint 0 erros e 1 aviso (baseline); testes 261/262, a falha é a pré-existente de `ui.test.tsx > Status`

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { EnqueueRequest, EnqueueResult, PrintJobSummary, TestPrintRequest } from 'shared/printQueue';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
+import { themeFromArgv } from 'shared/uiTheme';
 import type { ResolvedTheme, ThemePreference, UiThemeState } from 'shared/uiTheme';
 
 type RawPrint = {
@@ -86,6 +87,10 @@ const electronHandler = {
 
   // Resolves to false when there is no record yet (file absent or empty), so the UI can say so.
   revealLogs: (): Promise<boolean> => ipcRenderer.invoke('revealLogs'),
+
+  // The theme resolved when the window was created (webPreferences.additionalArguments), readable
+  // synchronously: it is what lets the first paint already be in the right theme. null if absent.
+  initialTheme: themeFromArgv(process.argv ?? []),
 
   uiTheme: (): Promise<UiThemeState> => ipcRenderer.invoke('ui:theme'),
 

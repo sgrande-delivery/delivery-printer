@@ -101,3 +101,25 @@ describe('ThemeProvider', () => {
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 });
+
+describe('ThemeProvider first paint', () => {
+  it('starts in the theme the main process handed over, before any round trip', () => {
+    window.electron.initialTheme = 'dark';
+    electron.uiTheme.mockReturnValue(new Promise(() => undefined));
+    electron.onUiThemeChanged.mockReturnValue(() => undefined);
+
+    try {
+      const Probe2: React.FC = () => <span>{useTheme().resolved}</span>;
+      render(
+        <ThemeProvider>
+          <Probe2 />
+        </ThemeProvider>
+      );
+
+      expect(screen.getByText('dark')).toBeInTheDocument();
+    } finally {
+      // In a finally, so a failing assert does not leak 'dark' into the rest of the file.
+      window.electron.initialTheme = null;
+    }
+  });
+});

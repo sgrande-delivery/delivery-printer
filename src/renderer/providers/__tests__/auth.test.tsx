@@ -10,6 +10,16 @@ import ProtectedRoute from 'renderer/routes/ProtectedRoute';
 const http = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
 
 vi.mock('renderer/services/api', () => ({ api: http }));
+// The authenticated shell mounts the socket and printing hooks and the sidebar's printers badge;
+// none of them is under test here and they would reach for a server.
+vi.mock('renderer/hooks/useAdminSocketEvents', () => ({ useAdminSocketEvents: vi.fn() }));
+vi.mock('renderer/hooks/useAdminSocket', () => ({ useAdminSocket: () => ({ isConnected: true }) }));
+vi.mock('renderer/hooks/usePrintingOrder', () => ({ usePrintingOrder: vi.fn() }));
+vi.mock('renderer/hooks/usePrintingBoard', () => ({ usePrintingBoard: vi.fn() }));
+vi.mock('renderer/hooks/usePrinters', () => ({
+  usePrinters: () => ({ printers: [], devicesRead: true, refresh: vi.fn() }),
+}));
+vi.mock('renderer/providers/messaging', () => ({ useMessaging: () => ({ handleOpen: vi.fn() }) }));
 
 function httpError(status: number): AxiosError {
   return new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
@@ -222,7 +232,9 @@ describe('AuthProvider inside ProtectedRoute', () => {
         <MemoryRouter initialEntries={['/']}>
           <Routes>
             <Route path="/login" element={<div>tela de login</div>} />
-            <Route path="/" element={<ProtectedRoute element={<div>conteúdo protegido</div>} />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/" element={<div>conteúdo protegido</div>} />
+            </Route>
           </Routes>
         </MemoryRouter>
       </AuthProvider>

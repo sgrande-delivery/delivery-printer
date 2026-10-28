@@ -12,9 +12,6 @@ const Printers: React.FC = () => {
 
   const header = (
     <>
-      <div className={styles.titleBar}>
-        <span>sgrande delivery printer</span>
-      </div>
       <div className={styles.header}>
         <Typography variant="h4">Impressoras</Typography>
         <button type="button" className={styles.linkBack} onClick={() => history.push('/')}>

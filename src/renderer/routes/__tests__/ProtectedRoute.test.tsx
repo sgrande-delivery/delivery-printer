@@ -6,9 +6,25 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from '../ProtectedRoute';
 import type { SessionStatus } from 'renderer/providers/auth';
 
-const auth = vi.hoisted(() => ({ sessionStatus: 'loading', retrySession: vi.fn() }));
+const auth = vi.hoisted(() => ({
+  sessionStatus: 'loading',
+  retrySession: vi.fn(),
+  restaurant: { uuid: 'r-1', is_open: true },
+  user: { id: 1, name: 'Maria', email: 'maria@example.com' },
+  logout: vi.fn(),
+}));
 
 vi.mock('renderer/providers/auth', () => ({ useAuth: () => auth }));
+vi.mock('renderer/providers/messaging', () => ({ useMessaging: () => ({ handleOpen: vi.fn() }) }));
+vi.mock('renderer/providers/theme', () => ({ useTheme: () => ({ resolved: 'light' }) }));
+// The shell mounts the socket and printing hooks; they have their own suites and need a server.
+vi.mock('renderer/hooks/useAdminSocketEvents', () => ({ useAdminSocketEvents: vi.fn() }));
+vi.mock('renderer/hooks/useAdminSocket', () => ({ useAdminSocket: () => ({ isConnected: true }) }));
+vi.mock('renderer/hooks/usePrintingOrder', () => ({ usePrintingOrder: vi.fn() }));
+vi.mock('renderer/hooks/usePrintingBoard', () => ({ usePrintingBoard: vi.fn() }));
+vi.mock('renderer/hooks/usePrinters', () => ({
+  usePrinters: () => ({ printers: [], devicesRead: true, refresh: vi.fn() }),
+}));
 
 function renderRoute(status: SessionStatus) {
   auth.sessionStatus = status;
@@ -17,7 +33,9 @@ function renderRoute(status: SessionStatus) {
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route path="/login" element={<div>tela de login</div>} />
-        <Route path="/" element={<ProtectedRoute element={<div>conteúdo protegido</div>} />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<div>conteúdo protegido</div>} />
+        </Route>
       </Routes>
     </MemoryRouter>
   );
