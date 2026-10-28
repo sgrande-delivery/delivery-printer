@@ -15,7 +15,7 @@ O login do desenho: duas colunas, painel de marca escuro à esquerda, formulári
 
 - O desenho: `../design/printer-v2.dc.html:438-467`. Painel de marca em `:439-445`, formulário em `:446-466`.
 - **O login já é de duas etapas**: `Login.tsx` guarda `step` e alterna `UsernameStep` (`:36`) e `PasswordStep` (`:59`), com `checkEmail` e `login` do `useAuth()`. A lógica fica; muda a aparência e muda o caminho de volta.
-- **O logo vem de URL remota** (`components/login/Login.tsx:84`, `https://admin.sgrande.delivery/logo192.png`): sem internet, a tela de login aparece sem logo. É dívida conhecida, e a task [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) já pôs `logo-horizontal-negativo.svg` no pacote. `src/renderer/images/logo192.png` está no repo **sem ninguém importar**, guardado de propósito para esta troca; agora ele sai de cena para o SVG de marca.
+- **O logo vem de URL remota** (`components/login/Login.tsx:84`, `https://admin.sgrande.delivery/logo192.png`): sem internet, a tela de login aparece sem logo. É dívida conhecida, e a task [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) já pôs `logo-horizontal-negativo.png` no pacote (371×144; ver `src/renderer/images/brand/README.md`). `src/renderer/images/logo192.png` está no repo **sem ninguém importar**, guardado de propósito para esta troca; agora ele sai de cena para o SVG de marca.
 - **Dívida que esta task não fecha:** o `Login.tsx` chama `me()` ao montar e navega por conta própria, em vez de consumir o `sessionStatus` — é a origem do aviso `react-hooks/set-state-in-effect` em `Login.tsx:23`, rebaixado a aviso de propósito no `eslint.config.mjs`. **Não mexer nisso aqui**: é task própria, com teste, e misturá-la com o redesenho esconde as duas. Se o aviso desaparecer de graça, ótimo; se continuar, continua sendo o baseline.
 - **Saudação não infere gênero** (RN-12): o desenho escreve "Seja bem-vinda, Maria" porque o exemplo é uma mulher. O app recebe `user.name` e não sabe de quem se trata — o texto é neutro ("Olá, Maria"), e a decisão fica registrada aqui porque o desenho diz outra coisa.
 - O painel de marca é **região arrastável** (`:439`) e ocupa 400 px. O rodapé "SGrande Delivery Printer © 2026" (`:465`) usa o ano corrente, não um literal.
@@ -29,7 +29,7 @@ Passa a ser as duas colunas: a de 400 px com fundo `--side`, e a de conteúdo ce
 
 ### 2. `components/login/BrandPanel.tsx` + `.module.css` (novos)
 
-Logo horizontal negativo de 190 px no topo, e no pé do painel o título "SGrande Delivery Printer" (30 px/600) com a linha "Impressão automática dos pedidos, direto na cozinha, no bar e no caixa." em 15 px `--side-text` — o texto é o do desenho. Abaixo, `v{version} · {arch} · SGrande Delivery`, com os mesmos dados que a sidebar usa.
+Logo horizontal negativo (`images/brand/logo-horizontal-negativo.png`) de 190 px no topo, e no pé do painel o título "SGrande Delivery Printer" (30 px/600) com a linha "Impressão automática dos pedidos, direto na cozinha, no bar e no caixa." em 15 px `--side-text` — o texto é o do desenho. Abaixo, `v{version} · {arch} · SGrande Delivery`, com os mesmos dados que a sidebar usa.
 
 Região arrastável, com `no-drag` em qualquer coisa clicável (RN-13).
 

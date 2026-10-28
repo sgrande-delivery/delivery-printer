@@ -39,7 +39,7 @@ usePrintingBoard();
 
 ### 2. `src/renderer/components/layout/Sidebar.tsx` + `.module.css` (novos)
 
-- **Topo** (`:29-35`): símbolo de 30 px (`images/brand/simbolo-negativo.svg`), "SGrande" em 13 px/600 e "Delivery Printer" em 12 px; região arrastável
+- **Topo** (`:29-35`): símbolo de 30 px (`images/brand/simbolo-negativo.png`), "SGrande" em 13 px/600 e "Delivery Printer" em 12 px; região arrastável
 - **Menu** (`:36-45`): os seis itens, com rótulo, ícone e rota:
 
 | Rótulo | Ícone | Rota | Título no cabeçalho |
@@ -64,7 +64,7 @@ O avatar é a inicial do nome sobre `--accent` quando não há imagem, como o de
 
 A moldura mínima das telas de estado do desenho (`:470-476`): barra de 56 px arrastável com o símbolo e "SGrande Delivery Printer", e o conteúdo centralizado. **Nasce aqui porque `ProtectedRoute` precisa dela** — carregando e sem conexão não podem renderizar dentro do shell, que depende de sessão e de restaurante. O conteúdo das três telas é a task [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43); aqui ela só envolve o que já existe.
 
-O símbolo alterna com o tema (`:473` lê `symbolSrc`): `simbolo.svg` no claro, `simbolo-negativo.svg` no escuro, pelo `useTheme()` da task [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40).
+O símbolo alterna com o tema (`:473` lê `symbolSrc`): `simbolo.png` no claro, `simbolo-negativo.png` no escuro, pelo `useTheme()` da task [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40).
 
 ### 4. `routes/ProtectedRoute.tsx`, `routes/Routes.tsx` e as telas
 

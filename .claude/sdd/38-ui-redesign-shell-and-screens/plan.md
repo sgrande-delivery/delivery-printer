@@ -42,7 +42,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 - **A paleta nova substitui a antiga, com camada de apelido durante a execução.** Os tokens do desenho (`--bg`, `--surface`, `--line`, `--text`, `--accent`, …) entram no `app.css` na task 01, e os nomes antigos (`--color-primary`, `--color-text`, …) continuam existindo **apontando para os novos**. É o que permite cada commit da spec compilar e ficar coerente sozinho, sem um único commit gigante que reescreve as 14 folhas de estilo. A task 12 apaga os apelidos — e é por isso que ela existe.
 - **O tema é atributo em `<html>`, não classe nem contexto de cor.** `data-theme="dark"` liga o segundo bloco de tokens, igual ao desenho (que usa `data-theme="escuro"`; aqui o valor é em inglês, RN-14). Componente nenhum lê o tema: todos leem token. O único que lê o tema é quem avisa o main para trocar o `titleBarOverlay`.
 - **A preferência de tema é `'system' | 'light' | 'dark'`, com `'system'` como default**, e vive em `ui-preferences.json` sob `userData`, escrito pelo `writeFileAtomic` que a fila já usa (`src/main/atomicFile.ts`). Arquivo ilegível não derruba o app: cai para `'system'`.
-- **A fonte de ícones é a Material Symbols Outlined, empacotada** (divergência 1 da tabela de fidelidade). O desenho nomeia 28 símbolos, dois deles — `stacks` e `skillet` — sem equivalente no conjunto Material do `react-icons`; e fidelidade literal (RN-15) com meia dúzia de glifos aproximados não é fidelidade. A fonte entra como arquivo em `src/renderer/fonts/`, com `@font-face` local e `unicode-range` recortado aos símbolos usados, e o acesso é por um primitivo `Icon` com o nome do desenho — o que mantém a lista de símbolos num só lugar e permite trocar a implementação sem tocar em tela. O `react-icons` continua instalado (o `RestaurantStatus` o usa) e sai na task 12 se não sobrar uso.
+- **A fonte de ícones é a Material Symbols Outlined, empacotada** (divergência 1 da tabela de fidelidade). O desenho nomeia 28 símbolos, dois deles — `stacks` e `skillet` — sem equivalente no conjunto Material do `react-icons`; e fidelidade literal (RN-15) com meia dúzia de glifos aproximados não é fidelidade. A fonte entra como arquivo em `src/renderer/fonts/`, já recortada aos 34 símbolos no próprio arquivo (e **sem `unicode-range`**: o nome do ícone é renderizado como texto e virado em glifo por ligadura, então restringir o range ao PUA faria as letras latinas não usarem a fonte e **todo ícone sairia escrito**). O acesso é por um primitivo `Icon` com o nome do desenho — o que mantém a lista de símbolos num só lugar e permite trocar a implementação sem tocar em tela. O `react-icons` continua instalado (o `RestaurantStatus` o usa) e sai na task 12 se não sobrar uso.
 - **O Painel é a variação C do desenho** (escolha do dev): bloco de estado grande, três números numa faixa e as impressoras como chips. As variações A e B ficam no arquivo do desenho como alternativa registrada, não como dívida.
 - **Histórico e Fila leem a mesma fonte** (`usePrintQueue`), separados só por `status` e por recorte de tempo (RN-08). Não há segundo armazenamento, nem `useEffect` com `setInterval` lendo arquivo: o `onQueueChanged` já avisa.
 - **Descartar e reimprimir são dois canais novos, não um `rawPrint` montado no renderer.** `queue:discard` remove o trabalho do arquivo; `queue:reprint` devolve o trabalho existente para `pending` com as tentativas zeradas. Os dois recebem `id` e nada mais — o payload com o HTML nunca sai do main (RN-09).
@@ -52,7 +52,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | pendente |
+| 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | executada |
 | 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | pendente |
 | 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | pendente |
 | 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | pendente |
@@ -111,3 +111,41 @@ Além de `npm run typecheck`, `npm run lint` e `npm test` em cada task:
 - **Impressão sobrevive à navegação:** com o app na tela de Impressoras, emitir `printOrder` e ver o comprovante sair. É o conserto da falha 1 do contexto da spec, e vale um teste de montagem/desmontagem além do olho.
 - **Fila e histórico contra a fila real:** desligar a impressora, deixar um trabalho falhar as cinco tentativas, conferir a aba Falhados, o "Tentar de novo" e o "Descartar"; religar, imprimir, e conferir o Histórico e a reimpressão.
 - **Não encosta em empacotamento nem em autoupdate** — exceto o peso da fonte de ícones no bundle, que a task 01 mede e reporta (o baseline é 518 kB).
+
+## Aprendizados que valem para as próximas tasks
+
+### A rede contra chave de CSS Module estava morta (task 01)
+
+`expectNoUndefinedClasses()` **não podia falhar** como o repo estava configurado, e a regra `.claude/rules/renderer-ui.md` o chama de "o único jeito de o erro aparecer antes do PDV". Medido em 2026-10-28:
+
+| Expressão | `css` desligado (como estava) | `css: { include: [/\.module\.css$/] }` |
+| --- | --- | --- |
+| `styles.chaveQueNaoExiste` | `"_chaveQueNaoExiste_1809c2"` | `undefined` |
+| `class` no DOM | `"_naoExiste_… outra"` | `"undefined outra"` |
+| o helper falha? | **não** | **sim** |
+
+O Vitest sem processar CSS devolve um nome **hasheado para a classe inexistente** — plausível, truthy, e invisível para um helper que procura a palavra `undefined`. A linha entrou no `vitest.config.ts` na task 01, com a suíte medida antes e depois: **213 de 214 passando nos dois casos**, mesma falha pré-existente.
+
+**Consequência para as 11 tasks seguintes:** o critério "componente novo com estilo entra em teste que chama `expectNoUndefinedClasses()`" agora **vale de verdade**. Mantenha-o.
+
+### `cx()` esconde o mesmo defeito, e o helper não o pega (task 01)
+
+`cx()` descarta falsy (`src/renderer/base/cx.ts`), então `cx(styles.tipoErrado)` devolve **string vazia**, não `"undefined"` — a classe simplesmente não aparece, e nem o helper nem a tela acusam. Verificado por mutação: trocar `styles.icon` por `styles.ikon` no `Icon` derruba **1** teste, e é o que **afirma que a classe está presente**, não o do helper.
+
+**Portanto:** teste de componente cujo estilo passa por `cx()` tem de **afirmar que a classe esperada está lá** (`expect(el.className).toContain('…')`), além de chamar o helper. Só o helper não protege o caminho do `cx`, que é o caminho mais usado nesta base.
+
+### A fonte de ícones não usa `liga` (task 01)
+
+As ligaduras do recorte vivem num *extension lookup* (GSUB tipo 7) nas features **`rlig`** e **`rclt`**. O desenho declara `-webkit-font-feature-settings: 'liga'`, que para esta fonte é inerte: quem liga os ícones é o `rlig`, *required*, que o Chromium aplica por padrão. Ferramenta que lê ligadura por `liga` (o `opentype.js`) reporta **zero** nesta fonte, o que é limitação dela. Detalhes em `src/renderer/fonts/README.md`.
+
+### Todo ícone passa pelo primitivo `Icon` (task 01)
+
+As `font-variation-settings` e as `font-feature-settings` da fonte de ícones ficam **escopadas no `Icon.module.css`**, não numa classe global `.material-symbols-outlined` como o desenho faz — o desenho usa classe global porque o mock não tem componentes, e a regra da UI proíbe CSS global novo fora do `app.css`. **Consequência:** tela que escrever `class="material-symbols-outlined"` à mão não recebe nenhuma dessas declarações e o ícone sai errado. Nas tasks 03 a 11, todo ícone vem do `Icon`.
+
+### O seletor do tema escuro é `:root[data-theme='dark']` (task 01)
+
+`[data-theme='dark']` sozinho **empata em especificidade com `:root`** e só venceria por ordem de origem: um bloco `:root` acrescentado mais adiante no `app.css` desligaria o tema escuro em silêncio. Com `:root[data-theme='dark']` a precedência não depende da ordem. Token novo entra nos dois blocos (RN-11) e o escuro continua onde está.
+
+### O peso do bundle: o baseline de 518 kB está velho (task 01)
+
+Medido em worktree limpa no `HEAD` contra a task: o JS do renderer é **557,59 kB nos dois**, ou seja a task 01 não acrescentou **nada** de JS; ela custou **+1,39 kB de CSS** e os 20,86 kB do woff2, emitido como asset separado. Os ~40 kB a mais que o baseline histórico de 518 kB (`CLAUDE.md`) são crescimento das specs 11, 15 e 19. **Não comparar task nova com 518 kB** — comparar com a worktree do `HEAD`.

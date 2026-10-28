@@ -1,32 +1,97 @@
 /*
- * Design tokens. These replace the Material-UI theme object; the values are the
- * ones MUI v4 resolved at runtime, so the appearance is unchanged:
- *   primary.light = lighten(primary.main, 0.2), MUI's default tonalOffset
- *   error/success.main and the text colors are MUI v4 palette defaults
+ * Design tokens: the values of the Claude Design, design/printer-v2.dc.html:13-14
+ * (light palette on :root, dark on :root[data-theme='dark']). Same 26 tokens in both.
+ * The dark selector is :root[data-theme='dark'], not [data-theme='dark']: the latter
+ * ties with :root on specificity and would only win by source order, so a :root block
+ * added later in this file would silently switch the dark theme off.
  */
 :root {
-  --color-primary: #f0592a;
-  --color-primary-light: #f37a55;
-  --color-secondary: #404040;
-  --color-error: #f44336;
-  --color-success: #4caf50;
-
-  --color-text: rgba(0, 0, 0, 0.87);
-  --color-text-secondary: rgba(0, 0, 0, 0.54);
-
-  --color-divider: #eee;
-  --color-input-border: rgba(0, 0, 0, 0.42);
+  --bg: #faf7f5;
+  --surface: #ffffff;
+  --surface-2: #f4efeb;
+  --line: #eae2dc;
+  --text: #2b2725;
+  --text-2: #5a524e;
+  --muted: #857a74;
+  --accent: #f4561c;
+  --accent-hover: #dc4a14;
+  --accent-soft: #ffe4d8;
+  --accent-ink: #b23c0e;
+  --ok: #2e7d32;
+  --ok-dot: #4caf50;
+  --ok-soft: #e5f3e6;
+  --err: #c62828;
+  --err-dot: #f44336;
+  --err-soft: #fde6e4;
+  --warn: #8a5a00;
+  --warn-soft: #fff1cc;
+  --side: #2b2725;
+  --side-2: #3a3431;
+  --side-text: #d9d0ca;
+  --side-muted: #9c918b;
+  --page: #ddd6d1;
+  --paper: #ffffff;
+  --paper-ink: #2b2725;
 
   --font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
     'Helvetica Neue', sans-serif;
 
-  /* MUI v4 typography with fontSize 14 and the project's font weights */
-  --font-weight-light: 200;
-  --font-weight-regular: 300;
-  --font-weight-medium: 400;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Aliases of the old palette. Temporary: they let the tasks of spec 38 migrate
+     one screen at a time; task #50 deletes them after the last screen moves. */
+  --color-primary: var(--accent);
+  --color-primary-light: var(--accent-hover);
+  --color-error: var(--err);
+  --color-success: var(--ok);
+  --color-text: var(--text);
+  --color-text-secondary: var(--text-2);
+  --color-divider: var(--line);
+  --color-input-border: var(--muted);
+  --color-secondary: var(--side-2);
 }
 
+:root[data-theme='dark'] {
+  --bg: #2b2725;
+  --surface: #35302d;
+  --surface-2: #3e3835;
+  --line: #4a4340;
+  --text: #faf7f5;
+  --text-2: #cfc6c0;
+  --muted: #a0958f;
+  --accent: #f4561c;
+  --accent-hover: #ff6a33;
+  --accent-soft: #4a2b1f;
+  --accent-ink: #ff9a73;
+  --ok: #7ccb80;
+  --ok-dot: #4caf50;
+  --ok-soft: #263a28;
+  --err: #ff8a80;
+  --err-dot: #f44336;
+  --err-soft: #4a2522;
+  --warn: #ffcb5c;
+  --warn-soft: #45391c;
+  --side: #211d1b;
+  --side-2: #35302d;
+  --side-text: #d9d0ca;
+  --side-muted: #8f847e;
+  --page: #151312;
+  --paper: #faf7f5;
+  --paper-ink: #2b2725;
+}
+
+/* Subset of Material Symbols Outlined, bundled (RN-01). See fonts/README.md. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: block;
+  src: url('./fonts/material-symbols-outlined-subset.woff2') format('woff2');
+}
 * {
   box-sizing: border-box;
 }
@@ -42,8 +107,8 @@ body,
 }
 
 body {
-  background-color: #fff;
-  color: #212529;
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--font-family);
   font-size: 0.875rem;
   font-weight: var(--font-weight-regular);
@@ -69,22 +134,20 @@ p {
   margin: 0;
 }
 
-@media (min-width: 1200px) {
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
+::-webkit-scrollbar {
+  width: 8px;
+}
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 10px;
-  }
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
 
-  ::-webkit-scrollbar-thumb {
-    background: #c6c6c6;
-    border-radius: 10px;
-  }
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 10px;
+}
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: #c6c6c6;
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line);
 }

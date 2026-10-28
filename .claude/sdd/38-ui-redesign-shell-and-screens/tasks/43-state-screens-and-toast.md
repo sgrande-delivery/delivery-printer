@@ -20,6 +20,8 @@ As três telas que o operador vê quando nada está normal — carregando, sem c
 - O endereço no bloco monoespaçado (`:490`) vem do `constants.BASE_URL`, como o `NoConnection` já faz (`NoConnection.tsx:20`) — não do literal `api.sgrande.delivery` do desenho, que é mock.
 - A frase "Você continua conectado à sua conta — não é preciso entrar de novo." (`:489`) é importante e não é decoração: ela existe porque **401 é a única coisa que desloga** (`isSessionRefused` em `providers/auth.tsx` é 401 estrito), e o operador precisa saber que perder a rede não perdeu a sessão.
 - O toast é o `MessagingProvider` que já está montado (`providers/messaging.tsx`, `useMessaging().handleOpen`) — **é o único jeito de falar com o usuário** neste app. Muda a aparência, não a API.
+- **Uma regressão de contraste que esta task fecha, criada de propósito pela task [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39):** o apelido `--color-primary-light` passou a apontar para `--accent-hover` (`#dc4a14`, antes `#f37a55`), e o `.actionText` do snackbar (`Messaging.module.css:41-42`) usa esse token sobre o `#313131` do fundo — o contraste cai de ~4,8:1 para **~3,1:1** em texto de 14 px, abaixo dos 4,5:1 da WCAG AA. O desenho resolve isso sozinho: o botão "Fechar" do toast é `#FF9A73` sobre `#2B2725` (`:521`). **Conferir o contraste do que você entregar**, não só copiar o hex.
+- O mesmo apelido escurece o fundo da tela de login (`Login.module.css:6`), que a task [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) substitui pelo painel de marca.
 - Cobre a **RF-06** e a decisão pendente 3 da spec.
 
 ## Mudanças

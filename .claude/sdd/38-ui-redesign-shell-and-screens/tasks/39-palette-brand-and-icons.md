@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** —
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -56,26 +56,28 @@ E a camada de apelido, **com comentário dizendo que é temporária e de quem é
 
 O `font-weight` do `body` continua lendo `var(--font-weight-regular)`, então o texto do app todo passa de 300 para 400 **nesta task**. É intencional e é a mudança mais visível dela.
 
-### 2. `src/renderer/images/brand/` — a marca no pacote
+### 2. Os ativos já estão no repo — conferir, não buscar
 
-Quatro arquivos, do pacote de marca que o projeto do Claude Design carrega em `uploads/sgrande-assets-nova/logo/`:
+A marca e a fonte **já foram colocadas no repo** antes desta task, porque dependiam de acesso ao projeto do Claude Design e de rede, que o executor da task não tem. Estão documentadas na procedência:
 
-| Arquivo | Onde é usado |
-| --- | --- |
-| `logo-horizontal-negativo.svg` | painel escuro do login (`:439` do desenho) |
-| `simbolo-negativo.svg` | topo da sidebar (`:30`) e telas de estado no tema escuro (`:473`) |
-| `simbolo.svg` | telas de estado no tema claro (`:473` lê `symbolSrc`, que alterna pelo tema) |
-| `logo-horizontal.svg` | nenhum uso hoje; entra porque o par existe e a próxima tela clara que precisar de logo não vai buscar na internet |
+| Arquivo | Tamanho | Onde é exibido |
+| --- | --- | --- |
+| `src/renderer/images/brand/simbolo-negativo.png` | 96×96 | sidebar (30 px) e telas de estado no tema escuro (26 px) |
+| `src/renderer/images/brand/simbolo.png` | 96×96 | telas de estado no tema claro (26 px) |
+| `src/renderer/images/brand/logo-horizontal-negativo.png` | 371×144 | painel de marca do login (190 px) |
+| `src/renderer/fonts/material-symbols-outlined-subset.woff2` | 20 860 bytes | todos os ícones |
 
-**Como obtê-los:** eles estão no projeto do Claude Design, em `uploads/sgrande-assets-nova/logo/`, acessíveis pelo MCP do Claude Design (`get_file`, que devolve base64) ou pelo pacote `sgrande-assets-nova` que o dev já tem. O desenho referencia os `@2x.png`; **preferir os `.svg` do mesmo diretório** — a janela tem escala variável no Windows e o SVG não tem versão errada para escolher.
+Ler os dois README ao lado deles (`images/brand/README.md` e `fonts/README.md`): eles registram a procedência, as medidas e as armadilhas. **Nada a baixar nesta task.**
 
-Importar por `import logo from 'renderer/images/brand/logo-horizontal-negativo.svg'`, que o Vite resolve; **não** montar caminho em string.
+Importar por `import logo from 'renderer/images/brand/logo-horizontal-negativo.png'`, que o Vite resolve; **não** montar caminho em string. Conferir que o `env.d.ts` declara os módulos de imagem e de fonte — se não declarar, o `tsc` reclama do import, e a declaração entra aqui.
 
-### 3. `src/renderer/fonts/` + `src/renderer/base/Icon.tsx` — os ícones
+### 3. `app.css` + `src/renderer/base/Icon.tsx` — os ícones
 
-Baixar a Material Symbols Outlined (variável, `.woff2`) para `src/renderer/fonts/`, declarar o `@font-face` em `app.css` com `font-display: block` (ícone que aparece como texto por meio segundo é pior que ícone que aparece tarde) e as `font-variation-settings` da linha 20 do desenho.
+`@font-face` em `app.css` apontando para o woff2 local, com `font-display: block` (ícone que aparece como palavra por meio segundo é pior que ícone que aparece tarde) e as `font-variation-settings` da linha 20 do desenho.
 
-`src/renderer/base/Icon.tsx` + `.module.css` (novos): recebe `name`, `size` (default 20, como o desenho) e `className`; renderiza `<span className={styles.icon} aria-hidden>{name}</span>`. O `name` é uma **união literal com os 34 símbolos que o desenho usa**, para nome errado virar erro de tipo em vez de quadrado vazio na tela:
+**A armadilha, medida e não adivinhada:** o desenho declara `-webkit-font-feature-settings: 'liga'`, mas esta fonte **não usa `liga`** — as ligaduras vivem num *extension lookup* (GSUB tipo 7) nas features **`rlig`** e **`rclt`**. `rlig` é *required ligature* e o Chromium a aplica **por padrão**, então a linha do desenho funcionaria por acidente e mexer nela acreditando que é ela quem liga os ícones quebraria tudo sem explicação. Declare `font-feature-settings: 'liga' 1, 'rlig' 1` para ser explícito, ou nada.
+
+`src/renderer/base/Icon.tsx` + `.module.css` (novos): recebe `name`, `size` (default 20, como o desenho) e `className`; renderiza `<span className={styles.icon} aria-hidden>{name}</span>`. O `name` é uma **união literal com os 34 símbolos**, para nome errado virar erro de tipo em vez de palavra solta na tela:
 
 ```
 add · arrow_back · cancel · check · check_circle · chevron_right · close · cloud_done ·
@@ -85,11 +87,19 @@ remove · schedule · search · skillet · space_dashboard · stacks · table_re
 task_alt · tune · two_wheeler · visibility · visibility_off · warning
 ```
 
+**A união e o recorte da fonte são a mesma lista.** Acrescentar nome na união sem regerar o woff2 (receita no `fonts/README.md`) dá ícone que não existe na fonte — e o `aria-hidden` garante que o leitor de tela não leia a palavra, mas a tela mostra. Se a task que vier precisar de ícone novo, ela rege o recorte.
+
 O `crop_square` da linha 513 do desenho **não entra**: ali o desenho está desenhando os três botões nativos do Windows, que neste app são o `titleBarOverlay` (RN-04).
 
-Se der para recortar a fonte por `unicode-range` nos símbolos usados, recortar — mas **medir antes e depois**, e reportar o peso no bundle (baseline 518 kB). Peso é critério, não palpite.
+### 4. `vitest.config.ts` — fora do escopo declarado, e por quê
 
-### 4. Nada mais
+Acrescentar `css: { include: [/\.module\.css$/] }` ao `test` do `vitest.config.ts`.
+
+**Medido em 2026-10-28:** sem essa linha o Vitest **não** processa os CSS Modules, e chave digitada errada **não vira `undefined`** — ele devolve um nome hasheado para a classe inexistente (`styles.chaveQueNaoExiste` → `"_chaveQueNaoExiste_1809c2"`). Com isso, o `expectNoUndefinedClasses()` **nunca falha**, e a RN-10 e o critério de aceitação desta própria task seriam asserções vazias. Com a linha, a chave errada vira `undefined`, o DOM recebe `class="undefined …"` e o helper falha.
+
+A suíte foi medida nos dois casos: **213 de 214 passando**, mesma falha pré-existente. A linha entra aqui, e não em task própria, porque as onze tasks seguintes têm esse helper no critério — deixá-lo morto seria escrever onze tasks de teste contra uma rede que não pega nada.
+
+### 5. Nada mais
 
 Não mexer em componente, em layout nem em `RestaurantStatus.tsx`. Se uma cor ficar estranha porque a folha antiga assume fundo branco, **anotar e deixar** — a tela dela tem task própria.
 
@@ -112,10 +122,11 @@ Não mexer em componente, em layout nem em `RestaurantStatus.tsx`. Se uma cor fi
 
 - [ ] Os 26 tokens de cada tema estão no `app.css` com o hex do desenho, conferidos um a um contra `design/printer-v2.dc.html:13-14`
 - [ ] `document.documentElement.dataset.theme = 'dark'` no console do DevTools troca a paleta inteira (ainda sem ninguém que o faça por conta própria — é a task #40)
-- [ ] Os quatro ativos de marca estão no repo e são importados pelo Vite, não por URL
-- [ ] A fonte de ícones é local, e os 34 símbolos renderizam sem internet
+- [ ] Os três ativos de marca são importados pelo Vite, não por URL, e o `env.d.ts` declara os módulos
+- [ ] A fonte de ícones é local, e os 34 símbolos renderizam sem internet (olhar humano: ícone ausente aparece como a palavra, ou como nada)
 - [ ] Nome de ícone fora da união não compila
-- [ ] Peso do bundle reportado
+- [ ] Peso do bundle reportado, comparado com uma worktree limpa no `HEAD` (não com os 518 kB do `CLAUDE.md`, que são de antes das specs 11, 15 e 19)
+- [ ] `expectNoUndefinedClasses()` **falha** quando a chave está errada — verificado por mutação, não por leitura
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` sem erro novo
 
 ## Fora de escopo
@@ -124,6 +135,45 @@ Não mexer em componente, em layout nem em `RestaurantStatus.tsx`. Se uma cor fi
 - Ligar o tema a algo (task [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40))
 - Tirar o `react-icons` do `RestaurantStatus` ou do `package.json` — task [#50](https://github.com/sgrande-delivery/delivery-printer/issues/50), se não sobrar uso
 - Qualquer mudança de layout
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Arquivos
+
+Novos: `src/renderer/base/Icon.tsx` + `Icon.module.css` (+ teste), `src/renderer/fonts/material-symbols-outlined-subset.woff2` + `README.md`, `src/renderer/images/brand/` com três PNG + `README.md`.
+Alterados: `src/renderer/app.css` (tokens das duas paletas, pesos, apelidos, `@font-face`, barra de rolagem), `vitest.config.ts` (a linha do `css`, seção 4 acima).
+
+### A rede de teste desta base estava morta, e foi por aqui que apareceu
+
+Verificando por mutação (`styles.icon` → `styles.ikon`), **só 1 dos 3 testes caiu**, e não foi o do `expectNoUndefinedClasses()`. Investigando: sem `css` ligado, o Vitest devolve um nome **hasheado para a classe inexistente**, nunca `undefined`, então o helper não tinha como falhar — e `cx()` descarta falsy, o que transforma chave errada em **classe ausente**, não em `class="undefined"`. Os dois caminhos passavam pela rede.
+
+Duas consequências entraram no `plan.md`: a linha do Vitest (que ressuscita o helper, medida com a suíte antes e depois) e a regra de que teste de componente com `cx()` tem de **afirmar que a classe esperada está lá**, porque o helper sozinho não cobre esse caminho.
+
+### Decisões
+
+- **Nada no `env.d.ts`:** `*.png` já estava declarado e `*.woff2` vem do `vite/client` (o review provou com arquivo-sonda: o import em TSX das tasks 03 e 04 compila hoje, typecheck 0)
+- **`style={{ fontSize: size }}`** para o tamanho: valor de prop resolvido em runtime, que é o caso que a regra permite. Enumerar uma classe por tamanho seria infidelidade por construção, porque o desenho usa dezenas de tamanhos
+- **`.root` em vez de `.icon`** para a classe base, como os outros seis primitivos de `base/`; o teste afirma contra `styles.root`, não contra a substring `'icon'`, que um `className` externo como `iconButton` satisfaria
+- **`@font-face` com `font-weight: 300 500`**, o intervalo do eixo variável que o recorte pediu, em vez de `400` fixo
+- **Sem `unicode-range`:** o recorte está no arquivo. Restringir o range ao PUA faria as letras latinas do texto da ligadura não usarem a fonte, e **todo ícone sairia escrito**
+
+### Testes
+
+4 no `Icon`: nome como conteúdo com `aria-hidden` e a classe base; tamanho default e aplicado; `className` externo preservado mais o helper; e a **paridade entre a união de nomes e a lista `icon_names` do `fonts/README.md`**, que é a rede contra as duas listas divergirem.
+
+Mutações verificadas: classe errada → 1 falha; nome acrescentado à união sem regerar o recorte → 1 falha.
+
+### Verificação
+
+typecheck **0** · lint **0 erros e 1 aviso** (o da base, `Login.tsx:23`) · `npm test` **35 arquivos, 215 testes, 214 passando**, com a única falha sendo a pré-existente do `ui.test.tsx` (regex de versão contra `2.7.0-dev.1`).
+
+**Bundle, medido em worktree limpa no `HEAD` contra a task:** JS do renderer **557,59 kB nos dois** — a task não acrescenta JS nenhum; CSS **17,72 → 19,11 kB** (+1,39); mais o woff2 de **20,86 kB** emitido como asset separado, com o CSS referenciando-o por caminho **relativo** (`url('./material-symbols-outlined-subset-….woff2')`), o que resolve sob `file://` no app empacotado — é isso que fecha a RN-01 em produção, não só em dev. Os ~40 kB a mais que os 518 kB do `CLAUDE.md` são crescimento das specs 11, 15 e 19.
+
+### O que não foi verificado
+
+As duas conferências humanas que a task pede: `npm run dev` nas quatro telas de hoje (a paleta mudou, o layout não) e o app com a máquina **sem rede**, com a aba Network em zero requisição externa. A cobertura glifo-a-glifo das 34 ligaduras dentro do woff2 também não foi verificada por ferramenta (não há `fontTools` nesta máquina); a evidência é o `fonts/README.md` e o olhar humano.
 
 ## Branch
 
