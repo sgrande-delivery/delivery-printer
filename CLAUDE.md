@@ -37,6 +37,25 @@ O renderer **não tem `nodeIntegration`**. Toda capacidade de sistema que a UI p
 
 **Antes de citar caminho ou linha de outro repo, confirme o remoto:** `git -C <diretório> remote get-url origin`. E **nunca presuma `master` como branch de integração de outro repo** — vários estão em branch de frente, e medir contra o default responde que o código não existe.
 
+## A v1 e a v2 da plataforma — e por que não existe versão v2 deste app
+
+A `delivery-api`, o `delivery-admin` e o `delivery-client` estão num corte para a **v2**, e **a v1 não acaba nele**: as duas versões atendem produção em paralelo enquanto os restaurantes migram, um a um, sem data para o fim da v1. A API publica as rotas v2 no mesmo deploy da v1, com chave por restaurante (`uses_v2_orders`) decidindo qual caminho serve cada loja; o painel e o app do cliente ficam com **dois apps no ar**, um da `master` (v1) e um da branch v2.
+
+**Este app atende as duas versões sem build próprio, e não é para criar um.** Medido em 2026-10-19 contra a `feature/product-engineering-rebased` da `delivery-api`:
+
+- **As quatro rotas que este app consome não são versionadas** e respondem para pedido de qualquer versão, porque operam sobre as mesmas tabelas: `GET /orders/{uuid}/print-created`, `GET /orders/{uuid}/print-dispatched`, `PATCH /orders/{uuid}/printed` (`app/Modules/Order/routes/admin-routes.php:35-38`) e `GET /orders/print/list` (`:55`, SQL cru sobre `orders` + `order_status` + `order_printed`).
+- **O id público de um pedido v2 é a coluna `orders.uuid`** — o mesmo `uuid` que este app recebe no socket e usa na URL (`core/Order/V2/Infra/DB/Eloquent/OrderRepository.php:168`, `where('uuid', ...)`). Não há dois espaços de identidade.
+- **A v2 foi adaptada a este contrato, não o contrário.** A spec [delivery-api#1220](https://github.com/sgrande-delivery/delivery-api/issues/1220) (entregue em 2026-10-15) fez o despacho v2 emitir `uuid`, `sequence` e `restaurant_uuid` nos mesmos eventos (`printOrder`, `printShipment`) e na mesma sala, e registrou no plan: *"`delivery-printer` — nada a fazer"*, conferido na versão `2.7.0-dev.1` com a fila durável.
+- **O status `'o'` é o mesmo nas duas** (`OrderStatusV2Enum::OPEN = 'o'`), então a varredura de reconexão (`GET /orders/print/list`) também acha pedido v2.
+
+**O que está incompleto é o HTML, e o conserto é na `delivery-api`.** O payload de um pedido v2 é renderizado pelo pipeline v1 (`LegacyPrintBridge` → `PrintCreatedOrderUseCase` → `resources/views/socket/order/`), cujas views leem `additional`, `ingredients` e `complement_categories` — relações **legadas** que o repositório v2 nunca grava: ele persiste só `order_product_usages` (`core/Order/V2/Infra/DB/Eloquent/OrderRepository.php:479`). Resultado: **comprovante de pedido v2 sai com nome, quantidade, preço e anotação, e sem complementos, adicionais e ingredientes.** O diagnóstico já está escrito lá, na task `API-155` (issue [delivery-api#365](https://github.com/sgrande-delivery/delivery-api/issues/365), severidade alta), que **nunca foi executada** e está no fluxo `.claude/tasks/` aposentado — precisa renascer como spec SDD na `delivery-api`.
+
+Três consequências para quem trabalha aqui:
+
+- **Comprovante v2 saindo sem complemento não é bug deste repo.** Não "consertar" aqui montando layout, lendo `usages` ou pedindo outra rota: a impressão não é renderizada neste app (ver "O que é este projeto"), e a correção é no renderizador da `delivery-api`.
+- **Não criar versão, branch, build ou flag v2 deste app**, e não perguntar se é para criar: a resposta é não. O contrato deste app — identidade pelo socket, HTML por HTTP, impressão crua — é agnóstico de versão por desenho, e é o que o mantém assim.
+- **O campo `removed_ingredients_line`**, que a rota v2 `GET /orders/v2/{publicId}/print-payload` acrescenta, é descartado aqui: o `ReceiptResponse` lê `content`, `copies` e `device_name` (`src/renderer/services/printQueue.ts:5`). Passar a renderizá-lo é decisão de produto com task própria, não limpeza.
+
 ## Stack
 
 | Camada | Tecnologia |
@@ -156,6 +175,15 @@ Onde escrever o quê:
 
 **Tasks legadas:** `.claude/tasks/PRINTER-XXX-<slug>.md`, com frontmatter YAML (`id`, `status`, `issues`), são anteriores ao fluxo SDD e **ficam onde estão**. `/execute PRINTER-XXX` e `/ship PRINTER-XXX` continuam resolvendo lá, com uma branch por task (`task/<id>-<slug>`). A `PRINTER-001` vive hoje na branch `origin/docs/add-printer-001-task`, não em `master`.
 
+### Contrato cross-repo não bloqueia implementação
+
+Feature que atravessa repos tem **spec nos dois lados**, e cada uma carrega o contrato: a daqui diz o que este app escuta e qual rota consome; a da `delivery-api` (ou do `delivery-socket-api`) diz o que publica. Esse par **é** o contrato — não há etapa de aprovação depois dele, e não há nada a esperar.
+
+- **Implementar contra o contrato da spec, sem esperar a outra ponta entregar.** Task daqui não fica bloqueada porque a rota nova ainda não subiu, nem porque o evento ainda não é emitido.
+- **Não parar para perguntar se pode seguir.** Quem escreveu a spec já decidiu o que é para fazer; perguntar o que a task já responde é retrabalho para o dev, não cuidado.
+- **O aviso vai no relatório:** que a feature só funciona ponta a ponta quando a outra ponta subir, e a ordem de deploy quando ela importa — aqui ela quase sempre importa, porque a atualização chega quando o operador fecha o app pela bandeja (ver "Condições de release").
+- **Motivo real para parar:** as duas specs divergirem no contrato (nome de evento, chave do payload, forma da resposta). Aí o contrato não existe de fato, e quem decide qual lado muda é o dev. Ausência de implementação do outro lado **não** é divergência.
+
 ### Base e branch da execução
 
 **Uma branch por spec:** `feat/<issue>-<slug>`, com o mesmo nome da pasta SDD. Todas as tasks da spec rodam nela, em sequência, com um commit local por task. Push e PR (um por spec) são do `/ship`/`/ship-pr`. Mudança pontual fora de spec usa `chore/…`, `fix/…` ou `docs/…`.
@@ -188,6 +216,7 @@ Diferente dos outros repos da casa, **`npm run lint` aqui não tem `--fix`**: el
 - **Não rodar build de produção contra a API real** para testar: o `printer_ping` registra a sua máquina como impressora do restaurante em produção. Teste em dev
 - **Não colocar segredo em `.env.development`/`.env.production`** — eles são versionados, e os valores são inlinados no bundle, que vai dentro do instalador (extraível com `npx asar`). Configuração por instalação é leitura em runtime e mora em arquivo sob `app.getPath('userData')`
 - **Não renderizar layout de impressão em React** — o HTML vem da `delivery-api`; `printing-layouts/` foi removido por estar morto
+- **Não criar versão, branch, build ou flag v2 deste app**, e não propor caminho alternativo por versão de pedido: o contrato deste app é agnóstico de versão, e comprovante v2 incompleto se conserta no renderizador da `delivery-api`. Ver "A v1 e a v2 da plataforma"
 - **Não adicionar canal no preload sem o `ipcMain.handle` correspondente** (e vice-versa): a promessa rejeita calada
 - **Não reintroduzir biblioteca de UI, CSS-in-JS nem lib de estado** sem a task pedir — a remoção de MUI e Redux é deliberada, e foi ela que levou o bundle de 924 kB para 518 kB
 - **Não voltar a copiar scaffold de build para dentro do repo.** Ferramenta é dependência versionada; se precisar de comportamento próprio, ele mora no `electron.vite.config.ts`, legível por inteiro
