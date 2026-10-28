@@ -112,3 +112,24 @@
 .large.outlined {
   font-weight: var(--font-weight-regular);
 }
+
+/* size="hero": the 48 px call to action of the dashboard (printer-v2.dc.html:164). */
+.hero {
+  height: 48px;
+  padding: 0 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.hero.containedPrimary {
+  background-color: var(--accent);
+}
+
+.hero.containedPrimary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}

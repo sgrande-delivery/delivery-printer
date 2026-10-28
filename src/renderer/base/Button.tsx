@@ -4,7 +4,7 @@ import styles from './Button.module.css';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'contained' | 'outlined' | 'text';
-  size?: 'medium' | 'small' | 'large' | 'action';
+  size?: 'medium' | 'small' | 'large' | 'action' | 'hero';
   fullWidth?: boolean;
   children?: ReactNode;
 }
@@ -28,6 +28,7 @@ const Button: React.FC<ButtonProps> = ({
       size === 'small' && styles.small,
       size === 'large' && styles.large,
       size === 'action' && styles.action,
+      size === 'hero' && styles.hero,
       fullWidth && styles.fullWidth,
       className
     )}

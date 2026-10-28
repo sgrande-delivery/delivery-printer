@@ -26,7 +26,7 @@ describe('usePrintQueue', () => {
       .mockReturnValue(() => undefined);
   });
 
-  it('reflects the state from the channel, splitting pending from failed and ignoring printed', async () => {
+  it('reflects the state from the channel, splitting pending, failed and printed', async () => {
     vi.mocked(window.electron.queueState).mockResolvedValue([
       job({ id: 'a' }),
       job({ id: 'b', status: 'failed' }),
@@ -37,6 +37,7 @@ describe('usePrintQueue', () => {
 
     await waitFor(() => expect(result.current.pending.map(j => j.id)).toEqual(['a']));
     expect(result.current.failed.map(j => j.id)).toEqual(['b']);
+    expect(result.current.printed.map(j => j.id)).toEqual(['c']);
   });
 
   it('asks again when the main process announces that the queue changed', async () => {

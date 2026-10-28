@@ -1,0 +1,86 @@
+/* The pill of the design: header status (printer-v2.dc.html:70), back chip (:450), printer chip (:176). */
+.root {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+  white-space: nowrap;
+}
+
+.small {
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+}
+
+.medium {
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px 0 6px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+.large {
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  font-size: 13px;
+}
+
+.neutral {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* The back chip reads as secondary text, not as a label. */
+.neutral.medium {
+  color: var(--text-2);
+}
+
+.ok {
+  border: 0;
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.err {
+  border: 0;
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+.clickable {
+  cursor: pointer;
+  /* A chip inside the drag region of the header or the login stays clickable. */
+  -webkit-app-region: no-drag;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.small .dot {
+  width: 7px;
+  height: 7px;
+}
+
+.dotOk {
+  background: var(--ok-dot);
+}
+
+.dotErr {
+  background: var(--err-dot);
+}
+
+.dotMuted {
+  background: var(--muted);
+}

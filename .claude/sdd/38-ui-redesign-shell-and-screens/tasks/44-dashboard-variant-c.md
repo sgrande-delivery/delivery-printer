@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 03
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -98,6 +98,54 @@ A aba de destino passa por `state` do `navigate`, e a task [#45](https://github.
 - As variações A e B do Painel
 - Status ao vivo da impressora pelo socket — task [#25](https://github.com/sgrande-delivery/delivery-printer/issues/25), presa em `delivery-socket-api#50`
 - Gráfico, série temporal, comparação com ontem: a fila não guarda isso (RN-08)
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Arquivos
+
+Novos: `components/dashboard/Dashboard.tsx` + `.module.css`, `hooks/useDashboardHealth.ts`, `helpers/receiptKind.ts`, `base/Chip.tsx` + `.module.css`, mais três arquivos de teste.
+Alterados: `base/Button.*` (`size="hero"`, 48 px), `hooks/usePrintQueue.ts` (passa a devolver `printed`), `screens/MainScreen.tsx`, `layout/AppShell.*` e `login/PasswordStep.*` (os dois chips existentes passam a usar o primitivo).
+**Removidos**, cada um conferido por `grep` antes: `components/status/` (3 arquivos), `components/main/Main.tsx`, `components/restaurant-status/` (2 arquivos).
+
+### A suíte ficou zerada, e por motivo medido
+
+O baseline carregava 1 falha desde o começo da spec: `ui.test.tsx > Status > renders the version with the real architecture`, cujo `expect` era **insatisfazível** — o regex `/^v\d+\.\d+\.\d+ - /` não casa com `v2.7.0-dev.1 - x64`, por causa do sufixo de pré-release. O sujeito do teste saiu nesta task, e o sucessor em `AppShell.test.tsx` é **mais** estrito e passa (`/^v\d+\.\d+\.\d+.* · x64$/`).
+
+O review conferiu as 118 linhas do `Status.test.tsx` deletado item por item: `revealLogs`, navegação, falha visível com pedido e causa, fila vazia sem alerta e pendente como informação **todos** vivem em outro arquivo agora. A única afirmação não re-alojada é o clique de retry pela UI, que é da task 07 e segue coberta no nível do hook e do worker.
+
+### O primitivo `Chip` foi extraído aqui
+
+Era o que o aprendizado da task 04 mandava: o chip de conexão do shell e o de voltar do login já eram duas pílulas sem abstração, e esta task trazia a terceira. API: `tone`, `size`, `dot` e `onClick` (que o transforma de `<span>` em `<button>` com `no-drag`). Os dois existentes foram retroajustados, e o review conferiu que saem **pixel-equivalentes**.
+
+Duas escolhas dele a task 07 vai desfazer, e já estão escritas lá: o `.medium` embute padding assimétrico (do chip de voltar) e `.neutral.medium` acopla cor a tamanho.
+
+### O que o review pegou, e que eu corrigi antes do commit
+
+Nenhum bloqueador. Dois nits aplicados: o **único ternário aninhado do renderer** (o hook passou a devolver `dot: 'ok' | 'err' | 'muted'` em vez de `found: boolean | null`, o que apagou o ternário e ficou mais honesto sobre o que o dado é) e **quatro citações de linha do desenho erradas** — nesta spec a citação é o que o próximo review abre para conferir fidelidade, então citação errada é defeito.
+
+E um achado que é falha do meu processo, não desta task: o commit da task 05 subiu com **1 erro de lint**, porque eu conferia o lint com `tail` e a linha do resumo ficava cortada. O CI roda `npm run lint`, então o PR iria vermelho. Corrigido aqui de passagem (é a saída literal do prettier num arquivo de teste) e o método está no plan.
+
+### Testes
+
+16 novos. **Zero sobreviventes** em três varreduras independentes: 27 chaves de CSS Module, e **dez mutações de comportamento** no `useDashboardHealth` — precedência, recorte de data, plural, guarda de `devicesRead` (duas), escolha do último comprovante, setor cru, capitalização, `startOfDay` e concordância.
+
+A mutação que o implementador declarou duvidosa ("derrubou 14 testes") era **mutação quebrada**, não rede frouxa: o review reproduziu e o `tsc` acusa `TS2454` (variável usada antes de ser atribuída).
+
+Minhas duas mutações: inverter a precedência derruba o teste de "falha vence não-encontrada quando as duas acontecem"; trocar meia-noite por 24 h derruba 2.
+
+### Verificação
+
+typecheck **0** · lint **0 erros e 1 aviso** (o da base) · `npm test` **46 arquivos, 306 testes, 0 falhas** · `npm run build` passa, e é a única etapa que pega a armadilha de `@keyframes` em CSS Module que a task 05 mediu.
+
+**Bundle negativo:** JS do renderer **595,71 → 592,06 kB (−3,65)**, módulos **235 → 227**. O Painel, o `Chip` e o hook custam menos que o que saiu. `react-icons` ficou com **zero** usos no código.
+
+### O que não foi verificado, e uma perda a declarar
+
+A comparação lado a lado em `npm run dev` nos dois temas, e provocar os três estados de verdade (impressora desligada até falhar, cadastro renomeado, tudo normal) mais o estado "sem impressão hoje" de um PDV recém-aberto.
+
+**Declarado, não esquecido:** o logo e o nome do restaurante **deixaram de aparecer** no app — a variação C não os tem (só a B, que está fora de escopo). É fidelidade ao desenho escolhido, e é informação que o operador tinha.
 
 ## Branch
 

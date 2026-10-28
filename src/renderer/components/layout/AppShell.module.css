@@ -35,42 +35,6 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.chipOnline,
-.chipOffline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 13px;
-  font-size: 12px;
-  font-weight: var(--font-weight-medium);
-}
-
-.chipOnline {
-  background: var(--ok-soft);
-  color: var(--ok);
-}
-
-.chipOffline {
-  background: var(--err-soft);
-  color: var(--err);
-}
-
-.chipDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.chipOnline .chipDot {
-  background: var(--ok-dot);
-}
-
-.chipOffline .chipDot {
-  background: var(--err-dot);
-}
-
 /* position: relative is the containing block of the absolute elements the screens still carry. */
 .content {
   position: relative;

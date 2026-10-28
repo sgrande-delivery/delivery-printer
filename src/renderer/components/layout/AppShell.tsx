@@ -4,6 +4,7 @@ import { useAdminSocketEvents } from 'renderer/hooks/useAdminSocketEvents';
 import { useAdminSocket } from 'renderer/hooks/useAdminSocket';
 import { usePrintingOrder } from 'renderer/hooks/usePrintingOrder';
 import { usePrintingBoard } from 'renderer/hooks/usePrintingBoard';
+import Chip from 'renderer/base/Chip';
 import Sidebar from './Sidebar';
 import { titleFor } from './navigation';
 import { ShellConnectionContext } from './shellConnection';
@@ -30,10 +31,9 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <main className={styles.main}>
           <header className={styles.header}>
             <h1 className={styles.title}>{titleFor(pathname)}</h1>
-            <span className={isConnected ? styles.chipOnline : styles.chipOffline}>
-              <span className={styles.chipDot} />
+            <Chip size="small" tone={isConnected ? 'ok' : 'err'} dot={isConnected ? 'ok' : 'err'}>
               {isConnected ? 'Online' : 'Sem conexão'}
-            </span>
+            </Chip>
           </header>
           <div id="app-content" className={styles.content}>
             {children}

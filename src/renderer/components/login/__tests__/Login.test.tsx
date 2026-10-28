@@ -8,6 +8,7 @@ import Login from '../Login';
 import brandStyles from '../BrandPanel.module.css';
 import headerStyles from '../StepHeader.module.css';
 import loginStyles from '../Login.module.css';
+import chipStyles from 'renderer/base/Chip.module.css';
 import passwordStyles from '../PasswordStep.module.css';
 import usernameStyles from '../UsernameStep.module.css';
 import iconStyles from 'renderer/base/Icon.module.css';
@@ -179,7 +180,11 @@ describe('Login', () => {
     const { container } = renderLogin();
     await goToPassword();
 
-    expect(screen.getByRole('button', { name: 'maria@example.com' })).toHaveClass(passwordStyles.back);
+    expect(screen.getByRole('button', { name: 'maria@example.com' })).toHaveClass(
+      passwordStyles.back,
+      chipStyles.root,
+      chipStyles.medium
+    );
     expect(screen.getByRole('button', { name: 'Mostrar senha' })).toHaveClass(
       iconButtonStyles.root,
       iconButtonStyles.small

@@ -1,0 +1,106 @@
+/* printer-v2.dc.html:156-181, variant C. The shell gives the title, the padding and the drag region. */
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding-top: 12px;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+}
+
+.badgeOk {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.badgeWarn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.badgeErr {
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: var(--font-weight-semibold);
+  text-wrap: balance;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: var(--text-2);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  max-width: 640px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* The design puts the border on every cell, the last one included; here the last has none. */
+.cell {
+  padding: 18px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-family);
+  text-align: center;
+  cursor: pointer;
+}
+
+.cell:last-child {
+  border-right: 0;
+}
+
+.cell:hover {
+  background: var(--surface-2);
+}
+
+.value {
+  display: block;
+  font-size: 40px;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.valueDanger {
+  color: var(--err);
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}

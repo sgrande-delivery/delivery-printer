@@ -40,7 +40,11 @@ Enquanto estiver nessa varredura, caçar o que a migração deixou para trás:
 - **`InsideSaving` NÃO é órfão:** ele tem um importador, `Login.tsx:82`, e vai continuar tendo. O que ele precisa é de cor por token: o véu é `rgba(250,250,250,.5)` fixo, e desde a task 04 ele cobre **a coluna direita inteira** do login (~624×728) em vez do cartão de 400 px que deixou de existir — o ancestral posicionado mudou. No tema escuro isso é um véu claro grande
 - **CSS que ficou morto por causa da spec**, confirmado por mutação no review da task 04: a variante `floating` do `TextField` (os dois passos do login eram os únicos consumidores e viraram `boxed`) e o `IconButton` `color="primary"` (`.colorPrimary`, cujo último consumidor era o ícone de voltar antigo). Decidir aqui se a `floating` morre ou fica documentada — ela tem teste honesto, então ficar não custa mentira
 
-### 2. Reescrever `.claude/rules/renderer-ui.md`
+### 2. Racionalizar a escala de tamanho do `Button`
+
+Ela virou um nome por tela: `medium`, `small`, `large` (46), `action` (42), `hero` (48), e as tasks 09 a 11 acrescentam mais. A recomendação medida está nos "Aprendizados" do plan, em duas partes — classe-base compartilhada, e união **fechada** de alturas com a tabela dentro do primitivo, no precedente do `Icon`. Fazer as duas; só a segunda deixa a duplicação de `containedPrimary`/`hover` de pé.
+
+### 3. Reescrever `.claude/rules/renderer-ui.md`
 
 Mesma estrutura e mesmo tom, conteúdo novo:
 

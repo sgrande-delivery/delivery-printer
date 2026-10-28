@@ -51,9 +51,11 @@ Depois de remover, anunciar `queue:changed`, como as outras transições fazem.
 
 Acrescentar `discard(id)` ao que o hook devolve, no molde do `retry` que já está lá (`usePrintQueue.ts:44-61`): chama o canal, registra erro pelo `log`, e **chama `refresh()` mesmo quando nada mudou** — pelo mesmo motivo comentado no `retry`, que o main só anuncia quando houve mudança.
 
-### 4. `src/renderer/components/print-queue/jobKind.ts` (novo) — o tipo do comprovante
+### 4. `src/renderer/helpers/receiptKind.ts` — acrescentar o ícone ao mapa que já existe
 
-Mapa de `PrintJobKind` para rótulo e ícone, do desenho (`:522-527`), num só lugar porque a Fila e o Histórico o usam:
+**Não crie `components/print-queue/jobKind.ts`:** a task 06 já pôs o mapa de rótulos em `src/renderer/helpers/receiptKind.ts`, e é lá que ele fica — são **três** telas consumindo (Painel, Fila, Histórico), e em `components/print-queue/` ele seria importado de dentro de outras duas features. O `helpers/` já é a casa do vocabulário de impressão compartilhado (`printFailure.ts`).
+
+O que fazer: unificar em `RECEIPT_KINDS: Record<PrintJobKind, { label: string; icon: IconName }>` e atualizar o consumidor de hoje (`useDashboardHealth.ts`). Os quatro ícones do desenho (`skillet`, `two_wheeler`, `table_restaurant`, `receipt`) **já estão** na união `IconName` e no recorte da fonte — nada a regerar. O mapa, do desenho (`:522-527`):
 
 | `PrintJobKind` | Rótulo | Ícone |
 | --- | --- | --- |
@@ -68,14 +70,16 @@ O `test` **não está no desenho** — o mock não tem trabalho de teste, mas a 
 ### 5. `src/renderer/components/print-queue/PrintQueue.tsx` + `.module.css` (novos)
 
 - **Aviso de falha** (`:185-190`), só quando há falhado: `--err-soft`/`--err`, com o texto do desenho — "**N comprovantes não saíram** — não vai sair sozinho. Corrija a causa e tente de novo." (plural correto, ao contrário do mock)
-- **Abas** (`:192-196`): segmentado em `--surface-2`, raio 8, `padding: 3px`; aba ativa com fundo `--surface` e `box-shadow: 0 1px 2px rgba(0,0,0,.12)`. Rótulos "Pendentes · N" e "Falhados · N". A aba inicial vem do `state` do `navigate` (`{ tab: 'pending' | 'failed' }`, combinado com a task [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44)); sem `state`, é Falhados quando há falha e Pendentes quando não — como `:649` faz
+- **Abas** (`:192-196`): segmentado em `--surface-2`, raio 8, `padding: 3px`; aba ativa com fundo `--surface` e `box-shadow: 0 1px 2px rgba(0,0,0,.12)`. Rótulos "Pendentes · N" e "Falhados · N". A aba inicial vem do `state` do `navigate` (`{ tab: 'pending' | 'failed' }`, que a task 06 já emite e cujo teste já prova). **O tipo `QueueTab` mora hoje dentro de `components/dashboard/Dashboard.tsx`** — mova-o para `components/print-queue/` ou `renderer/types/` nesta task, porque importar tipo de dentro do componente de outra feature é acoplamento que não se justifica; sem `state`, é Falhados quando há falha e Pendentes quando não — como `:649` faz
 - **Dica** (`:195`): a frase com o 5 e as 24 h, derivada das constantes
 - **Tabela** (`:197-219`): a grade do desenho, `minmax(0,1.2fr) minmax(0,1fr) 70px minmax(0,1.4fr) 180px`, cabeçalho em `--surface-2`. Por linha: ícone do tipo, pedido em 600 com "tipo · hora" abaixo, impressora com reticências, tentativas em `tabular-nums` ("3/5"), situação com ícone e cor, e as ações
 - **Situação**, como `:651`: falhado → `error` em `--err` com a causa (`lastError`); pendente imprimindo → `print`; pendente esperando → `schedule` com "Nova tentativa em N s"
 - **Ações** (`:208-216`), só em falhado: "Descartar" (texto, `--text-2`) e "Tentar de novo" (`--accent`). Depois de agir, a mensagem vai pelo `useMessaging()`, como o desenho faz com o toast
 - **Vazio** (`:217`): `padding: 48px`, centro, `check_circle` de 32 px em `--ok`, e o texto por aba — "Nenhuma impressão falhou." / "Nada esperando para imprimir."
 
-A lista de falhados de hoje (`components/print-queue/FailedJobList.tsx` e `FailedJobItem.tsx`, usadas pelo `Status.tsx`) é absorvida por esta tela. Remover as duas se nada mais as usar, **movendo o que os testes delas afirmam** para os desta.
+**`FailedJobList.tsx` e `FailedJobItem.tsx` estão órfãos desde a task 06** (o único importador era o `Status.tsx`, que saiu) e **nunca tiveram teste próprio** — `components/print-queue/` não tem `__tests__/`. Então não há teste a mover: ou você os reaproveita nesta tela, ou **apaga os dois aqui**. Deixá-los órfãos depois desta task é dívida que a 12 vai ter de limpar sem contexto.
+
+**O `Chip` precisa de dois ajustes antes de servir aos filtros** (medidos no review da task 06): o `.medium` embute padding assimétrico `0 10px 0 6px`, que é do chip de voltar, e os filtros querem `0 12px` simétrico; e `.neutral.medium` acopla `color: var(--text-2)` ao tamanho, quando o filtro quer `--text`. Conserte **no primitivo** (um `tone="muted"` resolve o segundo), não com classe na tela.
 
 ### 6. `screens/PrintQueueScreen.tsx`
 

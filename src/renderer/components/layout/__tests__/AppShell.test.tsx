@@ -6,6 +6,7 @@ import { shell } from './shellMocks';
 import AppShell from '../AppShell';
 import StateLayout from '../StateLayout';
 import Sidebar from '../Sidebar';
+import chipStyles from 'renderer/base/Chip.module.css';
 import appShellStyles from '../AppShell.module.css';
 import sidebarStyles from '../Sidebar.module.css';
 import stateStyles from '../StateLayout.module.css';
@@ -148,7 +149,7 @@ describe('AppShell', () => {
   it('says Online when connected and Sem conexão when not, in the header and in the sidebar', () => {
     const { unmount } = renderShell();
 
-    expect(screen.getByText('Online')).toHaveClass(appShellStyles.chipOnline);
+    expect(screen.getByText('Online')).toHaveClass(chipStyles.ok);
     expect(screen.getByText('Conectado ao servidor')).toBeInTheDocument();
     unmount();
 
@@ -157,7 +158,7 @@ describe('AppShell', () => {
 
     expect(screen.getAllByText('Sem conexão')).toHaveLength(2);
     expect(screen.queryByText('Online')).not.toBeInTheDocument();
-    expect(document.querySelector(`.${appShellStyles.chipOffline}`)).not.toBeNull();
+    expect(screen.getAllByText('Sem conexão').some(el => el.classList.contains(chipStyles.err))).toBe(true);
   });
 
   it('shows the store state', () => {
@@ -226,7 +227,7 @@ describe('AppShell', () => {
     expect(container.firstElementChild).toHaveClass(appShellStyles.root);
     expect(container.querySelector('main')).toHaveClass(appShellStyles.main);
     expect(screen.getByRole('heading', { level: 1 })).toHaveClass(appShellStyles.title);
-    expect(screen.getByText('Online').firstElementChild).toHaveClass(appShellStyles.chipDot);
+    expect(screen.getByText('Online').firstElementChild).toHaveClass(chipStyles.dot);
 
     expect(container.querySelector('aside')).toHaveClass(sidebarStyles.root);
     expect(container.querySelector('nav')).toHaveClass(sidebarStyles.nav);

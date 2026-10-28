@@ -2,6 +2,7 @@ import React, { ChangeEvent } from 'react';
 import TextField from 'renderer/base/TextField';
 import IconButton from 'renderer/base/IconButton';
 import Icon from 'renderer/base/Icon';
+import Chip from 'renderer/base/Chip';
 import StepHeader from './StepHeader';
 import styles from './PasswordStep.module.css';
 
@@ -30,10 +31,10 @@ const PasswordStep: React.FC<PasswordStepProps> = ({
 
   return (
     <>
-      <button type="button" className={styles.back} onClick={handleStepBack}>
+      <Chip size="medium" className={styles.back} onClick={handleStepBack}>
         <Icon name="arrow_back" size={18} />
         {login.email}
-      </button>
+      </Chip>
       {/* Neutral on purpose (RN-12): the app knows the name, not who the person is. */}
       <StepHeader
         label="Passo 2 de 2"

@@ -57,7 +57,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | executada |
 | 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | executada |
 | 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | executada |
-| 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | pendente |
+| 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | executada |
 | 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | pendente |
 | 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | pendente |
 | 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | pendente |
@@ -170,6 +170,61 @@ Para as nove tasks que criam tela:
 O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### Conferir lint com `tail` esconde o resumo — e um commit desta spec subiu vermelho (task 06)
+
+**Falha do meu processo, medida depois:** o commit da task 05 (`ca3ae02`) subiu com **1 erro de lint** (`prettier/prettier`, linha de 124 colunas num arquivo de teste). Eu verifiquei com `npm run lint | tail -1`, que cortou a linha `✖ 2 problems (1 error, 1 warning)` e me devolveu vazio — li "vazio" como "limpo". O `.github/workflows/ci.yml` roda `npm run lint`, então **o PR da spec iria vermelho** até a task 06 consertar de passagem.
+
+**O método correto:** ler a linha de resumo e a contagem de erros, nunca o `tail`:
+
+```bash
+npm run lint 2>&1 | grep -E "problems?|error" | tail -2
+```
+
+O baseline honesto desta spec passa a ser: **0 erros e 1 aviso** (`react-hooks/set-state-in-effect` em `Login.tsx:22`). Erro de lint **quebra o CI**; aviso não.
+
+### Função pura + hook de duas linhas é o padrão a repetir (task 06)
+
+`buildDashboard()` é exportada como função pura e o `useDashboardHealth` é só a casca que liga `usePrintQueue` e `usePrinters` a ela. Foi isso que permitiu **dez mutações de comportamento** testadas sem timer, sem `renderHook` e sem mock de React — precedência, recorte de data, plural, guarda de `devicesRead`, escolha do último comprovante, capitalização. O review confirmou zero sobreviventes.
+
+**Repita nas tasks 07 a 11:** a lógica que decide texto, cor e destino sai do componente e vira função pura testável; o hook só injeta os dados.
+
+### A escala de tamanho do `Button` não escala, e a recomendação é concreta (task 06)
+
+São cinco valores (`medium`, `small`, `large` 46, `action` 42, `hero` 48), três criados um por task, e as tasks 09 a 11 trazem 34, 36, 38 e 44. Hoje `large`/`action`/`hero` diferem **só** em altura, padding e fonte, mas cada um duplica raio, peso, `text-transform`, `line-height` **e** dois blocos (`.X.containedPrimary` e o `:hover`), mais os remendos `.action.outlined`/`.large.outlined`. Com as alturas que faltam isso vai a sete blocos × três regras, e os nomes que sobram são de tela (`field`, `row`, `drawer`).
+
+**Recomendação medida, para a task 12, nas duas partes juntas:**
+
+1. **uma classe-base compartilhada** por todos os tamanhos do desenho (raio 8, semibold, `text-transform: none`, `line-height: 1`, `--accent`/`--accent-hover`), mantendo `medium`/`small` como o par legado do MUI — é isso que mata a duplicação de `containedPrimary`/`hover`, onde está o custo real;
+2. **trocar o nome semântico pela altura, como união fechada:** `size?: 34 | 36 | 38 | 42 | 44 | 46 | 48`, com a tabela `Record<ButtonSize, { height; paddingX; fontSize }>` **dentro** do primitivo, aplicada por `style` — exatamente o precedente aprovado do `Icon` (`size?: number` + `style={{ fontSize }}`), justificado na task 01 por "o desenho usa dezenas de tamanhos". A união fechada impede inventar 51 px, e a tabela guarda o par altura/padding que o desenho define (28/20/18/16/12), então o padding não volta como override no consumidor.
+
+**Não** usar prop numérica livre (`height={48}`): perde o conjunto fechado, que é o que segura a RN-15.
+
+### O `Chip` nasceu com duas escolhas que a task 07 vai ter de desfazer (task 06)
+
+O primitivo foi extraído e os dois chips existentes retroajustados (conferido pixel a pixel no review). Mas:
+
+- **`.medium` embute o padding assimétrico `0 10px 0 6px`**, que é do caso "ícone na frente" (o chip de voltar, `:450`). Os chips de filtro da Fila (`:232`) e os de setor (`:404`) são 32 px com `padding: 0 12px` **simétrico** — padding assimétrico é propriedade do conteúdo, não do tamanho;
+- **`.neutral.medium` acopla cor a tamanho** (`color: var(--text-2)`), e o chip de filtro quer `--text` no mesmo tamanho. Um `tone="muted"` resolve sem acoplar;
+- **`ChipProps` não espalha `...rest`**, então chip-botão não aceita `aria-label`, `disabled` nem `aria-pressed` — e os chips de setor da task 09 são **seleção**, com estado selecionado no desenho, que `tone: neutral|ok|err` não expressa.
+
+Quem estender, estende **o primitivo**, não sobrepõe classe na tela.
+
+### "Hoje" congela na virada do dia (task 06)
+
+A meia-noite é calculada a cada render, e o Painel só re-renderiza quando a fila muda, o socket conecta ou o restaurante muda de estado — o `printer_ping` de 30 s **só emite**, não mexe em estado. Numa noite calma o app atravessa a meia-noite mostrando o número de ontem e citando o comprovante de ontem como "último".
+
+Não bloqueou a task 06 porque o erro é só na direção "número maior", a fila descarta o que passa de 24 h e nada é decidido a partir do número. **Conserto recomendado na task 08**, que tem o mesmo filtro e onde um "hoje" velho é pior: um `useMidnightTick()` em `renderer/hooks/`, usado pelo Painel **e** pelo Histórico. Use `setInterval` de 60 s, **não** `setTimeout` para a próxima meia-noite: o PDV suspende de madrugada, e um timeout de 7 h acordado pelo resume dispara tarde.
+
+### Duas perdas e uma inconsistência observáveis, todas por fidelidade ao desenho (task 06)
+
+- **O logo e o nome do restaurante desapareceram do app.** A variação C não os tem (só a B, `:143`, que está fora de escopo). É fiel ao desenho escolhido, mas é informação que o operador tinha e deixou de ter; o estado da loja segue na sidebar;
+- **entre a task 06 e a 07 não há como tentar de novo pela UI:** o `Status` tinha "tentar de novo" e o Painel manda para `/queue`, que é esqueleto. O worker segue tentando sozinho (5 tentativas), então nada para de funcionar;
+- **política de `role="alert"` inconsistente:** o Painel **não** alerta no estado de atenção (impressora não encontrada), enquanto o `PrinterItem` anuncia o mesmo assunto com `role="alert"`. Decisão de produto, a resolver quando a task 09 tocar o cartão.
+
+### O bundle desta task é negativo (task 06)
+
+JS do renderer **595,71 → 592,06 kB (−3,65)**, CSS **32,63 → 32,56**, módulos **235 → 227**: o Painel, o `Chip` e o hook custam **menos** que o `Status`, o `RestaurantStatus` e o ícone do `react-icons` que saíram. E `grep -rn "react-icons" src/` dá **zero** — a dependência só ocupa o `package.json`, e sai na task 12.
 
 ### CSS Module não consegue apontar para um `@keyframes` global, e falha calado (task 05)
 

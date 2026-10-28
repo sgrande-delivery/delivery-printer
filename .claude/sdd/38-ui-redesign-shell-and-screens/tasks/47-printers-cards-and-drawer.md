@@ -53,7 +53,7 @@ Quatro campos, e cada um tem uma armadilha:
 | Campo | Forma no desenho | O que cuidar |
 | --- | --- | --- |
 | **Impressora do Windows** (`:392-397`) | Lista de opções com rádio; selecionada com borda `--accent` e fundo `--accent-soft` | É o campo que resolve o problema da tela. Escolher da lista é o caminho principal; **o nome digitado à mão continua possível**, porque há cadastro apontando para impressora de outra máquina, e substituir o campo por uma lista fechada tornaria esse cadastro ineditável |
-| **Setor** (`:398-406`) | Chips; ativo com fundo `--text` e texto `--bg` | Os **sete** de `stations.ts`, não os quatro do mock |
+| **Setor** (`:398-406`) | Chips; ativo com fundo `--text` e texto `--bg` | Os **sete** de `stations.ts`, não os quatro do mock. **O `Chip` (task 06) ainda não serve para seleção:** `ChipProps` não espalha `...rest` (logo não aceita `aria-label`, `disabled` nem `aria-pressed`) e o `tone` só tem `neutral|ok|err`. Estenda **o primitivo** |
 | **Cópias** (`:408-414`) | Menos / valor / mais, 34 px | Mínimo 1: zero cópia é nenhum comprovante |
 | **Bobina** (`:415-422`) | Segmentado 58 / 80 mm | `paper_width` é número livre na API. Valor fora dos dois aparece como **terceiro chip, selecionado, com o valor real** (divergência 4 da tabela de fidelidade) — o alternador de dois valores reescreveria em silêncio uma bobina de 76 mm |
 | **Ativa** (`:424-427`) | Interruptor, com "Desativada, não recebe comprovantes" | É o `PATCH /printers/{id}/toggle-active`, rota **separada** do `PUT` — conferir o que o `PrinterForm` de hoje faz e manter |
@@ -95,6 +95,12 @@ Os três arquivos de teste existentes (`Printers.test.tsx`, `PrinterItem.test.ts
 - [ ] Os sete setores estão oferecidos
 - [ ] Bobina fora de 58/80 sobrevive a uma edição que não a toca
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` sem erro novo
+
+## Uma dívida de busca que é desta task
+
+Desde a task 06 há **duas** instâncias de `usePrinters` e de `usePrintQueue` na rota `/` (a da sidebar e a do Painel), e **duas** em `/printers` (a da sidebar e a da tela): dois `GET /printers`, dois `listPrinters()` e dois `queueState()` por entrada, com estados independentes que podem discordar por um instante entre o badge e a tela. Somando o `refresh()` por navegação que a sidebar faz, são seis requisições por volta completa pelo menu.
+
+Você é a dona da tela de impressoras, então **resolva as duas de uma vez**: um provider para a lista, ou contagem de referência no hook. E troque o `refresh()` por navegação por "só quando o pathname anterior era `/printers`", que elimina 5 de 6 das chamadas com a mesma garantia.
 
 ## Fora de escopo
 

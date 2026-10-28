@@ -5,6 +5,8 @@ import type { PrintJobSummary } from 'shared/printQueue';
 interface PrintQueueState {
   pending: PrintJobSummary[];
   failed: PrintJobSummary[];
+  // Whatever the queue still keeps as printed: at most 200 jobs and 24 h of them (RN-08).
+  printed: PrintJobSummary[];
   retry(id?: string): Promise<void>;
 }
 
@@ -59,6 +61,7 @@ export function usePrintQueue(): PrintQueueState {
   return {
     pending: jobs.filter(job => job.status === 'pending'),
     failed: jobs.filter(job => job.status === 'failed'),
+    printed: jobs.filter(job => job.status === 'printed'),
     retry,
   };
 }
