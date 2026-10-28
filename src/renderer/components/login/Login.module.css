@@ -1,37 +1,14 @@
-.container {
+/* Right column of the login, printer-v2.dc.html:446-466. The two-column frame is AuthLayout. */
+.form {
+  width: 340px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  background-color: var(--color-primary-light);
-}
-
-.paper {
-  padding: 30px;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
   flex-direction: column;
-  position: relative;
-  background-color: #fff;
-  min-width: 400px;
-}
-
-/* theme.breakpoints.down('sm') in MUI v4 resolves to max-width 959.95px */
-@media (max-width: 959.95px) {
-  .paper {
-    min-width: 350px;
-  }
-}
-
-.logo {
-  width: 90px;
-}
-
-.title {
-  margin: 30px 0 0;
+  gap: 20px;
 }
 
 .footer {
-  margin-top: 30px;
+  position: absolute;
+  bottom: 24px;
+  font-size: 12px;
+  color: var(--muted);
 }

@@ -1,4 +1,5 @@
 import React, { ReactNode } from 'react';
+import BrandPanel from 'renderer/components/login/BrandPanel';
 import styles from './AuthLayout.module.css';
 
 interface AuthLayoutProps {
@@ -7,11 +8,8 @@ interface AuthLayoutProps {
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => (
   <div className={styles.container}>
-    <div id="content-wrapper" className={styles.contentWrapper}>
-      <div id="app-content" className={styles.content}>
-        {children}
-      </div>
-    </div>
+    <BrandPanel />
+    <main className={styles.content}>{children}</main>
   </div>
 );
 

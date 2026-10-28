@@ -51,3 +51,22 @@
 .fullWidth {
   width: 100%;
 }
+
+/* size="large": the 46 px button of the login (printer-v2.dc.html:463). */
+.large {
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  line-height: 1;
+}
+
+.large.containedPrimary {
+  background-color: var(--accent);
+}
+
+.large.containedPrimary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}

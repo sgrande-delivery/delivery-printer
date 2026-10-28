@@ -55,7 +55,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | executada |
 | 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | executada |
 | 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | executada |
-| 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | pendente |
+| 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | executada |
 | 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | pendente |
 | 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | pendente |
 | 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | pendente |
@@ -171,7 +171,26 @@ O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
 
+### O helper de label do testing-library ignora `button`, mas não ignora `aria-hidden` (task 04)
+
+Isto é a armadilha mais caras para as tasks 09 e 10, que montam formulário — e eu mesmo a descrevi errado no briefing da task 04, até o review medir.
+
+O `getTextContent` do `@testing-library/dom` devolve `''` para nós `button`, mas **não** filtra `span` nem `aria-hidden`. Consequência prática, com um campo que tem ícone à direita:
+
+- ícone dentro de um `<button>` (o olho da senha): label envolvente **funciona**, `getByLabelText('Senha')` passa;
+- ícone como `<span aria-hidden>` decorativo (o `person` do e-mail): label envolvente **quebra** — o nome acessível vira `'E-mailperson'`, porque o texto da ligadura do `Icon` conta no `textContent`.
+
+**Portanto:** `<label htmlFor>` **irmão** do campo, nunca envolvente, sempre que houver ícone decorativo dentro da caixa. E "não envolver por causa do botão" é a razão **errada**: quem vaza é o span.
+
+Bônus medido no mesmo ponto: o markup do desenho é **HTML inválido** aqui (`:452-457` põe `<input>` e `<button>` dentro do mesmo `<label>`, e `button` é *labelable*, o que o content model do `label` proíbe). O irmão com `htmlFor`/`id` é o jeito válido de reproduzir o desenho — divergência de markup que **não** é divergência de aparência.
+
+### O primitivo `Chip` ainda não existe, e a terceira pílula chega na task 06 (task 04)
+
+O chip de conexão do shell (task 03) e o chip de voltar do login (task 04) são duas "pílulas" com a mesma forma e nenhuma abstração. O `plan.md` promete um `Chip` em `base/`, e o critério da casa é o padrão aparecer em dois lugares — já apareceu. As tasks 06 (chips de impressora, `:177-180`) e 09 (chips de setor) trazem mais: **extraia o `Chip` na primeira delas e retroajuste estes dois**, senão a task 12 não tem o que documentar.
+
 ### PNG abaixo de 4 kB entra inlinado no JS (task 03)
+
+**Números acumulados, sempre medidos contra worktree limpa no `HEAD` da task anterior:** task 01 não mexeu no JS (+1,39 kB de CSS); task 03 levou o JS de 560,93 a 591,52 kB e o CSS a 25,59; task 04 somou +0,35 kB de JS (o código novo quase empata com a saída de três ícones do `react-icons`) e +2,74 kB de CSS, e passou a emitir o `logo-horizontal-negativo.png` como asset, porque os 12 kB dele estão acima do limite de inline.
 
 O `assetsInlineLimit` default do Vite é 4 kB, e os dois símbolos da marca (3 730 e 3 821 bytes) ficam **embutidos em base64 no bundle do renderer** — nenhum `.png` é emitido em `out/renderer/assets/`. São ~10 kB dos +30,6 kB de JS desta task. O `logo-horizontal-negativo.png` (12 kB) e o woff2 (20,9 kB) passam do limite e saem como arquivo. Não é problema; é como ler o número do bundle sem se assustar.
 

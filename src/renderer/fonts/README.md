@@ -6,10 +6,10 @@ Ela mora aqui, e não no Google Fonts, por causa da **RN-01**: nada visual deste
 
 ## Por que recortada
 
-| Versão | Tamanho |
-| --- | --- |
+| Versão                                  | Tamanho                       |
+| --------------------------------------- | ----------------------------- |
 | fonte variável completa (~3 mil ícones) | **2 367 840 bytes** (2,37 MB) |
-| este recorte (34 ícones) | **20 860 bytes** (20,4 kB) |
+| este recorte (34 ícones)                | **20 860 bytes** (20,4 kB)    |
 
 99,1 % menor. Sem o recorte, a fonte sozinha seria **4,5×** o bundle inteiro do renderer (518 kB).
 
@@ -34,6 +34,6 @@ curl -s "$(sed -n 's/.*src: url(\([^)]*\)) format.*/\1/p' ms.css)" -o material-s
 - `cmap` com 80 codepoints: as **24 letras** necessárias para escrever os nomes (`_abcdefghiklmnoprstuvwy`) e **56 PUA** (entre eles `U+E8AD`, o `print`)
 - `GSUB` presente (1 776 bytes), com as ligaduras dentro de um **extension lookup** (tipo 7) nas features **`rlig`** e **`rclt`**
 
-**Consequência prática, e é o ponto que não se adivinha:** o desenho escreve `-webkit-font-feature-settings: 'liga'`, mas esta fonte **não usa `liga`** — usa `rlig`, que é *required ligature* e o Chromium aplica **por padrão**. Ou seja: declarar só `'liga'` funcionaria por acidente, e mexer nessa linha achando que ela é o que liga os ícones quebraria a tela sem explicação. Não dependa dela; se quiser ser explícito, declare `font-feature-settings: 'liga' 1, 'rlig' 1`.
+**Consequência prática, e é o ponto que não se adivinha:** o desenho escreve `-webkit-font-feature-settings: 'liga'`, mas esta fonte **não usa `liga`** — usa `rlig`, que é _required ligature_ e o Chromium aplica **por padrão**. Ou seja: declarar só `'liga'` funcionaria por acidente, e mexer nessa linha achando que ela é o que liga os ícones quebraria a tela sem explicação. Não dependa dela; se quiser ser explícito, declare `font-feature-settings: 'liga' 1, 'rlig' 1`.
 
 Pelo mesmo motivo, ferramenta que lê ligadura por `liga` (o `opentype.js`, por exemplo) reporta **zero ligaduras** nesta fonte. Isso é limitação da ferramenta, não defeito da fonte.

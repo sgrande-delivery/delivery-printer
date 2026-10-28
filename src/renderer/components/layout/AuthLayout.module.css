@@ -1,22 +1,16 @@
 .container {
   display: flex;
-  position: absolute;
   height: 100%;
   width: 100%;
-}
-
-.contentWrapper {
-  width: 100%;
-  transition-duration: 225ms;
-  padding-left: 0;
-  padding-top: 0;
-  overflow-y: auto;
-  position: relative;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .content {
-  min-height: 100vh;
+  flex: 1;
+  min-width: 0;
   position: relative;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }

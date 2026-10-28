@@ -1,5 +1,4 @@
 import React, { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import Typography from 'renderer/base/Typography';
 import Button from 'renderer/base/Button';
 import { useAuth } from 'renderer/providers/auth';
 import { useMessaging } from 'renderer/providers/messaging';
@@ -69,6 +68,8 @@ const Login: React.FC = () => {
   }
 
   function handleStepBack() {
+    setPassword('');
+    setShownPassword(false);
     setStep('email');
   }
 
@@ -77,39 +78,27 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.paper}>
-        {loading && <InsideSaving />}
-        <div>
-          <img src="https://admin.sgrande.delivery/logo192.png" className={styles.logo} alt="Logo sgrande.delivery" />
-        </div>
-        <div className={styles.title}>
-          <Typography variant="h6">Login</Typography>
-        </div>
-        <form onSubmit={handleSubmit} autoComplete="on">
-          {step === 'email' ? (
-            <UsernameStep handleChange={handleChange} email={email} loading={loading} />
-          ) : (
-            <PasswordStep
-              handleChange={handleChange}
-              login={{ email, password, name }}
-              shownPassword={shownPassword}
-              handleStepBack={handleStepBack}
-              handlePasswordVisibility={handlePasswordVisibility}
-              loading={loading}
-            />
-          )}
-          <Button disabled={loading} type="submit" variant="contained" fullWidth>
-            {step === 'email' ? 'Próximo' : 'Entrar'}
-          </Button>
-        </form>
-        <div className={styles.footer}>
-          <Typography variant="body2" color="textSecondary">
-            SGrande Delivery Printer 2023
-          </Typography>
-        </div>
-      </div>
-    </div>
+    <>
+      {loading && <InsideSaving />}
+      <form onSubmit={handleSubmit} autoComplete="on" className={styles.form}>
+        {step === 'email' ? (
+          <UsernameStep handleChange={handleChange} email={email} loading={loading} />
+        ) : (
+          <PasswordStep
+            handleChange={handleChange}
+            login={{ email, password, name }}
+            shownPassword={shownPassword}
+            handleStepBack={handleStepBack}
+            handlePasswordVisibility={handlePasswordVisibility}
+            loading={loading}
+          />
+        )}
+        <Button disabled={loading} type="submit" variant="contained" size="large" fullWidth>
+          {step === 'email' ? 'Próximo' : 'Entrar'}
+        </Button>
+      </form>
+      <div className={styles.footer}>SGrande Delivery Printer © {new Date().getFullYear()}</div>
+    </>
   );
 };
 

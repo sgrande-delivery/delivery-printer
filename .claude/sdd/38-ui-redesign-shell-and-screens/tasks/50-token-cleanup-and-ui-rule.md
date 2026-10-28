@@ -32,11 +32,13 @@ Trocar cada uso do nome antigo pelo token novo nas folhas que sobraram, e **remo
 
 Enquanto estiver nessa varredura, caçar o que a migração deixou para trás:
 
-- `grep -rn "#[0-9a-fA-F]\{3,6\}" src/renderer --include=*.css` — hex solto que devia ser token (RN-11). As exceções legítimas são o toast, que é literal nos dois temas de propósito, e o `#fff` sobre `--accent`
+- `grep -rn "#[0-9a-fA-F]\{3,6\}\|rgba(" src/renderer --include=*.css` — hex solto que devia ser token (RN-11). **O `rgba(` no grep não é zelo:** sem ele a varredura não acha `InsideSaving.module.css` (`rgba(250,250,250,.5)`, um véu claro que fica errado no tema escuro) nem os dois `rgba(0,0,0,.04)` de hover do `Button` e do `IconButton`, medidos no review da task 04. As exceções legítimas são o toast, que é literal nos dois temas de propósito, e o `#fff` sobre `--accent` **e sobre `--side`** (a sidebar e o painel de marca do login usam os dois, e o desenho também)
 - a `@media (min-width: 1200px)` da barra de rolagem e os breakpoints do MUI: a janela tem 1024 px e não é redimensionável para menos pelo operador — o que não é mais usado sai
 - `grep -rn "react-icons" src/` — se o `RestaurantStatus` saiu na task [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) e nada mais a importa, a dependência sai do `package.json`. **Rodar `npm ci` depois e dizer no relatório**, porque o CI roda `npm ci` e falha se o lockfile não acompanhar
 - `src/renderer/images/logo192.png`, que estava guardado para a troca do logo do login — a troca aconteceu na task [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42)
-- componentes e folhas sem importador: `DefaultLayout`, `Main`, `Status`, `RestaurantStatus`, `PrintersNotice`, `FailedJobList`, `FailedJobItem`, `InsideSaving` — conferir um por um com `grep`, **não** apagar de memória
+- componentes e folhas sem importador: `Status`, `RestaurantStatus`, `PrintersNotice`, `FailedJobList`, `FailedJobItem` — conferir um por um com `grep`, **não** apagar de memória. (`DefaultLayout` e `Main.module.css` já saíram na task 03.)
+- **`InsideSaving` NÃO é órfão:** ele tem um importador, `Login.tsx:82`, e vai continuar tendo. O que ele precisa é de cor por token: o véu é `rgba(250,250,250,.5)` fixo, e desde a task 04 ele cobre **a coluna direita inteira** do login (~624×728) em vez do cartão de 400 px que deixou de existir — o ancestral posicionado mudou. No tema escuro isso é um véu claro grande
+- **CSS que ficou morto por causa da spec**, confirmado por mutação no review da task 04: a variante `floating` do `TextField` (os dois passos do login eram os únicos consumidores e viraram `boxed`) e o `IconButton` `color="primary"` (`.colorPrimary`, cujo último consumidor era o ícone de voltar antigo). Decidir aqui se a `floating` morre ou fica documentada — ela tem teste honesto, então ficar não custa mentira
 
 ### 2. Reescrever `.claude/rules/renderer-ui.md`
 

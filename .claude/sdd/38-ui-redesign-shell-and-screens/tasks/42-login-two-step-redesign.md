@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 01
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -89,3 +89,25 @@ Remover a URL de `Login.tsx:84` e qualquer referência a `admin.sgrande.delivery
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Processos tocados
+
+renderer
+
+### Arquivos criados/alterados
+
+- `components/layout/AuthLayout.tsx/.css` — duas colunas: `BrandPanel` + `<main>` centralizado
+- `components/login/BrandPanel`, `StepHeader` (novos); `Login`, `UsernameStep`, `PasswordStep` e seus CSS reescritos; logo remoto removido
+- `base/TextField` ganha `variant="boxed"`; `Button` ganha `size="large"`; `IconButton` ganha `size="small"`
+- testes: `login/__tests__/Login.test.tsx`, `base/__tests__/TextField.test.tsx` (novos)
+
+### Decisões que tomei por conta própria
+
+- Voltar pelo chip limpa a senha digitada e recolhe o olho; o e-mail fica
+- Saudação "Olá, {nome}" (ou "Olá" se o nome vier vazio)
+- `aria-label` "Mostrar senha"/"Ocultar senha" no olho
+- O `.paper`/min-width de 350 do breakpoint sm saiu junto com o cartão
