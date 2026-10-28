@@ -4,6 +4,7 @@ import { usePrinterSettings } from 'renderer/hooks/usePrinterSettings';
 import { history } from 'renderer/services/history';
 import { hasKnownSettings } from 'renderer/services/printerSettings';
 import PrintersNotice from 'renderer/components/printers/PrintersNotice';
+import AppearanceSection from './AppearanceSection';
 import PrinterSettingsForm from './PrinterSettingsForm';
 import styles from './PrinterSettings.module.css';
 
@@ -26,6 +27,7 @@ const PrinterSettings: React.FC = () => {
           text="As configurações deste restaurante não vieram completas, e salvar agora poderia apagar as que já existem. Nada foi alterado. Feche e abra o aplicativo; se continuar, avise o suporte."
         />
       )}
+      <AppearanceSection />
     </div>
   );
 };

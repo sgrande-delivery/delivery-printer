@@ -61,7 +61,14 @@ Se `max_width` ficar fora do escopo (decisão pendente 5), a largura da pré-vis
 
 O que a task [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) deixou funcionando ganha a forma do desenho: terceiro cartão, três opções — **Automático (segue o Windows) / Claro / Escuro** —, com a frase que evita o mal-entendido: **"vale só neste computador"**.
 
-O desenho não tem esta seção; ela é adição pedida pelo dev. Fica no fim da coluna, depois da nota, para não se confundir com o que é do restaurante — a diferença entre preferência local e configuração do restaurante é a RN-02, e é ela que a frase comunica.
+**O desenho não tem controle de tema nenhum** — conferido por grep no `printer-v2.dc.html`. Então a RN-15 não tem o que cobrar aqui: a forma é sua decisão, e **não procure no desenho um controle que não existe**. A task 02 a entregou com radios nativos na tela antiga; é essa seção que você redesenha.
+
+Duas coisas a decidir, que a task 02 deixou em aberto de propósito:
+
+- **Salvar na hora × botão Salvar.** A Aparência grava no clique; o resto da tela grava por confirmação, e esta task acrescenta a barra de "Alterações não salvas". Duas semânticas de gravação na mesma tela é inconsistência visível — escolha uma e diga qual no relatório. (Preferência local gravando na hora é defensável: ela não vai para o servidor.)
+- **Desabilitar durante a gravação.** Hoje clique repetido dispara `ui:set-theme` em sequência; é inofensivo (a escrita é atômica), mas feio.
+
+Ela é adição pedida pelo dev. Fica no fim da coluna, depois da nota, para não se confundir com o que é do restaurante — a diferença entre preferência local e configuração do restaurante é a RN-02, e é ela que a frase comunica.
 
 ## Testes
 

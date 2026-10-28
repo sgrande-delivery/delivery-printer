@@ -1,0 +1,19 @@
+.root {
+  margin-top: 32px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+}

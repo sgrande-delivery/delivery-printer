@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { EnqueueRequest, EnqueueResult, PrintJobSummary, TestPrintRequest } from 'shared/printQueue';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
+import type { ResolvedTheme, ThemePreference, UiThemeState } from 'shared/uiTheme';
 
 type RawPrint = {
   content: string;
@@ -85,6 +86,21 @@ const electronHandler = {
 
   // Resolves to false when there is no record yet (file absent or empty), so the UI can say so.
   revealLogs: (): Promise<boolean> => ipcRenderer.invoke('revealLogs'),
+
+  uiTheme: (): Promise<UiThemeState> => ipcRenderer.invoke('ui:theme'),
+
+  // Saves for this installation and resolves to the theme that now applies.
+  setUiTheme: (preference: ThemePreference): Promise<ResolvedTheme> => ipcRenderer.invoke('ui:set-theme', preference),
+
+  // Only when the resolved light/dark changes, not on every system appearance event.
+  onUiThemeChanged: (listener: (resolved: ResolvedTheme) => void): (() => void) => {
+    const handler = (_event: unknown, resolved: ResolvedTheme): void => listener(resolved);
+    ipcRenderer.on('ui:theme-changed', handler);
+
+    return () => {
+      ipcRenderer.removeListener('ui:theme-changed', handler);
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

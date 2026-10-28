@@ -53,7 +53,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | executada |
-| 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | pendente |
+| 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | executada |
 | 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | pendente |
 | 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | pendente |
 | 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | pendente |
@@ -132,7 +132,21 @@ O Vitest sem processar CSS devolve um nome **hasheado para a classe inexistente*
 
 `cx()` descarta falsy (`src/renderer/base/cx.ts`), então `cx(styles.tipoErrado)` devolve **string vazia**, não `"undefined"` — a classe simplesmente não aparece, e nem o helper nem a tela acusam. Verificado por mutação: trocar `styles.icon` por `styles.ikon` no `Icon` derruba **1** teste, e é o que **afirma que a classe está presente**, não o do helper.
 
-**Portanto:** teste de componente cujo estilo passa por `cx()` tem de **afirmar que a classe esperada está lá** (`expect(el.className).toContain('…')`), além de chamar o helper. Só o helper não protege o caminho do `cx`, que é o caminho mais usado nesta base.
+**E a task 02 mostrou que é pior:** em `className={styles.chaveErrada}` **direto**, sem `cx`, o React **omite o atributo** — não existe `class="undefined"` para o helper achar. Medido: duas chaves do `AppearanceSection` passaram a mutação com 41 e 17 testes verdes, até as afirmações de presença entrarem.
+
+**Portanto, e isto vale para as dez tasks restantes:** o `expectNoUndefinedClasses()` só cobre **concatenação** (`` `${styles.x} y` ``). Para `cx(...)` e para `className={styles.x}` direto, o teste tem de **afirmar que a classe esperada está presente**, contra `styles.<chave>` e nunca contra substring literal — `toContain('icon')` é satisfeito por `iconButton`. Uma chave por elemento que importa, não só a `root`.
+
+### A piscada de tema na abertura, e por que `backgroundColor` não a conserta (task 02)
+
+A janela só aparece em `ready-to-show` (`src/main/window.ts`), o que já cobre o frame branco **antes** da primeira pintura — que é o único instante que `backgroundColor` pinta. A piscada que sobra é outra: a primeira pintura **já é** o React em claro (o `body` usa o `--bg` do `:root` e o `data-theme` ainda não existe), e o atributo só entra depois do `useEffect` mais a ida e volta do `ui:theme`.
+
+Então `backgroundColor` derivado do tema é brinde legítimo (é o que o Windows pinta na área nova ao redimensionar), mas **vendido como conserto da piscada seria cargo cult**. O conserto de verdade é o tema chegar ao renderer **antes da primeira pintura**, e o main já o sabe no construtor: `webPreferences.additionalArguments: ['--ui-theme=' + resolved]`, o preload expondo isso de forma síncrona e o provider semeando o `useState` com ele. Mexe no contrato do preload, então merece teste próprio.
+
+**Decisão:** fica medido e não feito. A task 03 é quem passa a ter shell inteiro piscando em branco, e é ela que decide se paga o conserto.
+
+### Entre a task 02 e a task 03, duas telas ficam 6 px fora (task 02)
+
+O `titleBarOverlay` foi de 50 para 56 px, e há **duas barras de título falsas** que espelhavam o valor antigo: `src/renderer/components/main/Main.module.css:1-15` e `src/renderer/components/printers/Printers.module.css:8-21`, as duas com `height: 50px; background: white; color: #222`. Consequência até a task 03 reescrevê-las: os três botões nativos passam 6 px abaixo da barra, e **no tema escuro as telas `/` e `/printers` mostram barra de título branca com texto escuro**. É consequência aceita da ordem do plan (02 antes de 03, porque o overlay precisa de dono antes de a janela ganhar cabeçalho próprio) — mas não pode ficar calada no relatório.
 
 ### A fonte de ícones não usa `liga` (task 01)
 

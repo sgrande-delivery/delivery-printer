@@ -11,6 +11,9 @@ import { bootPrintQueue } from './queue/print-queue';
 import { onNotification } from './ipc-events/onNotification';
 import { onLog } from './ipc-events/onLog';
 import { onRevealLogs } from './ipc-events/onRevealLogs';
+import { onUiTheme } from './ipc-events/onUiTheme';
+import { onSetUiTheme } from './ipc-events/onSetUiTheme';
+import { onResolvedChange, titleBarOverlayFor } from './theme';
 import { describeError } from 'shared/describeError';
 import { logger } from './logger';
 import { onBeforeQuit } from './app-events/onBeforeQuit';
@@ -30,6 +33,8 @@ ipcMain.on('notifyConnection', onNotifyConnection);
 ipcMain.handle('notification', onNotification);
 ipcMain.on('log', onLog);
 ipcMain.handle('revealLogs', onRevealLogs);
+ipcMain.handle('ui:theme', onUiTheme);
+ipcMain.handle('ui:set-theme', onSetUiTheme);
 
 app.on('window-all-closed', () => onWindowAllClosed(app));
 
@@ -44,6 +49,15 @@ function boot(): void {
       registerAutostart();
 
       const window = new MainWindowBuilder(app).build();
+
+      onResolvedChange(resolved => {
+        if (window.isDestroyed()) {
+          return;
+        }
+
+        window.setTitleBarOverlay(titleBarOverlayFor(resolved));
+        window.webContents.send('ui:theme-changed', resolved);
+      });
 
       new TrayBuilder(app, window).build();
 

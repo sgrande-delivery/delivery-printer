@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** 01
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -102,6 +102,62 @@ Preferência sem onde mexer é preferência morta — é o mesmo motivo pelo qua
 - O lugar definitivo do alternador no desenho — task [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48)
 - Outras preferências de UI (densidade, zoom): o arquivo nasce preparado, mas nada mais entra nele aqui
 - Tema da bandeja e da notificação nativa — fora da spec
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Arquivos
+
+Novos: `src/shared/uiTheme.ts` (tipos + `isThemePreference`), `src/main/theme.ts` (+ teste), `src/main/ipc-events/onUiTheme.ts`, `onSetUiTheme.ts`, `src/renderer/providers/theme.tsx` (+ teste), `src/renderer/components/printer-settings/AppearanceSection.tsx` + `.module.css` (+ teste).
+Alterados: `src/main/preload.ts`, `src/main/main.ts`, `src/main/window.ts`, `src/renderer/App.tsx`, `src/renderer/components/printer-settings/PrinterSettings.tsx` + teste, `src/__tests__/setup.ts`, `src/renderer/app.css` (nota reversa dos dois hex).
+
+### Canais IPC, com o par conferido por grep
+
+| Canal | Preload | Main |
+| --- | --- | --- |
+| `ui:theme` | `preload.ts:90` | `main.ts:36` |
+| `ui:set-theme` | `preload.ts:93` | `main.ts:37` |
+| `ui:theme-changed` (main → renderer) | `preload.ts:98` ouve, `:101` remove | `main.ts:59` envia |
+
+Stub em `src/__tests__/setup.ts:28-30`, com as três funções.
+
+### Decisões
+
+- **Cor do overlay no escuro: `#2b2725`**, o `--bg`, e **não** o `--side`/`--surface` que a task sugeria. O review conferiu no desenho e a task estava errada: o quadro (`:25`) tem `background:var(--bg)`, o `<main>` (`:67`) não declara fundo e o `<header>` (`:68`) só tem borda inferior — o overlay fica sobre o `--bg`. Os quatro valores batem um a um com os tokens
+- **Os dois hex ficam duplicados no main, por necessidade:** a cor é exigida no construtor da `BrowserWindow`, antes de existir renderer para consultar. Estão em minúsculas como no `app.css` (maiúsculas quebravam o grep por valor) e o `app.css` ganhou nota reversa ao lado da definição dos tokens
+- **`AppearanceSection` fora do ternário** da tela: a preferência continua alcançável quando as configurações do restaurante não carregam (403, erro de rede) — preferência sem onde mexer é preferência morta
+- **Valor desconhecido lança**, com `logger.warn` antes, e a rejeição chega ao operador pelo `useMessaging()`; o radio controlado volta sozinho ao valor anterior. Cair para `'system'` em silêncio gravaria uma escolha que ninguém fez. Mesmo padrão de `onPrintTest.ts:25`
+- **`subscribed` nunca volta a `false`:** `nativeTheme` é global do processo e não há remontagem no main, então o latch garante uma assinatura só para a vida do app. **Não** é o vazamento de listener da regra de impressão, que é sobre `socket?.on` em `useEffect`
+
+### O que o review pegou, e que eu corrigi antes do commit
+
+Quatro itens, todos mecânicos, e dois deles eram buracos de rede provados por mutação:
+
+1. Duas das três chaves de CSS Module do `AppearanceSection` **sem rede**: mutar `styles.option` e `styles.options` passava com 41 e 17 testes verdes. Entraram as afirmações de presença
+2. `checked={preference === option.value}` **sem teste**: trocar por `checked={false}` passava. É o que o operador confere ao reabrir a tela, e é o lado de UI do critério "fixar Claro sobrevive a fechar pela bandeja"
+3. `providers/theme.tsx` chamava `window.electron.log` direto, furando o `renderer/services/log.ts` — que existe porque a ponte pode não existir e porque o `context` é clonado estruturalmente, o que **lança de forma síncrona** dentro de um `.catch()`
+4. `AppearanceSection.module.css` usava `var(--color-text)`, apelido velho em arquivo **novo** — os apelidos existem para o CSS que já estava lá, e a task #50 os apaga
+
+As três mutações do review foram re-rodadas depois: **as três falham**.
+
+### Testes
+
+20 novos, em 3 arquivos: 11 no `theme.ts` do main (arquivo ausente, JSON inválido, valor fora dos três, chave ausente, valor não-objeto, ida e volta, `resolve`, altura 56 nos dois temas, e as três de `onResolvedChange`), 5 no provider e 4 no `AppearanceSection`.
+
+Mutações verificadas por mim: tirar a guarda de `refreshResolved` → 1 falha; sempre escrever `data-theme` → 3 falhas; as três do review → 1 falha cada.
+
+O teste do `AppearanceSection` ganhou `beforeEach` restaurando o stub: sem ele, o teste novo deixava `uiTheme` resolvendo `dark` e o seguinte clicava num radio já marcado, que não dispara `onChange`.
+
+### Verificação
+
+typecheck **0** · lint **0 erros e 1 aviso** (o da base) · `npm test` **38 arquivos, 233 testes, 232 passando**, com a única falha sendo a pré-existente do `ui.test.tsx`.
+
+### O que não foi verificado, e é o essencial desta task
+
+**Nada do roteiro de Windows foi exercitado**, porque ele não tem como ser automatizado aqui: trocar o tema em Configurações → Personalização → Cores com o app aberto e ver os três botões nativos acompanharem; fixar Claro, **fechar pela bandeja**, reabrir e conferir que continuou claro; apagar o `ui-preferences.json` à mão e ver o app abrir. É o único jeito de exercitar `main.ts:53-60` (`setTitleBarOverlay` + `webContents.send`), e esta base não tem teste de `main.ts`/`window.ts` — os testes aqui simulam o evento por mock.
+
+**Consequência conhecida até a task 03:** o overlay passou a 56 px e as duas barras de título falsas (`Main.module.css`, `Printers.module.css`) ainda são de 50 px e brancas — os botões nativos passam 6 px abaixo delas, e no tema escuro as telas `/` e `/printers` mostram barra branca. Registrado nos aprendizados do plan.
 
 ## Branch
 

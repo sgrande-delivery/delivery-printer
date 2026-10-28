@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { AxiosError, AxiosHeaders } from 'axios';
 import PrinterSettings from '../PrinterSettings';
 import MessagingProvider from 'renderer/providers/messaging';
+import ThemeProvider from 'renderer/providers/theme';
 import { api } from 'renderer/services/api';
 import { expectNoUndefinedClasses } from 'renderer/__tests__/cssModules';
 
@@ -42,9 +43,11 @@ function httpError(status: number, data: unknown = {}): AxiosError {
 // handleOpen only exists under the provider; in the app it wraps the routes (App.tsx).
 function renderScreen(): ReturnType<typeof render> {
   return render(
-    <MessagingProvider>
-      <PrinterSettings />
-    </MessagingProvider>
+    <ThemeProvider>
+      <MessagingProvider>
+        <PrinterSettings />
+      </MessagingProvider>
+    </ThemeProvider>
   );
 }
 

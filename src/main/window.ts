@@ -6,6 +6,7 @@ import { isQuiting } from './tray';
 import { registerDevtools } from './devtools';
 import { AppUpdater } from './updater';
 import { START_MINIMIZED_ARG } from './autostart';
+import { currentTheme, titleBarOverlayFor } from './theme';
 
 export class MainWindowBuilder {
   private window: BrowserWindow;
@@ -22,11 +23,7 @@ export class MainWindowBuilder {
         preload: path.join(__dirname, '../preload/preload.js'),
       },
       titleBarStyle: 'hidden',
-      titleBarOverlay: {
-        color: 'white',
-        symbolColor: '#222',
-        height: 50,
-      },
+      titleBarOverlay: titleBarOverlayFor(currentTheme().resolved),
     });
   }
 

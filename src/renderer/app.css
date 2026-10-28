@@ -1,6 +1,11 @@
 /*
  * Design tokens: the values of the Claude Design, design/printer-v2.dc.html:13-14
  * (light palette on :root, dark on :root[data-theme='dark']). Same 26 tokens in both.
+ * --bg and --text of both themes are ALSO hardcoded in src/main/theme.ts, for the
+ * window's titleBarOverlay: the main process has no CSS variables, and the color is
+ * needed in the BrowserWindow constructor, before a renderer exists. Change one, change
+ * the other.
+ *
  * The dark selector is :root[data-theme='dark'], not [data-theme='dark']: the latter
  * ties with :root on specificity and would only win by source order, so a :root block
  * added later in this file would silently switch the dark theme off.
