@@ -32,7 +32,7 @@ describe('App error boundary position', () => {
     render(<App />);
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Algo deu errado')).toBeInTheDocument();
+    expect(screen.getByText('Algo deu errado nesta tela')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Recarregar' })).toBeInTheDocument();
   });
 });

@@ -70,3 +70,45 @@
 .large.containedPrimary:hover:not(:disabled) {
   background-color: var(--accent-hover);
 }
+
+/* size="action": the 42 px button of the state screens (printer-v2.dc.html:493, :503-504).
+   Its own size because the design gives it 42 px and 14 px against the 46/15 of the login,
+   and because button size belongs to the primitive, never to an override on the screen. */
+.action {
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  line-height: 1;
+}
+
+.action.containedPrimary {
+  background-color: var(--accent);
+}
+
+.action.containedPrimary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+/* The design gives the outlined one 18 px instead of 20 (:503). */
+.action.outlined {
+  padding: 0 18px;
+  font-weight: var(--font-weight-regular);
+}
+
+/* variant="outlined": the secondary button of the design (printer-v2.dc.html:503). */
+.outlined {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.outlined:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}
+
+.large.outlined {
+  font-weight: var(--font-weight-regular);
+}

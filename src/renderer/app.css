@@ -159,3 +159,17 @@ p {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--line);
 }
+
+/*
+ * Shared by the Spinner ring and by any icon that spins (progress_activity). It is a global class, not a
+ * module animation, because a CSS Module renames the keyframes it references and cannot point at this one.
+ */
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

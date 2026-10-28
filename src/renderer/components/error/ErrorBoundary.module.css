@@ -1,9 +1,85 @@
+/* printer-v2.dc.html:496-507 */
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Same bar as the StateLayout: the window has no native title bar, so without a drag region the
+   operator could not move it (RN-13), and the right padding keeps clear of the native buttons (RN-04). */
+.bar {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 152px 0 20px;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.symbol {
+  width: 26px;
+  height: 26px;
+}
+
+.name {
+  font-weight: var(--font-weight-semibold);
+}
+
+/* The padding is the outer area's, like the design (:477) and the StateLayout: keeping it on the
+   460 px block would eat 80 px of it, because of the global box-sizing. */
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 40px 56px;
+}
+
 .container {
+  width: 460px;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 100vh;
-  padding: 20px;
+  gap: 14px;
+  text-align: center;
 }
+
+.badge {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.body {
+  color: var(--text-2);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.notice {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+

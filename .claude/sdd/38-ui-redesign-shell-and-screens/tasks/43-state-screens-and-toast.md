@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 01, 03
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -102,6 +102,45 @@ O arquivo já existe. Acrescentar:
 - Tirar o `history.push('/login')` do interceptor de erro, que no refresh falhado por rede ganha do `ProtectedRoute` e mostra o login em vez desta tela — task própria, já registrada na regra da UI
 - Mudar o mapeamento de `sessionStatus` (os 8 testes que o protegem continuam valendo)
 - Notificação nativa do Windows para queda de conexão
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Arquivos
+
+Alterados: `app.css` (a classe global `.spin` e o `@keyframes`), `base/Spinner.*` (o anel passa a usar token em vez de hex), `base/Button.*` (variantes `outlined` e `size="action"`), `components/loading/InsideLoading.*`, `components/connection/NoConnection.*`, `components/error/ErrorBoundary.*`, `components/messaging/Messaging.*`, mais os testes.
+Novos: `components/messaging/__tests__/Messaging.test.tsx`.
+
+### O que mudou de comportamento
+
+**A tela de sem conexão passa a tentar sozinha, a cada 12 s** (decisão 3 da spec, com o valor do desenho), com a contagem visível. Sem isso o app só voltava a imprimir se alguém estivesse na frente do PDV — que é justamente o que não acontece num app que vive na bandeja.
+
+O laço foi traçado de ponta a ponta no review, com timers falsos: `GET /users/me` em t=0, 12, 24 e 36 s, e quando a rede volta a tela protegida aparece sem ninguém clicar. **O caso que ainda não se recupera** é a requisição que pendura em vez de falhar, porque o axios não tem `timeout` — está nos aprendizados do plan e merece task própria.
+
+### A regressão de contraste que esta task fechou
+
+A task 01 fez o apelido `--color-primary-light` apontar para `--accent-hover`, e o `.actionText` do snackbar passou a dar **3,12:1** sobre o fundo escuro — abaixo dos 4,5:1 da WCAG AA. Com o toast do desenho, o botão "Fechar" (`#ff9a73` sobre `#2b2725`) dá **7,13:1**, e o texto **13,87:1**. Medido por script, e conferido de forma independente no review, inclusive no estado de hover (5,59:1).
+
+### O que o review pegou, e que eu corrigi antes do commit
+
+1. **A barra da tela de erro estava vazia.** No desenho (`:470-476`) a barra de 56 px tem o símbolo e o nome do produto nas **três** telas de estado. O motivo escrito ("o `StateLayout` chama `useTheme` e o boundary está acima dos providers") explicava só metade: o nome não depende de provider nenhum, e o símbolo sai de `document.documentElement.dataset.theme`, que o `index.tsx` escreve antes do primeiro render. A barra ganhou marca e nome, com o `padding: 0 152px 0 20px` que mantém o texto longe dos botões nativos (RN-04).
+2. **A coluna de texto tinha 380 px, não 460.** O `.container` acumulava `width: 460px` **e** `padding: 0 40px`, e com o `box-sizing: border-box` global isso come 80 px — duas telas irmãs com larguras de quebra diferentes. O padding foi para a área externa, como o desenho (`:477`) e o `StateLayout` fazem.
+3. **Tamanho de botão como override de classe na tela.** `.actions .retry` e `.actions .action` redefiniam altura e fonte do primitivo a partir de duas telas, contra a regra da UI e contra o precedente que esta mesma spec fixou um commit antes. Virou `size="action"` no `Button` (42 px, 14 px, com `padding: 0 20px` no contido e `0 18px` no outlined) — o que de quebra fechou um desvio de padding que ninguém tinha visto.
+
+### Testes
+
+12 novos. Varredura por mutação: o implementador rodou 31 chaves e fechou 7 sobreviventes; o review rodou 29 de forma independente e matou todas; depois das correções, as 6 chaves novas (`bar`, `symbol`, `name`, `content`, `container`, `Button.action`) também derrubam teste.
+
+Mutações minhas: tirar o `clearInterval` do cleanup derruba o teste do desmonte — timer vazado num app de bandeja roda por dias; trocar o intervalo de 12 s derruba 4 testes.
+
+### Verificação
+
+typecheck **0** · lint **0 erros e 1 aviso** (o da base) · `npm test` **44 arquivos, 290 testes, 289 passando**, com a única falha sendo a pré-existente do `ui.test.tsx`.
+
+### O que não foi verificado
+
+A comparação lado a lado em `npm run dev` nos dois temas, que é onde os dois desvios corrigidos acima apareceriam a olho; a tela de erro forçada em dev, com a faixa de arraste; e desligar e religar a rede num PDV de verdade. Dois efeitos que o olho humano vai notar e que são esperados: a cada 12 s a tela pisca para o spinner (o `retrySession` passa por `loading`), e a contagem reaparece em 12.
 
 ## Branch
 

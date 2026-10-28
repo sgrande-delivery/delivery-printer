@@ -65,7 +65,7 @@ describe('ProtectedRoute', () => {
   it('shows the loading state while the session is being checked', () => {
     renderRoute('loading');
 
-    expect(screen.getByText('carregando...')).toBeInTheDocument();
+    expect(screen.getByText('Conectando ao servidor…')).toBeInTheDocument();
     expect(screen.queryByText('tela de login')).not.toBeInTheDocument();
   });
 

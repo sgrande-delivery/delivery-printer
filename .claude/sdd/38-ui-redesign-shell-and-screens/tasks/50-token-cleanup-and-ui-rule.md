@@ -32,7 +32,7 @@ Trocar cada uso do nome antigo pelo token novo nas folhas que sobraram, e **remo
 
 Enquanto estiver nessa varredura, caçar o que a migração deixou para trás:
 
-- `grep -rn "#[0-9a-fA-F]\{3,6\}\|rgba(" src/renderer --include=*.css` — hex solto que devia ser token (RN-11). **O `rgba(` no grep não é zelo:** sem ele a varredura não acha `InsideSaving.module.css` (`rgba(250,250,250,.5)`, um véu claro que fica errado no tema escuro) nem os dois `rgba(0,0,0,.04)` de hover do `Button` e do `IconButton`, medidos no review da task 04. As exceções legítimas são o toast, que é literal nos dois temas de propósito, e o `#fff` sobre `--accent` **e sobre `--side`** (a sidebar e o painel de marca do login usam os dois, e o desenho também)
+- `grep -rn "#[0-9a-fA-F]\{3,6\}\|rgba(" src/renderer --include=*.css` — hex solto que devia ser token (RN-11). **O `rgba(` no grep não é zelo:** sem ele a varredura não acha `InsideSaving.module.css` (`rgba(250,250,250,.5)`, um véu claro que fica errado no tema escuro) nem os dois `rgba(0,0,0,.04)` de hover do `Button` e do `IconButton`, medidos no review da task 04. As exceções legítimas são o toast — fundo, texto **e o hover do botão** (`rgba(255,255,255,.08)`), literais nos dois temas de propósito —, e o `#fff` sobre `--accent` **e sobre `--side`** (a sidebar e o painel de marca do login usam os dois, e o desenho também)
 - a `@media (min-width: 1200px)` da barra de rolagem e os breakpoints do MUI: a janela tem 1024 px e não é redimensionável para menos pelo operador — o que não é mais usado sai
 - `grep -rn "react-icons" src/` — se o `RestaurantStatus` saiu na task [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) e nada mais a importa, a dependência sai do `package.json`. **Rodar `npm ci` depois e dizer no relatório**, porque o CI roda `npm ci` e falha se o lockfile não acompanhar
 - `src/renderer/images/logo192.png`, que estava guardado para a troca do logo do login — a troca aconteceu na task [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42)
@@ -60,7 +60,16 @@ Duas correções pontuais, sem reescrever a seção:
 - a tabela da **Stack** diz "UI: React 18, react-router-dom 6, CSS Modules (sem biblioteca de UI, sem CSS-in-JS)" — acrescentar a fonte de ícones local, que é dependência visual nova
 - a seção **Fluxo de trabalho (SDD)** afirma que as labels `feature` e `task` **não existem** neste repo; elas existem (conferido em 2026-10-28, `gh label list`)
 
-### 4. Registrar os aprendizados no `plan.md`
+### 4. Duas decisões de acessibilidade que são de produto, não de limpeza
+
+Medidas no review da task 05, e as duas vêm de seguir o desenho:
+
+- **`--muted` no tema claro** (`#857a74` sobre `#faf7f5`) dá **3,91:1**, abaixo dos 4,5:1 da WCAG AA, e é o token da frase da sessão e da contagem regressiva, em 12-13 px. No escuro fica 5,06:1;
+- **texto sem tamanho explícito sai em 14 px** (o `body { font-size: 0.875rem }` herdado do MUI) contra os 16 px do desenho.
+
+Escurecer o `--muted` fecha o AA e **diverge do desenho**; manter preserva a fidelidade e deixa texto pequeno abaixo do mínimo. **Não decida sozinho:** leve ao dev, e o que sair vira linha na tabela "Fidelidade ao desenho" da spec.
+
+### 5. Registrar os aprendizados no `plan.md`
 
 Preencher a seção "Aprendizados que valem para as próximas tasks" com o que as onze tasks derrubaram ou descobriram. **Não é formalidade:** é o que a próxima spec de UI vai ler.
 

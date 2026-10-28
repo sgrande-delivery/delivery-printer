@@ -33,9 +33,7 @@ const Messaging: React.FC<MessagingProps> = ({ message, options, action, handleA
   return (
     <div className={styles.snackbar} style={options || undefined}>
       <div className={styles.content}>
-        <div className={styles.messageContent}>
-          <span className={styles.message}>{message}</span>
-        </div>
+        <span className={styles.message}>{message}</span>
         <Button size="small" className={styles.actionText} onClick={action ? handleAction : messaging.handleClose}>
           {action ? 'Desfazer' : 'Fechar'}
         </Button>

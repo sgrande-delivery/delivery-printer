@@ -3,8 +3,8 @@ import { cx } from './cx';
 import styles from './Button.module.css';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'contained' | 'text';
-  size?: 'medium' | 'small' | 'large';
+  variant?: 'contained' | 'outlined' | 'text';
+  size?: 'medium' | 'small' | 'large' | 'action';
   fullWidth?: boolean;
   children?: ReactNode;
 }
@@ -22,9 +22,12 @@ const Button: React.FC<ButtonProps> = ({
     type={type}
     className={cx(
       styles.root,
-      variant === 'contained' ? styles.containedPrimary : styles.text,
+      variant === 'contained' && styles.containedPrimary,
+      variant === 'outlined' && styles.outlined,
+      variant === 'text' && styles.text,
       size === 'small' && styles.small,
       size === 'large' && styles.large,
+      size === 'action' && styles.action,
       fullWidth && styles.fullWidth,
       className
     )}

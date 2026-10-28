@@ -56,7 +56,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | executada |
 | 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | executada |
 | 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | executada |
-| 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | pendente |
+| 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | executada |
 | 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | pendente |
 | 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | pendente |
 | 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | pendente |
@@ -170,6 +170,48 @@ Para as nove tasks que criam tela:
 O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### CSS Module não consegue apontar para um `@keyframes` global, e falha calado (task 05)
+
+Medido com o `node_modules` deste repo, num `vite build` de sonda:
+
+| Dentro de um `.module.css` | Resultado |
+| --- | --- |
+| `animation: 900ms :global(spin) …` | **erro de parse** do postcss |
+| `animation-name: :global(spin)` | **erro de parse** |
+| `animation: spin …` com o `@keyframes spin` global | **compila e morre calado**: o CSS emitido vira `animation:_spin_or8z5_1`, e esse keyframe não existe |
+| `@keyframes` **dentro** do módulo, referenciado no mesmo módulo | funciona (os dois são renomeados juntos) |
+
+A terceira linha é a armadilha: animação parada, sem erro, sem aviso. As duas saídas são o keyframe **e** a classe que o usa no `app.css` (foi o que a task 05 fez, com `.spin`), ou keyframe e referência dentro do mesmo módulo. **Compartilhar animação entre módulos exige o global.**
+
+### O `ErrorBoundary` está acima dos providers, e isso tem três consequências (task 05)
+
+Ele é o nó mais externo do `App.tsx`, então: **não pode usar `useTheme()`** (daí a moldura própria, em vez do `StateLayout`) e **não pode usar `useMessaging()`** (daí o aviso inline com `role="status"`). Mas **os tokens de cor funcionam**, porque o `index.tsx` escreve o `data-theme` no `<html>` antes do `root.render` e os tokens vivem em `:root`, que é DOM e não contexto. Para escolher o símbolo claro/escuro basta ler `document.documentElement.dataset.theme` — foi o que a correção do review fez, e é por isso que a barra da tela de erro pôde ganhar a marca sem provider nenhum.
+
+Consequência que é comportamento correto: ao estourar, os filhos desmontam junto com o `ThemeProvider`, então a tela de erro **congela no tema do instante do erro** e não acompanha troca do Windows depois disso.
+
+### O retry automático funciona, mas requisição pendurada ainda trava o app (task 05)
+
+Traçado e provado com timers falsos: `retrySession` põe `sessionStatus` em `loading`, o `NoConnection` desmonta, a tentativa dispara, e no erro ele remonta zerado em 12 s — o laço se mantém (`GET /users/me` em t=0, 12, 24, 36 s) e, quando a rede volta, a tela protegida aparece **sem ninguém clicar**.
+
+**O furo que sobra:** se a requisição **pendura** em vez de falhar (Wi-Fi associado sem rota, o *black hole* clássico de PDV), o app fica em "Conectando ao servidor…" para sempre e não há segunda tentativa — `services/api.ts` cria o axios **sem `timeout`**. Medido: 120 s avançados, 2 chamadas no total.
+
+Não é regressão desta spec (o botão manual tinha o mesmo destino) e o conserto é política de rede do app inteiro: **merece task própria**, junto com o `history.push` do interceptor que a regra da UI já lista como dívida.
+
+### Dois desvios de acessibilidade herdados do desenho (task 05)
+
+Medidos, e nenhum é defeito de implementação — os dois vêm de seguir o desenho e a task 01:
+
+- **`--muted` no tema claro** (`#857a74` sobre `#faf7f5`) dá **3,91:1**, abaixo dos 4,5:1 de AA. É o token da frase da sessão e da contagem regressiva, em 12 e 13 px. No escuro fica 5,06:1;
+- **texto sem tamanho explícito sai em 14 px**, não nos 16 px do desenho, porque o `app.css` tem `body { font-size: 0.875rem }` herdado do MUI.
+
+Os dois são assunto da **task 12**, que varre o `app.css` — e a decisão ali é entre fidelidade ao desenho e AA, que é decisão de produto, não de limpeza.
+
+### A varredura por mutação, do jeito que funciona neste shell (task 05)
+
+O shell desta máquina é **zsh**, que **não faz word-splitting** em `$VAR` sem aspas: `npm test -- $PATHS` com dois caminhos numa variável vira **um** filtro só, nenhum arquivo casa, e toda mutação parece "sem rede". Passe os caminhos literalmente (ou use `${=VAR}`). Perdi uma rodada inteira com isso.
+
+E a regra que já valia: **exclua o `src/__tests__/ui.test.tsx`** da varredura, porque a falha pré-existente dele faz toda mutação parecer "pega".
 
 ### O helper de label do testing-library ignora `button`, mas não ignora `aria-hidden` (task 04)
 
