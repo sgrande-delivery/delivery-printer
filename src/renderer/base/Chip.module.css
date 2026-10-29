@@ -59,6 +59,11 @@
   padding: 0 10px 0 6px;
 }
 
+/* An icon first in the 22 px status pill sits 4 px from the text (printer-v2.dc.html:269). */
+.compact.iconFirst {
+  gap: 4px;
+}
+
 .ok {
   border: 0;
   background: var(--ok-soft);
@@ -81,6 +86,11 @@
   cursor: pointer;
   /* A chip inside the drag region of the header or the login stays clickable. */
   -webkit-app-region: no-drag;
+}
+
+.clickable:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .dot {

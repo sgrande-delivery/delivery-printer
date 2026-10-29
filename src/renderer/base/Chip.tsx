@@ -1,8 +1,8 @@
-import React, { ReactNode } from 'react';
+import React, { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cx } from './cx';
 import styles from './Chip.module.css';
 
-interface ChipProps {
+interface ChipProps extends Pick<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'title' | 'disabled'> {
   /** `neutral` is the bordered surface pill; `muted` is the same pill in secondary text; `ok` and `err` are the soft-filled status pills; `inverse` is the selected filter (text color as background). */
   tone?: 'neutral' | 'muted' | 'ok' | 'err' | 'inverse';
   /** The heights of the design: 22 (status in a table row), 26 (header status), 32 (back chip, filter), 34 (printer). */
@@ -26,8 +26,11 @@ const Chip: React.FC<ChipProps> = ({
   dot,
   pressed,
   onClick,
+  disabled,
   className,
   children,
+  'aria-label': ariaLabel,
+  title,
 }) => {
   const classes = cx(
     styles.root,
@@ -57,7 +60,15 @@ const Chip: React.FC<ChipProps> = ({
 
   if (onClick) {
     return (
-      <button type="button" className={classes} aria-pressed={pressed} onClick={onClick}>
+      <button
+        type="button"
+        className={classes}
+        aria-pressed={pressed}
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        title={title}
+      >
         {dotNode}
         {children}
       </button>
@@ -65,7 +76,7 @@ const Chip: React.FC<ChipProps> = ({
   }
 
   return (
-    <span className={classes}>
+    <span className={classes} aria-label={ariaLabel} title={title}>
       {dotNode}
       {children}
     </span>

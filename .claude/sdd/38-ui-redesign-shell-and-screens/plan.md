@@ -171,6 +171,40 @@ O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
 
+### Segunda premissa falsa minha sobre código de terceiro, e a regra que faltava (task 09)
+
+A divergência 4 da spec afirmava que `paper_width` é "número livre na API" e que o alternador de dois valores reescreveria uma bobina de 76 mm em silêncio. **Falso.** Medido na `delivery-api` (remoto conferido; `feature/1362-product-usage-route` e `origin/master` idênticos): `UpdatePrinterRequest.php:29` é `Rule::in(PrinterPaperWidthEnum)` com **58 e 80 apenas**, e a migração tem `CHECK (paper_width IN (58, 80))`. Um cadastro de 76 mm **não pode existir nem ser enviado**.
+
+Consequências, todas corrigidas: o terceiro chip era **código morto**; o tipo de escrita tinha afrouxado de `58 | 80` para `number`, andando para trás (para payload de escrita o conjunto fechado é o que segura o 422); e o critério de aceitação pedia comportamento inalcançável. Cinco testes que afirmavam o estado impossível saíram.
+
+**É a mesma classe do erro da RN-09** na task 08, e as duas juntas dão a regra que faltava: **premissa sobre comportamento de código de terceiro exige abrir a regra de validação — não o tipo, não o comentário.** Para a `delivery-api` isso quer dizer o `FormRequest` **e** a migração; o tipo TypeScript daqui é o que *nós* escrevemos, não o que ela aceita.
+
+### `createSharedStore`: o padrão, e o contrato que a próxima tela tem de honrar (task 09)
+
+A dívida de busca saiu com um store de **contagem de referência** (`hooks/sharedStore.ts`), medido no `SidebarFetching.test.tsx`: uma volta completa pelo menu passou de **6 `GET /printers` + 6 `listPrinters()` + 12 `queueState()`** para **1 de cada**. Isso também corta pela metade o custo de anúncio da fila que a task 07 mediu — era a mitigação que o plan já pedia por outro motivo.
+
+**O contrato, e é onde a próxima tela erra:** o último leitor que desmonta devolve o estado ao inicial, e o shell mantém a sidebar montada por toda a sessão — então o `start` roda **uma vez no login** e o estado não volta a zero até o logout. Tela que precisa de dado fresco chama **`revalidate()` ao montar**; está no tipo, e a tela de impressoras tem teste que cai se o `revalidate` sair. **A tela da task 10 ou 11 precisa do próprio teste disso**, senão abre com o snapshot da sessão e não acusa nada.
+
+Dois detalhes medidos: o `request++` e o `inFlight = false` do teardown são **linhas defensivas equivalentes** (as mutações sobrevivem, por razão correta — o `store.set` descarta escrita sem leitor); e **não há StrictMode** neste app, então ligá-lo faria cada montagem rodar `start`/`stop`/`start`.
+
+A releitura passou a ser no **`focus` da janela**, não por navegação: é o instante em que a resposta muda de verdade (o operador foi renomear a impressora **no Windows** e voltou), e num app aberto por dias não há timer nem polling.
+
+### `onChanged()` depois da falha parcial é o que torna seguro o retry de rota não idempotente (task 09)
+
+`togglePrinterActive` **não é idempotente** — duas chamadas voltam ao estado original, e está escrito no serviço. Se a ativação deu certo no servidor mas a resposta se perdeu, o `refresh()` traz `activated` já virado e o `needsToggle` passa a `false`: o segundo "Salvar" **não** chama o toggle de novo. Não é cosmético; é a correção da única rota não idempotente que este app usa.
+
+Fica declarado o furo estreito: o `setSaving(false)` reabilita o botão **antes** de o `refresh()` assentar, então um clique dentro dessa janela ainda compara contra o dado velho.
+
+### O terceiro limite da rede de classes: custom property inexistente não é pega (task 09)
+
+`var(--scrimm)` (token que não existe) **sobrevive** à suíte inteira: o helper olha classe, não custom property, e o CSS só não aplica a declaração. Somando aos dois limites já registrados — o helper só pega concatenação, e `toHaveClass(undefined)` passa calado quando o elemento tem outra classe —, **a rede de CSS desta base cobre erro de digitação em chave de módulo na TSX, e nada além disso.** Cor errada, token inexistente e renome do lado do CSS são olho humano.
+
+### O trap de foco da gaveta não cobre o que a próxima vai precisar (task 09)
+
+O `FOCUSABLE` cobre `button`, `input` e `[tabindex]`, e **não** cobre `a[href]`, `select`, `textarea` nem `[contenteditable]`. Hoje o painel não tem nenhum deles, então o trap é completo — mas a task 11 tem a mesma forma de lista de device do desenho (`:352-356` contra `:395-397`), e copiar o padrão com um link dentro faz o foco escapar em silêncio. **Na segunda gaveta, o seletor vira constante compartilhada.**
+
+E o que jsdom não prova: Tab de verdade (o teste prova que nas bordas o handler chama `focus()`, não a ordem real do Chromium) e o `-webkit-app-region: no-drag` do véu e do painel — apagá-lo **sobrevive** à suíte, e é olho em Electron.
+
 ### Dois bugs em código já commitado, e a classe deles é o achado de processo da spec (task 08)
 
 **Bug 1: o "Impressos hoje" do Painel mostrava zero no app real.** O `onQueueState` filtrava os impressos, **com um comentário justificando** ("the deduplication ledger … have no reader in the renderer"). Era verdade até a task 06 criar o leitor e **não tocar no handler**. Os testes passaram porque **mockam o canal**.

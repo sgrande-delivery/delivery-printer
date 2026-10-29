@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { AxiosError, AxiosHeaders } from 'axios';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { usePrinters } from '../usePrinters';
 import { fetchPrinters } from 'renderer/services/printers';
 import type { Printer } from 'renderer/types/printer';
@@ -30,10 +30,9 @@ describe('usePrinters', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.printers[0].resolvedDevice).toBe('COZINHA');
-    expect(result.current.unregistered).toEqual([]);
   });
 
-  it('returns null for a name no device has, and lists the unregistered device', async () => {
+  it('returns null for a name no device has', async () => {
     vi.mocked(fetchPrinters).mockResolvedValue([printer('Cozinha')]);
     vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('EPSON TM-T20'));
 
@@ -41,7 +40,6 @@ describe('usePrinters', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.printers[0].resolvedDevice).toBeNull();
-    expect(result.current.unregistered.map(d => d.name)).toEqual(['EPSON TM-T20']);
   });
 
   it('does not match with surrounding spaces, because printReceipt does not either', async () => {
@@ -66,7 +64,6 @@ describe('usePrinters', () => {
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.printers).toHaveLength(2);
     expect(result.current.printers.map(p => p.resolvedDevice)).toEqual(['COZINHA', 'COZINHA']);
-    expect(result.current.unregistered).toEqual([]);
   });
 
   it('leaves every printer unresolved, without breaking, when there are no devices', async () => {
@@ -77,7 +74,6 @@ describe('usePrinters', () => {
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
     expect(result.current.printers.map(p => p.resolvedDevice)).toEqual([null, null]);
-    expect(result.current.unregistered).toEqual([]);
   });
 
   it('reports devicesRead false when no device came back, true otherwise', async () => {
@@ -87,6 +83,8 @@ describe('usePrinters', () => {
 
     await waitFor(() => expect(empty.result.current.status).toBe('ready'));
     expect(empty.result.current.devicesRead).toBe(false);
+    // The list is shared by every mounted reader: a second one only starts fresh once the first is gone.
+    empty.unmount();
 
     vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('X'));
     const full = renderHook(() => usePrinters());
@@ -110,5 +108,111 @@ describe('usePrinters', () => {
 
     await waitFor(() => expect(result.current.status).toBe('forbidden'));
     expect(window.electron.log).toHaveBeenCalledWith('warn', expect.stringContaining('403'), undefined);
+  });
+
+  describe('one list for every reader', () => {
+    it('asks the API and the spooler once for two readers mounted together', async () => {
+      vi.mocked(fetchPrinters).mockResolvedValue([printer('Cozinha')]);
+      vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('Cozinha'));
+
+      const sidebar = renderHook(() => usePrinters());
+      const screen = renderHook(() => usePrinters());
+
+      await waitFor(() => expect(screen.result.current.status).toBe('ready'));
+      expect(sidebar.result.current.printers).toEqual(screen.result.current.printers);
+      expect(fetchPrinters).toHaveBeenCalledTimes(1);
+      expect(window.electron.listPrinters).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows a change to every reader at once: what one refreshes, the other reads', async () => {
+      vi.mocked(fetchPrinters).mockResolvedValue([printer('Cozinha')]);
+      vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('Outra'));
+
+      const sidebar = renderHook(() => usePrinters());
+      const screen = renderHook(() => usePrinters());
+      await waitFor(() => expect(screen.result.current.status).toBe('ready'));
+      expect(sidebar.result.current.printers[0].resolvedDevice).toBeNull();
+
+      vi.mocked(fetchPrinters).mockResolvedValue([printer('Outra')]);
+      act(() => screen.result.current.refresh());
+
+      await waitFor(() => expect(sidebar.result.current.printers[0].resolvedDevice).toBe('Outra'));
+    });
+
+    it('keeps the list while one reader leaves, and starts over when the last one does', async () => {
+      vi.mocked(fetchPrinters).mockResolvedValue([printer('Cozinha')]);
+      vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('Cozinha'));
+
+      const sidebar = renderHook(() => usePrinters());
+      const screen = renderHook(() => usePrinters());
+      await waitFor(() => expect(screen.result.current.status).toBe('ready'));
+
+      screen.unmount();
+      expect(sidebar.result.current.status).toBe('ready');
+      expect(fetchPrinters).toHaveBeenCalledTimes(1);
+
+      sidebar.unmount();
+      const again = renderHook(() => usePrinters());
+
+      expect(again.result.current.status).toBe('loading');
+      await waitFor(() => expect(again.result.current.status).toBe('ready'));
+      expect(fetchPrinters).toHaveBeenCalledTimes(2);
+    });
+
+    it('revalidate reads again when idle and does nothing while a read is already in flight', async () => {
+      vi.mocked(fetchPrinters).mockResolvedValue([printer('Cozinha')]);
+      vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('Cozinha'));
+      const { result } = renderHook(() => usePrinters());
+
+      act(() => result.current.revalidate());
+      expect(fetchPrinters).toHaveBeenCalledTimes(1);
+
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      act(() => result.current.revalidate());
+
+      expect(fetchPrinters).toHaveBeenCalledTimes(2);
+      // Back to ready without blanking the screen: a revalidate is not a reload.
+      expect(result.current.status).toBe('ready');
+    });
+
+    it('reads again when the window gets the focus back, and stops listening with the last reader', async () => {
+      vi.mocked(fetchPrinters).mockResolvedValue([printer('Cozinha')]);
+      vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('Cozinha'));
+      const { result, unmount } = renderHook(() => usePrinters());
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+      expect(fetchPrinters).toHaveBeenCalledTimes(2);
+
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      unmount();
+      window.dispatchEvent(new Event('focus'));
+      expect(fetchPrinters).toHaveBeenCalledTimes(2);
+    });
+
+    it('drops an answer that arrives after the last reader left', async () => {
+      let finish = (_printers: Printer[]): void => undefined;
+      vi.mocked(fetchPrinters).mockImplementation(
+        () =>
+          new Promise<Printer[]>(resolve => {
+            finish = resolve;
+          })
+      );
+      vi.mocked(window.electron.listPrinters).mockResolvedValue(devices('Cozinha'));
+      const first = renderHook(() => usePrinters());
+      first.unmount();
+
+      vi.mocked(fetchPrinters).mockResolvedValue([]);
+      const second = renderHook(() => usePrinters());
+      await waitFor(() => expect(second.result.current.status).toBe('ready'));
+
+      await act(async () => {
+        finish([printer('Velha')]);
+      });
+
+      expect(second.result.current.printers).toEqual([]);
+    });
   });
 });

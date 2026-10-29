@@ -196,4 +196,55 @@ describe('usePrintQueue', () => {
 
     expect(accepted).toBe(false);
   });
+
+  describe('one queue for every reader', () => {
+    it('subscribes once and asks the main once, for the badge and the screen together', async () => {
+      const badge = renderHook(() => usePrintQueue());
+      const screen = renderHook(() => usePrintQueue());
+
+      await waitFor(() => expect(screen.result.current.loaded).toBe(true));
+      expect(window.electron.onQueueChanged).toHaveBeenCalledTimes(1);
+      expect(window.electron.queueState).toHaveBeenCalledTimes(1);
+
+      const onChanged = vi.mocked(window.electron.onQueueChanged).mock.calls[0][0];
+      vi.mocked(window.electron.queueState).mockResolvedValue([job({ id: 'x', status: 'failed' })]);
+
+      await act(async () => {
+        onChanged();
+      });
+
+      // One announcement, one read: it used to be one per mounted reader.
+      expect(window.electron.queueState).toHaveBeenCalledTimes(2);
+      await waitFor(() => expect(badge.result.current.failed.map(j => j.id)).toEqual(['x']));
+      expect(screen.result.current.failed.map(j => j.id)).toEqual(['x']);
+    });
+
+    it('lets go of the subscription only when the last reader leaves', async () => {
+      const off = vi.fn();
+      vi.mocked(window.electron.onQueueChanged).mockReturnValue(off);
+      const badge = renderHook(() => usePrintQueue());
+      const screen = renderHook(() => usePrintQueue());
+      await waitFor(() => expect(screen.result.current.loaded).toBe(true));
+
+      screen.unmount();
+      expect(off).not.toHaveBeenCalled();
+
+      badge.unmount();
+      expect(off).toHaveBeenCalledTimes(1);
+    });
+
+    it('an action taken through one reader reaches the other', async () => {
+      vi.mocked(window.electron.queueState).mockResolvedValue([job({ id: 'f', status: 'failed' })]);
+      const badge = renderHook(() => usePrintQueue());
+      const screen = renderHook(() => usePrintQueue());
+      await waitFor(() => expect(badge.result.current.failed).toHaveLength(1));
+
+      vi.mocked(window.electron.queueState).mockResolvedValue([]);
+      await act(async () => {
+        await screen.result.current.discard('f');
+      });
+
+      await waitFor(() => expect(badge.result.current.failed).toHaveLength(0));
+    });
+  });
 });

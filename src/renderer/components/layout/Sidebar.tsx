@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React from 'react';
+import { NavLink } from 'react-router-dom';
 import Icon from 'renderer/base/Icon';
 import { cx } from 'renderer/base/cx';
 import symbol from 'renderer/images/brand/simbolo-negativo.png';
@@ -26,24 +26,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
   const { restaurant, user } = useAuth();
   const { handleOpen } = useMessaging();
   const { pending, failed } = usePrintQueue();
-  const { printers, devicesRead, refresh } = usePrinters();
+  const { printers, devicesRead } = usePrinters();
   const logout = useLogout();
-  const { pathname } = useLocation();
-
-  // The printers screen edits its own copy of the list; reading again when the operator leaves it
-  // keeps the badge from keeping an accusation that has already been fixed. Not on the first run:
-  // usePrinters already loaded on mount.
-  const isFirstRun = useRef(true);
-  useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      return;
-    }
-
-    refresh();
-  }, [pathname, refresh]);
 
   // Same rule as the printer card (PrinterItem): without a read of this machine's devices nobody is accused.
+  // The list is shared with the printers screen, so a fix made there reaches this badge on its own.
   const missing = devicesRead ? printers.filter(printer => !printer.resolvedDevice).length : 0;
 
   const badges: Record<string, Badge | undefined> = {

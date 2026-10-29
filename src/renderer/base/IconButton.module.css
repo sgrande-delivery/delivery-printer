@@ -35,3 +35,12 @@
 .small:hover {
   background-color: var(--surface-2);
 }
+
+.root:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.root:disabled:hover {
+  background-color: transparent;
+}

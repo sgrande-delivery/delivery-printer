@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** 03
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -55,7 +55,7 @@ Quatro campos, e cada um tem uma armadilha:
 | **Impressora do Windows** (`:392-397`) | Lista de opções com rádio; selecionada com borda `--accent` e fundo `--accent-soft` | É o campo que resolve o problema da tela. Escolher da lista é o caminho principal; **o nome digitado à mão continua possível**, porque há cadastro apontando para impressora de outra máquina, e substituir o campo por uma lista fechada tornaria esse cadastro ineditável |
 | **Setor** (`:398-406`) | Chips; ativo com fundo `--text` e texto `--bg` | Os **sete** de `stations.ts`, não os quatro do mock. **O `Chip` (task 06) ainda não serve para seleção:** `ChipProps` não espalha `...rest` (logo não aceita `aria-label`, `disabled` nem `aria-pressed`) e o `tone` só tem `neutral|ok|err`. Estenda **o primitivo** |
 | **Cópias** (`:408-414`) | Menos / valor / mais, 34 px | Mínimo 1: zero cópia é nenhum comprovante |
-| **Bobina** (`:415-422`) | Segmentado 58 / 80 mm | `paper_width` é número livre na API. Valor fora dos dois aparece como **terceiro chip, selecionado, com o valor real** (divergência 4 da tabela de fidelidade) — o alternador de dois valores reescreveria em silêncio uma bobina de 76 mm |
+| **Bobina** (`:415-422`) | Segmentado 58 / 80 mm | **58 e 80 e nada mais.** A primeira versão desta linha dizia que `paper_width` é número livre e pedia um terceiro chip: é falso, medido na `delivery-api` (`Rule::in(PrinterPaperWidthEnum)` mais `CHECK (paper_width IN (58, 80))`), e o chip extra era código morto |
 | **Ativa** (`:424-427`) | Interruptor, com "Desativada, não recebe comprovantes" | É o `PATCH /printers/{id}/toggle-active`, rota **separada** do `PUT` — conferir o que o `PrinterForm` de hoje faz e manter |
 
 Fechar pelo véu, pelo `close` ou por `Esc`, e **sem perder o rascunho sem confirmar** quando houver alteração. Foco: ao abrir, vai para o painel; ao fechar, volta para o botão que a abriu.
@@ -93,7 +93,7 @@ Os três arquivos de teste existentes (`Printers.test.tsx`, `PrinterItem.test.ts
 - [ ] "Corrigir" aparece só na não encontrada, e "Editar" na encontrada
 - [ ] Os cinco estados da tela continuam distintos, incluindo "nenhum device lido" com cartões neutros
 - [ ] Os sete setores estão oferecidos
-- [ ] Bobina fora de 58/80 sobrevive a uma edição que não a toca
+- [ ] A bobina oferece 58 e 80, e só — é o conjunto que a API valida (`Rule::in`) e que o banco impõe (CHECK)
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` sem erro novo
 
 ## Uma dívida de busca que é desta task
@@ -111,3 +111,47 @@ Você é a dona da tela de impressoras, então **resolva as duas de uma vez**: u
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Processos tocados
+
+renderer. Nenhum canal IPC criado nem alterado.
+
+### Arquivos criados/alterados
+
+- `hooks/sharedStore.ts` (novo) — store com contagem de referência: `start` no primeiro leitor, `teardown` no último, escrita sem leitor descartada
+- `hooks/usePrinters.ts`, `hooks/usePrintQueue.ts` — viram casca sobre o store: **uma** cópia, um `GET /printers`, um `listPrinters()`, um `queueState()` e uma assinatura de `onQueueChanged` para o shell inteiro. `usePrinters` ganha `revalidate()` e relê no `focus` da janela
+- `components/layout/Sidebar.tsx` — o `refresh()` por navegação saiu
+- `base/Stepper`, `base/Switch` (novos); `Chip` (`aria-label`, `title`, `disabled`; `.compact.iconFirst` com gap 4); `Button` (`size={34}` e `size={38}`); `IconButton` (estado `:disabled`)
+- `components/printers/` — `Printers`, `PrinterList`, `PrinterItem` redesenhados; `PrinterDrawer` e `printerView.ts` (novos); `PrinterForm` removido
+- `services/printers.ts` — `paper_width: PaperWidth` no payload, com `PaperWidth = 58 | 80` restaurado depois do review medir a validação da API
+- `app.css` — `--scrim` nos dois temas
+- `spec.md` — divergência 10 na tabela de fidelidade
+
+### Decisões que tomei por conta própria
+
+- **Dívida de busca resolvida por store compartilhado, não por provider**, e o `refresh()` da sidebar saiu por inteiro em vez de virar "só se o pathname anterior era `/printers`": com uma cópia só, o `refresh` da tela de impressoras já atualiza o badge. Em troca a tela chama `revalidate()` ao montar (não duplica a requisição da primeira entrada) e o hook relê no `focus` da janela, que é o momento em que "o operador corrigiu o nome no Windows" fica visível.
+- Cartão **sem `role="alert"`** (resolve a inconsistência com o Painel anotada na task 06).
+- Botão Ativar/Desativar saiu do cartão: a ativação mora no interruptor da gaveta, gravada **depois** do PUT pela rota `toggle-active`, e só se o interruptor terminou do outro lado. Falha só na ativação diz que os dados foram salvos, relê a lista e não fecha.
+- Setor: chip pressionado de novo **limpa** o setor (é o caminho para "Sem setor", que o select antigo tinha). Setor que a API tem e o app não conhece aparece como chip extra, selecionado — mesma regra da bobina.
+- Cópias de 1 a 3 (o `max` da API, com CHECK no banco). A bobina oferece **58 e 80 e nada mais**: o terceiro chip que a primeira versão desta task pedia era inalcançável, porque a API valida contra o enum e o banco tem CHECK.
+- A gaveta tem **152 px de respiro à direita no cabeçalho** (divergência 10).
+- Confirmação de descarte é inline no rodapé, não `window.confirm`.
+- "Instaladas nesta máquina" lista **todos** os devices (o desenho), não só os não cadastrados.
+
+### Verificação
+
+- `npm run typecheck`: 0
+- `npm run lint`: 0 erros, 1 aviso (`Login.tsx:22`, baseline)
+- `npm test`: 58 arquivos, 502 testes, 0 falhas (baseline 52 / 419)
+- Varredura por mutação: 56 mutações, 55 mortas; sobrevivente é equivalente (`request++` no teardown de `usePrinters`, redundante com o descarte de escrita sem leitor e com o `request++` do `load()` seguinte). Árvore restaurada e conferida com `diff -r` contra cópia, e `typecheck` depois.
+- Não verificado: `npm run dev` / olho humano contra o desenho; foco e Tab em Electron real.
+
+### Como testar
+
+1. `npm run dev`, abrir Impressoras com um cadastro de nome errado: cartão vermelho, chip "Não encontrada — sai na padrão", botão "Corrigir".
+2. Corrigir pela gaveta escolhendo da lista, "Salvar no servidor": o cartão e o badge da sidebar mudam sem recarregar.
+3. Bobina 76 mm: terceiro chip selecionado; editar só as cópias e salvar mantém 76.

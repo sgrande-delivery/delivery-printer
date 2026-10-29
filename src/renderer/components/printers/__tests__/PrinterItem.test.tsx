@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { AxiosError, AxiosHeaders } from 'axios';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Printers from '../Printers';
 import MessagingProvider from 'renderer/providers/messaging';
-import { fetchPrinters, togglePrinterActive } from 'renderer/services/printers';
+import { fetchPrinters } from 'renderer/services/printers';
 import { expectNoUndefinedClasses } from 'renderer/__tests__/cssModules';
 import type { Printer } from 'renderer/types/printer';
+import styles from '../PrinterItem.module.css';
+import chipStyles from 'renderer/base/Chip.module.css';
+import buttonStyles from 'renderer/base/Button.module.css';
+import iconButtonStyles from 'renderer/base/IconButton.module.css';
 
 vi.mock('renderer/services/printers', () => ({
   fetchPrinters: vi.fn(),
@@ -24,16 +27,6 @@ const registered: Printer = {
   copies: 2,
 };
 
-function httpError(status: number): AxiosError {
-  return new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, undefined, {
-    status,
-    statusText: '',
-    data: {},
-    headers: {},
-    config: { headers: new AxiosHeaders() },
-  });
-}
-
 // handleOpen only exists under the provider; in the app it wraps the routes (App.tsx).
 function renderScreen(): ReturnType<typeof render> {
   return render(
@@ -46,100 +39,70 @@ function renderScreen(): ReturnType<typeof render> {
 describe('PrinterItem', () => {
   beforeEach(() => {
     vi.mocked(fetchPrinters).mockReset().mockResolvedValue([registered]);
-    vi.mocked(togglePrinterActive).mockReset().mockResolvedValue();
     vi.mocked(window.electron.listPrinters)
       .mockReset()
       .mockResolvedValue([{ name: 'EPSON TM-T20', displayName: 'EPSON TM-T20', isDefault: true }]);
   });
 
-  it('deactivates by the dedicated route and reads the list again', async () => {
+  it('draws the card of the design: icon square, name, chip, the detail line and one action', async () => {
     const { container } = renderScreen();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Desativar' }));
+    const card = (await screen.findByText('Encontrada nesta máquina')).closest('li') as HTMLElement;
+    const name = within(card).getByText('EPSON TM-T20');
 
-    await waitFor(() => expect(fetchPrinters).toHaveBeenCalledTimes(2));
-    expect(togglePrinterActive).toHaveBeenCalledWith(3);
+    expect(card).toHaveClass(styles.item);
+    expect(card.firstElementChild).toHaveClass(styles.icon);
+    expect(name).toHaveClass(styles.name);
+    expect(name.parentElement).toHaveClass(styles.titleRow);
+    expect(within(card).getByText('Cozinha · 2 cópias · bobina 80 mm · ativa')).toHaveClass(styles.detail);
+    expect(within(card).getByText('Encontrada nesta máquina')).toHaveClass(
+      chipStyles.compact,
+      chipStyles.ok,
+      chipStyles.iconFirst
+    );
+    expect(container.querySelector(`.${styles.body}`)).not.toBeNull();
     expectNoUndefinedClasses(container);
   });
 
-  it('says it is a permission problem when the toggle answers 403, and does not reload', async () => {
-    vi.mocked(togglePrinterActive).mockRejectedValue(httpError(403));
+  it('Editar is the quiet outlined 34 px button, Corrigir the accent one', async () => {
     const { container } = renderScreen();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Desativar' }));
+    const edit = await screen.findByRole('button', { name: 'Editar' });
 
-    expect(await screen.findByText(/Sem permissão para alterar as impressoras/)).toBeInTheDocument();
-    expect(fetchPrinters).toHaveBeenCalledTimes(1);
-    // The printer is still shown as it is in the API: the screen did not pretend it changed.
-    expect(screen.getByText('ativa')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Desativar' })).toBeEnabled();
+    expect(edit).toHaveClass(buttonStyles.h34, buttonStyles.outlined);
+    expect(edit).not.toHaveClass(buttonStyles.containedPrimary);
     expectNoUndefinedClasses(container);
   });
 
-  it('separates a failed toggle from a permission problem', async () => {
-    vi.mocked(togglePrinterActive).mockRejectedValue(httpError(500));
+  it('Corrigir takes the accent fill when the name matches nothing', async () => {
+    vi.mocked(window.electron.listPrinters).mockResolvedValue([
+      { name: 'Outra', displayName: 'Outra', isDefault: true },
+    ]);
     renderScreen();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Desativar' }));
+    const fix = await screen.findByRole('button', { name: 'Corrigir' });
 
-    expect(await screen.findByText(/Não foi possível alterar a impressora/)).toBeInTheDocument();
+    expect(fix).toHaveClass(buttonStyles.h34, buttonStyles.containedPrimary);
+    expect(fix).not.toHaveClass(buttonStyles.outlined);
   });
 
-  // The route flips the column (`NOT activated`), so it is not idempotent: two calls would
-  // land back on the original state and look like the click did nothing.
-  it('does not fire the toggle twice while the first call is in flight', async () => {
-    let release = (): void => undefined;
-    vi.mocked(togglePrinterActive).mockImplementation(
-      () =>
-        new Promise<void>(resolve => {
-          release = resolve;
-        })
-    );
+  it('does not announce the accusation as an alert: the card states it, the dashboard raises it', async () => {
+    vi.mocked(window.electron.listPrinters).mockResolvedValue([
+      { name: 'Outra', displayName: 'Outra', isDefault: true },
+    ]);
     renderScreen();
 
-    const button = await screen.findByRole('button', { name: 'Desativar' });
-    fireEvent.click(button);
-    fireEvent.click(button);
+    await screen.findByText('Não encontrada — sai na padrão');
 
-    expect(togglePrinterActive).toHaveBeenCalledTimes(1);
-    release();
-    await waitFor(() => expect(fetchPrinters).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  // The flash of the whole screen used to be the only sign of success: with it gone, the
-  // list must stay up while the row is read again, and the confirmation has to be its own.
-  it('confirms the toggle and updates the row without going back to loading', async () => {
-    let finishReload = (_printers: Printer[]): void => undefined;
+  it('has no switch and no Desativar on the card: activation lives in the drawer', async () => {
     renderScreen();
-    await screen.findByText('ativa');
+    await screen.findByText('Encontrada nesta máquina');
 
-    vi.mocked(fetchPrinters).mockImplementation(
-      () =>
-        new Promise<Printer[]>(resolve => {
-          finishReload = resolve;
-        })
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Desativar' }));
-
-    expect(await screen.findByText('Impressora desativada.')).toBeInTheDocument();
-    await waitFor(() => expect(fetchPrinters).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-    expect(screen.getByText('EPSON TM-T20')).toBeInTheDocument();
-
-    finishReload([{ ...registered, activated: false }]);
-
-    expect(await screen.findByText('inativa')).toBeInTheDocument();
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-  });
-
-  it('does not announce success when the toggle fails', async () => {
-    vi.mocked(togglePrinterActive).mockRejectedValue(httpError(500));
-    renderScreen();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Desativar' }));
-    await screen.findByText(/Não foi possível alterar a impressora/);
-
-    expect(screen.queryByText('Impressora desativada.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Desativar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 
   describe('test print', () => {
@@ -161,6 +124,7 @@ describe('PrinterItem', () => {
         })
       );
       expect(await screen.findByText(/Página de teste enviada/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Imprimir teste' })).toHaveClass(iconButtonStyles.small);
       expect(window.electron.rawPrint).not.toHaveBeenCalled();
       expectNoUndefinedClasses(container);
     });
@@ -171,7 +135,10 @@ describe('PrinterItem', () => {
       ]);
       renderScreen();
 
-      expect(await screen.findByRole('button', { name: 'Imprimir teste' })).toBeDisabled();
+      const button = await screen.findByRole('button', { name: 'Imprimir teste' });
+
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('title', 'Esta impressora não foi encontrada nesta máquina');
     });
 
     it('shows the reason when it cannot be queued', async () => {

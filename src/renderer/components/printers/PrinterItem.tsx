@@ -1,66 +1,38 @@
 import React, { useState } from 'react';
-import Typography from 'renderer/base/Typography';
 import Button from 'renderer/base/Button';
+import Chip from 'renderer/base/Chip';
+import Icon from 'renderer/base/Icon';
+import IconButton from 'renderer/base/IconButton';
 import { cx } from 'renderer/base/cx';
 import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
-import { AxiosError } from 'axios';
 import { useMessaging } from 'renderer/providers/messaging';
 import { log } from 'renderer/services/log';
 import { printFailureReason } from 'renderer/helpers/printFailure';
-import { togglePrinterActive } from 'renderer/services/printers';
-import type { WindowsPrinter } from 'shared/windowsPrinter';
-import PrinterForm from './PrinterForm';
-import { stations } from './stations';
+import { cardState, detailLine, stationLabel } from './printerView';
 import styles from './PrinterItem.module.css';
 
 interface PrinterItemProps {
   printer: ResolvedPrinter;
   // False when the list of this computer's printers came back empty: then "not found"
-  // would be a claim the screen did not measure, so the item says nothing about it.
-  devices: WindowsPrinter[];
+  // would be a claim the screen did not measure, so the card stays neutral.
   devicesRead: boolean;
-  // Called after a change reached the API, so the list is read again.
-  onChanged(): void;
+  onEdit(printer: ResolvedPrinter): void;
 }
 
-const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devices, devicesRead, onChanged }) => {
+// printer-v2.dc.html:263-274.
+const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devicesRead, onEdit }) => {
   // Not in any dependency array: handleOpen changes identity whenever the snackbar opens.
   const { handleOpen } = useMessaging();
-  const [editing, setEditing] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const [toggleError, setToggleError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
-  const missing = devicesRead && !printer.resolvedDevice;
+  const state = cardState(printer, devicesRead);
   // Without a device there is nothing to test on, but with devicesRead false the screen
   // has not measured it: saying "não encontrada" here would contradict its own notice.
   const noTestReason = devicesRead
     ? 'Esta impressora não foi encontrada nesta máquina'
     : 'As impressoras deste computador não foram lidas';
 
-  async function handleToggle(): Promise<void> {
-    setToggleError(null);
-    // The route flips the column, so it is not idempotent: a second click while the first
-    // is in flight lands back on the original state and looks like nothing happened.
-    setToggling(true);
-
-    try {
-      await togglePrinterActive(printer.id);
-      handleOpen(printer.activated ? 'Impressora desativada.' : 'Impressora ativada.');
-      onChanged();
-    } catch (err: unknown) {
-      log.error('toggle printer failed', err);
-      setToggleError(
-        err instanceof AxiosError && err.response?.status === 403
-          ? 'Sem permissão para alterar as impressoras. Nada foi salvo.'
-          : 'Não foi possível alterar a impressora. Tente novamente.'
-      );
-    } finally {
-      setToggling(false);
-    }
-  }
-
   // Queued, not printed: the page comes out through the same worker as a receipt, so
-  // "enviada" is the honest word, and a failure after the retries shows on the status screen.
+  // "enviada" is the honest word, and a failure after the retries shows on the queue screen.
   async function handleTestPrint(): Promise<void> {
     if (!printer.resolvedDevice) {
       return;
@@ -71,7 +43,7 @@ const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devices, devicesRead
     try {
       await window.electron.printTest({
         printerName: printer.name,
-        stationLabel: printer.station ? (stations[printer.station] ?? printer.station) : 'Sem setor',
+        stationLabel: stationLabel(printer.station),
         paperWidth: printer.paper_width,
         deviceName: printer.resolvedDevice,
       });
@@ -85,68 +57,40 @@ const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devices, devicesRead
   }
 
   return (
-    <li className={cx(styles.item, missing && styles.itemMissing)}>
-      <div className={styles.itemHeader}>
-        <Typography variant="body1">{printer.name}</Typography>
-        <Typography variant="caption" color="textSecondary">
-          {printer.activated ? 'ativa' : 'inativa'}
-        </Typography>
+    <li className={cx(styles.item, state === 'missing' && styles.itemMissing)}>
+      <span className={styles.icon}>
+        <Icon name="print" size={22} />
+      </span>
+      <div className={styles.body}>
+        <div className={styles.titleRow}>
+          <span className={styles.name}>{printer.name}</span>
+          {state === 'found' && (
+            <Chip size="compact" tone="ok" iconFirst>
+              <Icon name="check" size={14} />
+              Encontrada nesta máquina
+            </Chip>
+          )}
+          {state === 'missing' && (
+            <Chip size="compact" tone="err" iconFirst>
+              <Icon name="warning" size={14} />
+              Não encontrada — sai na padrão
+            </Chip>
+          )}
+        </div>
+        <div className={styles.detail}>{detailLine(printer)}</div>
       </div>
-      <Typography variant="body2" color="textSecondary">
-        {printer.station ? (stations[printer.station] ?? printer.station) : 'Sem setor'} · {printer.copies}{' '}
-        {printer.copies === 1 ? 'cópia' : 'cópias'} · papel de {printer.paper_width} mm
-      </Typography>
-      {devicesRead && printer.resolvedDevice && (
-        <Typography variant="body2" className={styles.found}>
-          encontrada
-        </Typography>
-      )}
-      {missing && (
-        <div role="alert">
-          <Typography variant="body2" className={styles.missing}>
-            não encontrada nesta máquina
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            a impressão está saindo na impressora padrão do Windows
-          </Typography>
-        </div>
-      )}
-      {toggleError && (
-        <div role="alert">
-          <Typography variant="body2" className={styles.error}>
-            {toggleError}
-          </Typography>
-        </div>
-      )}
-      {editing ? (
-        <PrinterForm
-          printer={printer}
-          devices={devices}
-          onSaved={() => {
-            setEditing(false);
-            handleOpen('Impressora atualizada.');
-            onChanged();
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <div className={styles.actions}>
-          <Button size="small" onClick={() => setEditing(true)} disabled={toggling}>
-            Editar
-          </Button>
-          <Button size="small" onClick={handleToggle} disabled={toggling}>
-            {printer.activated ? 'Desativar' : 'Ativar'}
-          </Button>
-          <Button
-            size="small"
-            onClick={handleTestPrint}
-            disabled={testing || !printer.resolvedDevice}
-            title={printer.resolvedDevice ? undefined : noTestReason}
-          >
-            Imprimir teste
-          </Button>
-        </div>
-      )}
+      <IconButton
+        size="small"
+        aria-label="Imprimir teste"
+        title={printer.resolvedDevice ? 'Imprimir teste' : noTestReason}
+        disabled={testing || !printer.resolvedDevice}
+        onClick={handleTestPrint}
+      >
+        <Icon name="receipt_long" size={18} />
+      </IconButton>
+      <Button size={34} variant={state === 'missing' ? 'contained' : 'outlined'} onClick={() => onEdit(printer)}>
+        {state === 'missing' ? 'Corrigir' : 'Editar'}
+      </Button>
     </li>
   );
 };

@@ -1,67 +1,53 @@
-import React from 'react';
-import Typography from 'renderer/base/Typography';
+import React, { useEffect, useState } from 'react';
+import Icon from 'renderer/base/Icon';
 import Spinner from 'renderer/base/Spinner';
 import { usePrinters } from 'renderer/hooks/usePrinters';
-import { history } from 'renderer/services/history';
+import { useMessaging } from 'renderer/providers/messaging';
+import PrinterDrawer from './PrinterDrawer';
 import PrinterList from './PrinterList';
 import PrintersNotice from './PrintersNotice';
 import styles from './Printers.module.css';
 
+// printer-v2.dc.html:256-283. The shell gives the title, the padding and the drag region.
 const Printers: React.FC = () => {
-  const { status, printers, unregistered, devices, devicesRead, refresh, reload } = usePrinters();
+  const { status, printers, devices, devicesRead, refresh, reload, revalidate } = usePrinters();
+  const { handleOpen } = useMessaging();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const editing = printers.find(printer => printer.id === editingId) ?? null;
 
-  const header = (
-    <>
-      <div className={styles.header}>
-        <Typography variant="h4">Impressoras</Typography>
-        <button type="button" className={styles.linkBack} onClick={() => history.push('/')}>
-          voltar
-        </button>
-      </div>
-    </>
-  );
+  // The list is shared with the sidebar and was loaded when the shell opened: coming here reads it
+  // again, because the operator may have changed Windows since. Not a second request on first entry.
+  useEffect(() => {
+    revalidate();
+  }, [revalidate]);
 
   if (status === 'loading') {
-    return (
-      <div className={styles.container}>
-        {header}
-        <Spinner />
-      </div>
-    );
+    return <Spinner />;
   }
 
   if (status === 'forbidden') {
     return (
-      <div className={styles.container}>
-        {header}
-        <PrintersNotice
-          title="Sem permissão para ver as impressoras"
-          text="O usuário desta sessão não tem permissão para consultar as impressoras cadastradas. Peça ao administrador do restaurante para liberar o acesso."
-        />
-      </div>
+      <PrintersNotice
+        title="Sem permissão para ver as impressoras"
+        text="O usuário desta sessão não tem permissão para consultar as impressoras cadastradas. Peça ao administrador do restaurante para liberar o acesso."
+      />
     );
   }
 
   if (status === 'error') {
     return (
-      <div className={styles.container}>
-        {header}
-        <PrintersNotice
-          title="Não foi possível carregar as impressoras"
-          text="Verifique a internet deste computador e tente novamente."
-          onRetry={reload}
-        />
-      </div>
+      <PrintersNotice
+        title="Não foi possível carregar as impressoras"
+        text="Verifique a internet deste computador e tente novamente."
+        onRetry={reload}
+      />
     );
   }
 
   return (
-    <div className={styles.container}>
-      {header}
+    <div className={styles.root}>
       {printers.length === 0 ? (
-        <Typography variant="body1" color="textSecondary">
-          Nenhuma impressora cadastrada para este restaurante.
-        </Typography>
+        <p className={styles.empty}>Nenhuma impressora cadastrada para este restaurante.</p>
       ) : (
         <>
           {!devicesRead && (
@@ -71,25 +57,42 @@ const Printers: React.FC = () => {
               onRetry={reload}
             />
           )}
-          <PrinterList printers={printers} devices={devices} devicesRead={devicesRead} onChanged={refresh} />
+          <div className={styles.info}>
+            <Icon name="info" size={20} />
+            <div>
+              O nome cadastrado precisa ser <b>igual ao da impressora no Windows</b>. Quando não é, o comprovante sai na
+              impressora padrão sem aviso. Corrija escolhendo da lista desta máquina.
+            </div>
+          </div>
+          <PrinterList printers={printers} devicesRead={devicesRead} onEdit={printer => setEditingId(printer.id)} />
         </>
       )}
-      {unregistered.length > 0 && (
-        <div className={styles.section}>
-          <Typography variant="h6">Instaladas neste computador e não cadastradas</Typography>
-          <ul className={styles.unregisteredList}>
-            {unregistered.map(device => (
-              <li key={device.name} className={styles.unregisteredItem}>
-                <Typography variant="body1">{device.name}</Typography>
-                {device.isDefault && (
-                  <Typography variant="caption" color="textSecondary">
-                    padrão do Windows
-                  </Typography>
-                )}
+      {devices.length > 0 && (
+        <div>
+          <div className={styles.devicesTitle}>Impressoras instaladas nesta máquina</div>
+          <ul className={styles.devices}>
+            {devices.map(device => (
+              <li key={device.name} className={styles.device}>
+                <Icon name="print" size={16} />
+                {device.name}
+                {device.isDefault && <span className={styles.deviceDefault}>(padrão)</span>}
               </li>
             ))}
           </ul>
         </div>
+      )}
+      {editing && (
+        <PrinterDrawer
+          printer={editing}
+          devices={devices}
+          onClose={() => setEditingId(null)}
+          onChanged={refresh}
+          onSaved={() => {
+            setEditingId(null);
+            handleOpen('Impressora salva. O próximo comprovante já usa este cadastro.');
+            refresh();
+          }}
+        />
       )}
     </div>
   );

@@ -164,3 +164,56 @@
 .row.text:hover:not(:disabled) {
   background-color: var(--surface-2);
 }
+
+/* size={34} and size={38}: the printer card action (printer-v2.dc.html:266) and the drawer footer (:431-432). */
+.h34,
+.h38 {
+  border-radius: 6px;
+  font-size: 13px;
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.h34 {
+  height: 34px;
+  padding: 0 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.h38 {
+  height: 38px;
+  padding: 0 16px;
+}
+
+.h38.containedPrimary {
+  padding: 0 18px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.h34.containedPrimary,
+.h38.containedPrimary {
+  background-color: var(--accent);
+}
+
+.h34.containedPrimary:hover:not(:disabled),
+.h38.containedPrimary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}
+
+/* The design's secondary button here is transparent on the card, not the surface fill of the 42 px one. */
+.h34.outlined {
+  background-color: transparent;
+}
+
+.h34.outlined:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}
+
+.h38.text {
+  color: var(--text-2);
+}
+
+.h38.text:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}

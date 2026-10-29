@@ -1,41 +1,63 @@
-.container {
-  max-width: 640px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.header {
+/* printer-v2.dc.html:256-283. The shell gives the title, the padding and the drag region. */
+.root {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.section {
-  margin-top: 24px;
+.info {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.unregisteredList {
-  margin: 8px 0;
+.info b {
+  color: var(--text);
+  font-weight: var(--font-weight-bold);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.devicesTitle {
+  margin-bottom: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.unregisteredItem {
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  border: 1px solid var(--color-divider);
-  border-radius: 4px;
+.device {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
 }
 
-/* An action, so a <button> with the native chrome reset (same as Status .linkLogs). */
-.linkBack {
-  padding: 0;
-  border: 0;
-  background: none;
-  font-family: var(--font-family);
-  font-size: 14px;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  text-decoration: underline;
+.deviceDefault {
+  color: var(--muted);
 }

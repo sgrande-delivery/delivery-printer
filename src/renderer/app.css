@@ -36,6 +36,7 @@
   --side-muted: #9c918b;
   --side-badge: #5a524e;
   --page: #ddd6d1;
+  --scrim: rgba(20, 17, 16, 0.45);
   --paper: #ffffff;
   --paper-ink: #2b2725;
 
@@ -88,6 +89,7 @@
   /* Same value in both themes, as the design does (:643): the badge sits on --side-2. */
   --side-badge: #5a524e;
   --page: #151312;
+  --scrim: rgba(20, 17, 16, 0.45);
   --paper: #faf7f5;
   --paper-ink: #2b2725;
 }

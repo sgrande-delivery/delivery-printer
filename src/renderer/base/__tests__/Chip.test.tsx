@@ -106,4 +106,35 @@ describe('Chip', () => {
     rerender(<Chip onClick={() => undefined}>filtro</Chip>);
     expect(screen.getByRole('button', { name: 'filtro' })).not.toHaveAttribute('aria-pressed');
   });
+
+  // The sector chips of the printer drawer are a selection: they need a name and a way to be off.
+  it('a chip button takes aria-label and disabled, and a disabled one does not fire', () => {
+    const onClick = vi.fn();
+    render(
+      <Chip aria-label="Setor Cozinha" disabled onClick={onClick}>
+        Cozinha
+      </Chip>
+    );
+
+    const chip = screen.getByRole('button', { name: 'Setor Cozinha' });
+    expect(chip).toBeDisabled();
+    fireEvent.click(chip);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('a chip that is not a button keeps its label and never gets a disabled attribute', () => {
+    render(
+      <Chip aria-label="Encontrada" disabled>
+        ok
+      </Chip>
+    );
+
+    expect(screen.getByLabelText('Encontrada')).not.toHaveAttribute('disabled');
+  });
+
+  it('closes the gap of an icon-first compact pill to the 4 px of the design', () => {
+    const css = readFileSync(resolve(__dirname, '../Chip.module.css'), 'utf8');
+
+    expect(css).toMatch(/\.compact\.iconFirst \{[^}]*gap: 4px;/);
+  });
 });

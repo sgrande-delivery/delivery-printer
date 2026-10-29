@@ -10,8 +10,6 @@ export async function fetchPrinters(): Promise<Printer[]> {
   return response.data;
 }
 
-export type PaperWidth = 58 | 80;
-
 // What PUT /printers/:id takes, and it has to be the WHOLE record.
 //
 // `name` and `address` are both `required` in the API's UpdatePrinterRequest: a payload
@@ -22,11 +20,16 @@ export type PaperWidth = 58 | 80;
 // keep the property defaults (`activated = true`, `station = null`, `paper_width = 80`,
 // `copies = 1`) and `PrinterRepository::update()` writes all six columns from it. A PUT
 // without `activated` therefore re-activates a printer the operator had turned off.
+export type PaperWidth = 58 | 80;
+
 export interface UpdatePrinterPayload {
   name: string;
   address: string;
   activated: boolean;
   copies: number;
+  // The closed set the API validates, measured in the delivery-api: UpdatePrinterRequest.php:29 is
+  // `Rule::in(PrinterPaperWidthEnum)` (58 and 80 only) and the table has
+  // `CHECK (paper_width IN (58, 80))`. A third value is a 422, so the write type says so.
   paper_width: PaperWidth;
   station: string | null;
 }
