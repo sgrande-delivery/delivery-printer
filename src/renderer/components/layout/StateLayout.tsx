@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
-import symbol from 'renderer/images/brand/simbolo.png';
-import symbolNegative from 'renderer/images/brand/simbolo-negativo.png';
+import symbol from 'renderer/images/brand/simbolo.svg';
+import symbolNegative from 'renderer/images/brand/simbolo-negativo.svg';
 import { useTheme } from 'renderer/providers/theme';
 import styles from './StateLayout.module.css';
 

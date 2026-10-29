@@ -1,5 +1,5 @@
 import React from 'react';
-import logo from 'renderer/images/brand/logo-horizontal-negativo.png';
+import logo from 'renderer/images/brand/logo-horizontal-negativo.svg';
 import packageJson from '../../../../package.json';
 import styles from './BrandPanel.module.css';
 

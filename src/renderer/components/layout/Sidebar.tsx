@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import Icon from 'renderer/base/Icon';
 import { cx } from 'renderer/base/cx';
-import symbol from 'renderer/images/brand/simbolo-negativo.png';
+import symbol from 'renderer/images/brand/simbolo-negativo.svg';
 import { usePrintQueue } from 'renderer/hooks/usePrintQueue';
 import { usePrinters } from 'renderer/hooks/usePrinters';
 import { useLogout } from 'renderer/hooks/useLogout';

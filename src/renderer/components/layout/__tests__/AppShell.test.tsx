@@ -10,8 +10,8 @@ import chipStyles from 'renderer/base/Chip.module.css';
 import appShellStyles from '../AppShell.module.css';
 import sidebarStyles from '../Sidebar.module.css';
 import stateStyles from '../StateLayout.module.css';
-import symbol from 'renderer/images/brand/simbolo.png';
-import symbolNegative from 'renderer/images/brand/simbolo-negativo.png';
+import symbol from 'renderer/images/brand/simbolo.svg';
+import symbolNegative from 'renderer/images/brand/simbolo-negativo.svg';
 import { expectNoUndefinedClasses } from 'renderer/__tests__/cssModules';
 
 vi.mock('renderer/providers/auth', () => ({ useAuth: () => shell.auth }));

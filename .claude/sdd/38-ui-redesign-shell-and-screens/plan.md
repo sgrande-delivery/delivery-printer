@@ -114,6 +114,18 @@ Além de `npm run typecheck`, `npm run lint` e `npm test` em cada task:
 
 ## Aprendizados que valem para as próximas tasks
 
+### O logo esteve quebrado as doze tasks inteiras, e foi o dev rodando o app que achou
+
+Os três PNGs da marca **sempre estiveram corrompidos**, desde que entraram (tasks 01 e 04): assinatura, `IHDR` e `IEND` corretos — por isso `file` e qualquer editor os chamam de PNG — mas `IDAT` com CRC quebrado e `zlib` recusando os pixels. A sidebar, o login e as telas de estado desenharam lixo em **dev e empacotado**, nas doze tasks, e **nenhum dos doze reviews viu**, porque review lê código e a suíte importava o asset só pela URL.
+
+Duas coisas que eu afirmei e estavam erradas, as duas corrigidas aqui: que era bug "que só aparece empacotado" (não: quebrava em dev igual, ninguém tinha olhado) e que a importação tinha estragado o arquivo (não: rebuscar da origem devolve **os mesmos bytes com o mesmo CRC quebrado** — o dano está no pacote de marca guardado no Claude Design).
+
+**A regra que sai disso:** *asset binário não é coberto por teste que o importa* — `import logo from '...'` devolve uma URL e passa igual com os bytes podres. O guarda tem de **decodificar** (`src/renderer/images/__tests__/brandAssets.test.ts`: CRC por chunk e `inflate` do `IDAT` nos PNGs, parse e ausência de script nos SVGs), e vale para `src/renderer/images/` **e** `assets/`, que é de onde sai o ícone da bandeja.
+
+E a saída foi trocar PNG por **SVG**, que o README daquela pasta já nomeava como caminho de nitidez: além de vetorial, é **texto**, e por isso sobreviveu ao round-trip que estragou os binários. Arquivo de marca novo entra como SVG.
+
+**O que isso diz sobre a verificação desta spec:** a lista de "exige olho humano" não era formalidade. Foram doze tasks, ~60 aprendizados medidos, 637 testes, mutação em tudo que era lógica — e o defeito mais visível do app inteiro só apareceu quando um humano abriu a janela. Tela é para olhar.
+
 ### A ironia da task de limpeza: ela entregou duas regras mentindo (task 12)
 
 A task 12 existia, entre outras coisas, para consertar uma regra falsa — a `printing.md` afirmava "não há banco nem arquivo de fila", falso desde a 2.7.0-dev.1. **E a reescrita entregou duas afirmações novas igualmente falsas**, pegas no review e conferidas por mim na fonte:

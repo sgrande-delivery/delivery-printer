@@ -2,8 +2,8 @@ import { Component, ErrorInfo, ReactNode } from 'react';
 import Icon from 'renderer/base/Icon';
 import Button from 'renderer/base/Button';
 import { log } from 'renderer/services/log';
-import symbol from 'renderer/images/brand/simbolo.png';
-import symbolNegative from 'renderer/images/brand/simbolo-negativo.png';
+import symbol from 'renderer/images/brand/simbolo.svg';
+import symbolNegative from 'renderer/images/brand/simbolo-negativo.svg';
 import styles from './ErrorBoundary.module.css';
 
 // No useTheme() here: this component is above the providers. index.tsx writes the attribute
