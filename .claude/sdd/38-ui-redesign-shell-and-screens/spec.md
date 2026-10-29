@@ -1,6 +1,6 @@
 # Spec — Redesenhar a interface do app segundo o Claude Design
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-10-28
 **Escopo:** main+renderer
 **Issue:** [#38](https://github.com/sgrande-delivery/delivery-printer/issues/38)

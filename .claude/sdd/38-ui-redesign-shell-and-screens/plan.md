@@ -4,6 +4,7 @@
 **Desenho congelado:** [design/printer-v2.dc.html](./design/printer-v2.dc.html) — [como ler](./design/README.md)
 **Issue da feature:** [#38](https://github.com/sgrande-delivery/delivery-printer/issues/38)
 **Branch de trabalho:** `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28: uma por spec, com todas as tasks em sequência, um commit por task e um PR no fim.
+**PR:** contra `feature/api-v2-and-redesign` (criada em 2026-10-29 a partir de `test/dev-build-integration` para juntar esta spec, a fila durável da spec 15, as telas da spec 19 e a distribuição Windows). Não é `master`, então nada publica no merge.
 
 **A base não é `origin/master`, e isso é medido, não preferência.** Master não tem `electron.vite.config.ts`, `src/main/queue/`, `src/renderer/base/` nem a tela de impressoras: os 33 commits da migração para electron-vite e das specs 1, 7, 11, 15, 19 e 26 estão todos não mergeados, e master é o app do boilerplate antigo mais o `CLAUDE.md` novo (que entrou sozinho pelo PR #37). Cortar de lá daria um ponto de partida sem 299 arquivos que esta spec cita por `arquivo:linha`. `test/dev-build-integration` é a única ref com tudo junto, e é a que permite empacotar um instalador apontado para o dev e testar o redesenho num PDV — que é metade da verificação desta spec. **O PR vai contra ela, pelo `/ship-pr`, não contra `master`.**
 
@@ -52,18 +53,18 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | executada |
-| 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | executada |
-| 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | executada |
-| 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | executada |
-| 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | executada |
-| 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | executada |
-| 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | executada |
-| 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | executada |
-| 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | executada |
-| 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | executada |
-| 11 | Teste de impressão como tela própria | [#49](https://github.com/sgrande-delivery/delivery-printer/issues/49) | [49-test-print-screen.md](./tasks/49-test-print-screen.md) | 03, 09 | executada |
-| 12 | Limpeza dos tokens antigos e a regra da UI | [#50](https://github.com/sgrande-delivery/delivery-printer/issues/50) | [50-token-cleanup-and-ui-rule.md](./tasks/50-token-cleanup-and-ui-rule.md) | 01–11 | executada |
+| 01 | Paleta, marca e fonte de ícones | [#39](https://github.com/sgrande-delivery/delivery-printer/issues/39) | [39-palette-brand-and-icons.md](./tasks/39-palette-brand-and-icons.md) | — | shipped |
+| 02 | Tema claro/escuro seguindo o Windows | [#40](https://github.com/sgrande-delivery/delivery-printer/issues/40) | [40-system-theme-and-preference.md](./tasks/40-system-theme-and-preference.md) | 01 | shipped |
+| 03 | Shell com sidebar, cabeçalho e navegação | [#41](https://github.com/sgrande-delivery/delivery-printer/issues/41) | [41-app-shell-and-navigation.md](./tasks/41-app-shell-and-navigation.md) | 01, 02 | shipped |
+| 04 | Login redesenhado em duas etapas | [#42](https://github.com/sgrande-delivery/delivery-printer/issues/42) | [42-login-two-step-redesign.md](./tasks/42-login-two-step-redesign.md) | 01 | shipped |
+| 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | shipped |
+| 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | shipped |
+| 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | shipped |
+| 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | shipped |
+| 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | shipped |
+| 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | shipped |
+| 11 | Teste de impressão como tela própria | [#49](https://github.com/sgrande-delivery/delivery-printer/issues/49) | [49-test-print-screen.md](./tasks/49-test-print-screen.md) | 03, 09 | shipped |
+| 12 | Limpeza dos tokens antigos e a regra da UI | [#50](https://github.com/sgrande-delivery/delivery-printer/issues/50) | [50-token-cleanup-and-ui-rule.md](./tasks/50-token-cleanup-and-ui-rule.md) | 01–11 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

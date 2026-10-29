@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** renderer
 **Depende de:** 01–11
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 
