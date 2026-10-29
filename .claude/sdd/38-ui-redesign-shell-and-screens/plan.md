@@ -171,6 +171,14 @@ O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
 
+### A escala do `Button`: decisão de rumo, tomada na task 09
+
+O review da task 09 mediu o escopo da racionalização (12 arquivos, ~16 linhas — 7 chamadas de consumidor e 7 asserções, porque `medium`/`small`, que ficam, são os de muito uso) e recomendou **fazer agora**, antes da task 10, para as tasks 10 e 11 não decidirem cada uma entre nome e número.
+
+**Decidi o contrário, e o motivo é que o dano é evitável por instrução:** as tasks 10 e 11 recebem no briefing "use **só número** para tamanho novo de `Button`". Com isso nenhum paradigma novo entra, e a consolidação fica na **task 12**, onde foi planejada e onde todos os consumidores já estarão no formato final. Refatorar agora custaria uma rodada de implementação mais uma de review para mudança **sem efeito visível**, no meio da spec.
+
+O que a task 12 encontra: `'medium' | 'small'` (par legado do MUI, que fica) mais as alturas do desenho, parte como nome (`row` 32, `action` 42, `large` 46, `hero` 48) e parte como número (34, 38, e as que as tasks 10/11 somarem). A saída continua sendo a medida: **classe-base compartilhada** (que mata a duplicação de `containedPrimary`/`:hover`, onde está o custo real) mais **união fechada de alturas** com a tabela `Record<ButtonSize, {height; paddingX; fontSize}>` dentro do primitivo, no precedente do `Icon`.
+
 ### Segunda premissa falsa minha sobre código de terceiro, e a regra que faltava (task 09)
 
 A divergência 4 da spec afirmava que `paper_width` é "número livre na API" e que o alternador de dois valores reescreveria uma bobina de 76 mm em silêncio. **Falso.** Medido na `delivery-api` (remoto conferido; `feature/1362-product-usage-route` e `origin/master` idênticos): `UpdatePrinterRequest.php:29` é `Rule::in(PrinterPaperWidthEnum)` com **58 e 80 apenas**, e a migração tem `CHECK (paper_width IN (58, 80))`. Um cadastro de 76 mm **não pode existir nem ser enviado**.
