@@ -7,9 +7,14 @@
   border-radius: 6px;
 }
 
-/* The design dims the whole control for a row that does not apply (:301). */
+/* The design dims the whole control to 0.4 for a row that does not apply (:301). The buttons are
+   disabled too, and must not dim again on top of it. */
 .disabled {
-  opacity: 0.5;
+  opacity: 0.4;
+}
+
+.disabled .button:disabled {
+  opacity: 1;
 }
 
 .button {

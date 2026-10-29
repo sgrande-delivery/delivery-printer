@@ -40,6 +40,8 @@ describe('AppearanceSection', () => {
     // no class="undefined" for expectNoUndefinedClasses to find (plan.md, learnings).
     expect(container.querySelector('[role="radiogroup"]')?.className).toContain(styles.options);
     expect(container.querySelector('label')?.className).toContain(styles.option);
+    expect(screen.getByRole('heading', { name: 'Aparência' }).className).toContain(styles.title);
+    expect(screen.getByText(/vale só neste computador/i).className).toContain(styles.local);
     expectNoUndefinedClasses(container);
     await waitFor(() => expect(electron.uiTheme).toHaveBeenCalled());
   });
@@ -68,5 +70,30 @@ describe('AppearanceSection', () => {
     fireEvent.click(screen.getByLabelText('Claro'));
 
     expect(await screen.findByText(/não foi possível salvar a aparência/i)).toBeInTheDocument();
+  });
+
+  it('blocks the options while the choice is being saved, then frees them', async () => {
+    let finish: (value: string) => void = () => undefined;
+    electron.setUiTheme.mockReturnValue(new Promise<string>(resolve => (finish = resolve)));
+    renderSection();
+
+    fireEvent.click(screen.getByLabelText('Escuro'));
+
+    await waitFor(() => expect(screen.getByLabelText('Claro')).toBeDisabled());
+    expect(screen.getByLabelText('Automático (segue o Windows)')).toBeDisabled();
+
+    finish('dark');
+
+    await waitFor(() => expect(screen.getByLabelText('Claro')).toBeEnabled());
+  });
+
+  it('frees the options after a failed save too', async () => {
+    electron.setUiTheme.mockRejectedValue(new Error('disk'));
+    renderSection();
+
+    fireEvent.click(screen.getByLabelText('Claro'));
+
+    await screen.findByText(/não foi possível salvar a aparência/i);
+    await waitFor(() => expect(screen.getByLabelText('Escuro')).toBeEnabled());
   });
 });

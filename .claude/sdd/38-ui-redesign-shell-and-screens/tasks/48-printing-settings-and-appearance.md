@@ -110,3 +110,75 @@ Ela é adição pedida pelo dev. Fica no fim da coluna, depois da nota, para nã
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Processos tocados
+
+renderer
+
+### Arquivos criados/alterados
+
+- `src/renderer/components/printer-settings/printerSettingsModel.ts` (novo) — funções puras: conjuntos fechados, `stepOptions`, `diffChanges`, `isDirty`, `marginHint`, `previewMetrics`
+- `PrinterSettingsForm.tsx` + `.module.css` — dois cartões, `Stepper`/`Switch`, pré-visualização, barra de alterações; o estado é um `Draft` (só o que difere do baseline)
+- `PrinterSettings.tsx` + `.module.css` — sem título/voltar (o shell dá); revalida no mount; Aparência como filha do formulário (fim da coluna, depois da nota)
+- `AppearanceSection.tsx` + `.module.css` — terceiro cartão; opções desabilitadas durante a gravação
+- `services/printerSettings.ts` (`fetchPrinterSettings`), `hooks/usePrinterSettings.ts` (`revalidate`)
+- `base/Stepper.module.css` — desabilitado a 0,4 (o desenho, `:301`) sem escurecer os botões de novo por cima
+- testes: `printerSettingsModel.test.ts` (novo), `PrinterSettings.test.tsx` (reescrito), `AppearanceSection.test.tsx`
+- `spec.md` — linha 12 da tabela de fidelidade e decisão pendente 5 resolvida
+
+### Canais IPC / sockets / variáveis de ambiente
+
+Nenhum.
+
+### Decisões que tomei por conta própria
+
+- **`max_width` fica fora da tela** (decisão 5): o painel não o edita e o HTML impresso não o lê. A pré-visualização usa o valor salvo.
+- **Aparência grava no clique**, fora da barra: é local, não vai ao servidor, e tema que só vale depois de confirmar é pior. Desabilita as opções durante a gravação.
+- **Baseline revalidado ao abrir** (`GET /users/me`): o `PUT` apaga e recria todas as linhas a partir do baseline, e o da sessão é o do login — salvar sobre ele desfaria o que o painel mudou (inclusive `delivery_printer_version`).
+- Valor salvo fora do conjunto entra nas opções do controle (12, 13, 14…), para aparecer e poder ser restaurado.
+- Chave ausente mostra "—"; o primeiro passo cai na primeira opção.
+- Removido o texto da versão do instalador (o desenho não tem; a chave segue no payload).
+- Padding da pré-visualização: ver linha 12 da tabela de fidelidade.
+
+### Verificação
+
+- `npm run typecheck`: 0
+- `npm run lint`: 0 erros, 1 aviso (`Login.tsx:22`)
+- `npm test`: 59 arquivos, 546 testes, 0 falhas
+- Varredura por mutação: 52 mutações, 4 sobreviventes explicados no relatório; restauração provada por checksum.
+
+### Como testar
+
+1. `npm run dev`, abrir Configurações
+2. Mexer em fonte/cópias/margem: a barra aparece, a pré-visualização reage; "Descartar" volta
+3. "Sem margem" desliga a margem; "Salvar" grava; conferir no painel
+
+### O que o review mudou depois da primeira entrega
+
+Seis bloqueios; um era decisão do dev e os cinco restantes foram corrigidos.
+
+**1. A tela ainda salvava de baseline velho (perda de dado).** O `revalidate()` no mount não bastava: sobravam três caminhos — o `GET` rejeitando, o `GET` devolvendo resposta inutilizável (**calado**, a tela ficava idêntica a uma saudável), e a corrida com o revalidate em voo. Como o `PUT` apaga-e-recria, qualquer um deles revertia o que o painel tivesse mudado, inclusive o `delivery_printer_version`.
+
+O conserto é **ler antes de escrever**: o `handleSave` busca as configurações no instante do salvamento e envia o delta sobre elas; se não puder ler, **não envia** e diz isso. Custa um `GET` por salvamento.
+
+**2. Nenhum teste pegava a volta ao snapshot.** Medido: congelar o baseline no formulário passava **546/546**, porque o mock de `useAuth` devolvia `vi.fn()` para o setter e o baseline nunca mudava no teste. Com mock **com estado** e uma asserção de que o `PUT` leva valor que só a resposta fresca tem, a mesma mutação derruba **5 testes**.
+
+**3. `font-size: 16px` no cabeçalho do cartão** divergia do desenho, que não declara tamanho e herda 14 px (`:25`, `:289`). Virou `font-size: inherit` — **tirar a linha não basta**, porque o `<h2>` tem `1.5em` do agente de usuário.
+
+**4. As duas infidelidades do botão.** "Descartar" voltou a peso regular (`.h34.text` no primitivo, no precedente do `.row.text`). O padding do "Salvar" **entrou na tabela de fidelidade (linha 14)**: o desenho dá ao mesmo botão de 34 px paddings diferentes em duas telas, e a task 12 não resolve isso.
+
+**5. `StepRow` era um segundo componente no arquivo.** Virou `SettingsRow.tsx` + `.module.css`, usado pelas quatro linhas de stepper **e** pela do interruptor.
+
+**Mais dois, de atenção:** as seis chaves de CSS que carregam layout ganharam asserção de presença; e o "Salvar" deixou de ser `submit`, porque radio dentro de `<form>` **submete com Enter** no Chromium e o jsdom não implementa isso — a Aparência podia gravar as configurações do restaurante sem clique.
+
+**6. O interruptor "Sem margem" não tem efeito no papel deste app** — decisão do dev: fica como o desenho, e o conserto é na API. Virou a **linha 13** da tabela de fidelidade, mais a issue [delivery-api#1378](https://github.com/sgrande-delivery/delivery-api/issues/1378) com spec em `.claude/sdd/1378-socket-print-honours-margin-settings/`.
+
+### Verificação
+
+`npm run typecheck` 0; `npm run lint` 0 erros e 1 aviso (o de `Login.tsx`); `npm test` **60 arquivos, 554 testes, 0 falhas** (baseline 58/497).
+
+**Falta olho humano:** comparar com `design/printer-v2.dc.html:285-343` em `npm run dev` nos dois temas (a cor do papel no escuro, e token inexistente a rede não pega); salvar contra a api-dev e conferir no painel; e **imprimir um comprovante de verdade** para ver se a proporção de 0,85 da pré-visualização corresponde ao papel.

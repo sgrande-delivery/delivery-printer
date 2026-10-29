@@ -60,8 +60,8 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | executada |
 | 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | executada |
 | 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | executada |
-| 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | pendente |
-| 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | pendente |
+| 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | executada |
+| 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | executada |
 | 11 | Teste de impressão como tela própria | [#49](https://github.com/sgrande-delivery/delivery-printer/issues/49) | [49-test-print-screen.md](./tasks/49-test-print-screen.md) | 03, 09 | pendente |
 | 12 | Limpeza dos tokens antigos e a regra da UI | [#50](https://github.com/sgrande-delivery/delivery-printer/issues/50) | [50-token-cleanup-and-ui-rule.md](./tasks/50-token-cleanup-and-ui-rule.md) | 01–11 | pendente |
 
@@ -170,6 +170,40 @@ Para as nove tasks que criam tela:
 O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### O achado da spec: uma rota que apaga-e-recria mais um baseline do login = perda de dado silenciosa (task 10)
+
+O `PUT /printerSettings` da `delivery-api` **apaga todas as linhas do restaurante e recria só as chaves do payload**, sem transação e sem validação (`core/Printer/Application/UpdatePrinterSettingsUseCase.php`). E a tela montava o payload a partir de `restaurant.printer_settings`, que é o snapshot do **login** — num app que vive na bandeja por dias.
+
+Consequência, que não aparece neste repo nem nos testes: **salvar uma configuração do PDV revertia o que o painel tivesse mudado depois**, inclusive o `delivery_printer_version`, que é o **passo 6 do fluxo de release** e alimenta o link de download do instalador. Veio da task [#23](https://github.com/sgrande-delivery/delivery-printer/issues/23) (spec 19) e estava em produção.
+
+**Conserto: ler antes de escrever.** O `handleSave` busca `fetchPrinterSettings()` no instante do salvamento e envia `updatePrinterSettings(fresh, diffChanges(fresh, draft))`; se o `GET` falhar ou vier inutilizável, **não envia nada** e diz isso. Custa um `GET` por salvamento e fecha os três caminhos de uma vez (rejeição, resposta inutilizável, e a corrida com o revalidate em voo).
+
+**A regra que vale para a próxima tela:** quando a rota de escrita **reconstrói o registro inteiro** a partir de um baseline que o cliente carrega, o baseline tem de ser lido **no momento de escrever**, não na montagem. Revalidar no mount melhora o que o operador **vê**; só a leitura no salvamento protege o que ele **não vê**.
+
+### A ficção autoconsistente, terceira aparição — e desta vez o mock era a causa (task 10)
+
+Medido: **congelar o baseline dentro do formulário** (`const [settings] = useState(incoming)`, que é literalmente o bug de volta) passava **546/546, suíte inteira verde**. A causa era o mock: `vi.mock('renderer/providers/auth')` devolvia `setPrinterSettings: vi.fn()`, que não escreve em `auth.restaurant` — então o baseline nunca mudava no teste e **toda** asserção de `api.put` comparava contra a cópia da sessão. O teste não podia distinguir os dois mundos.
+
+O antídoto, e é o padrão para o resto da spec: **mock com estado** (identidade estável + escrita observável) e uma asserção de que o corpo do `PUT` leva um valor que **só a resposta fresca tem** — aqui, uma versão diferente mais uma chave que só o painel grava. Depois do conserto, a mesma mutação derruba **5 testes** (conferido por mim, não só pelo implementador).
+
+É a terceira vez nesta spec que um mock prova a implementação em vez da regra (as outras duas: o canal de `queueState` na task 08 e o `onPrinted` do reimprimir). **Mock que devolve `vi.fn()` para um setter de estado é a assinatura do problema.**
+
+### Duas chaves que a API guarda e nunca aplica, e a unidade que virou contrato (task 10)
+
+`no_margin` e `max_width` têm **três ocorrências cada** na `delivery-api`, todas de escrita (semeia, cast, seeder), e **zero leitores de renderização**; a largura, ainda por cima, é fixa em `max-width: 80mm` no CSS do comprovante. Resultado: o `max_width` saiu da tela (decisão pendente 5) e o "Sem margem" ficou, porque o conserto é lá — [delivery-api#1378](https://github.com/sgrande-delivery/delivery-api/issues/1378), com spec escrita em `.claude/sdd/1378-socket-print-honours-margin-settings/`.
+
+**O que isso criou de novo:** a pré-visualização desta tela calibrou a conversão em **0,85** contra o `padding: Npx` do Blade, ou seja, **a unidade das chaves virou contrato entre os dois repos**. Está escrito como RN-02 na spec de lá, porque mudar `margin_size` de px para mm na API quebraria esta tela **em silêncio**.
+
+### Três armadilhas de HTML e CSS que nenhum teste desta base pega (task 10)
+
+- **Tirar o `font-size` não devolve o tamanho herdado.** O `<h2>` tem `1.5em` do agente de usuário, então fidelidade a um tamanho herdado exige declarar `font-size: inherit`. Apagar a linha dá 21 px, não os 14 px do desenho.
+- **Radio dentro de `<form>` submete com Enter.** O Chromium faz submissão implícita, e **o jsdom não implementa**, então nenhum teste desta base pegaria: a Aparência dentro do formulário podia gravar as configurações do restaurante com um Enter. Resolvido com `type="button"` no "Salvar" e `preventDefault` no `onSubmit`.
+- **Cabeçalho de cartão é 14 px, não 16.** No desenho ele **não declara** `font-size` e herda os 14 px da janela (`:25`); só a gaveta declara 16 px (`:390`). A frase "cabeçalho de 14/16 px" numa task quer dizer `padding: 14px 16px` — e foi lida como tamanho de fonte.
+
+### Varredura por mutação em árvore não commitada: restaurar por backup, nunca por git (task 10)
+
+Duas coisas medidas aqui. O **`git diff` não enxerga arquivo não rastreado**, então a prova de restauração que a task 09 estabeleceu não serve para arquivo novo — ou se usa `git add -N` antes de varrer, ou se restaura por cópia com `md5sum -c`. E a tentativa de limpar a mutação com `git checkout` **apagaria as edições não commitadas do arquivo** (o classificador de permissão a barrou, sem perda): numa spec em que a árvore inteira é trabalho não commitado, `git checkout` não é desfazer mutação, é desfazer a task.
 
 ### A escala do `Button`: decisão de rumo, tomada na task 09
 

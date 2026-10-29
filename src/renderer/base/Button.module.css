@@ -210,6 +210,11 @@
   background-color: var(--surface-2);
 }
 
+/* "Descartar" next to the primary action of the settings bar (:340): no weight declared, so regular. */
+.h34.text {
+  font-weight: var(--font-weight-regular);
+}
+
 .h38.text {
   color: var(--text-2);
 }
