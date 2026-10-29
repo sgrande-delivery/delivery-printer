@@ -222,3 +222,24 @@
 .h38.text:hover:not(:disabled) {
   background-color: var(--surface-2);
 }
+
+/* size={44}: the test page action (printer-v2.dc.html:359). */
+.h44 {
+  height: 44px;
+  padding: 0 22px;
+  gap: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.h44.containedPrimary {
+  background-color: var(--accent);
+}
+
+.h44.containedPrimary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+}

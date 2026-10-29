@@ -1,4 +1,11 @@
 import type { TestPrintRequest } from 'shared/printQueue';
+import {
+  TEST_PRINT_COLUMNS,
+  TEST_PRINT_NOTE,
+  TEST_PRINT_TITLE,
+  testPrintDataLines,
+  testPrintWidthRuler,
+} from 'shared/testPrintContent';
 
 // This is the one print layout that lives in this repo, and it is an exception on
 // purpose: every receipt is rendered by the delivery-api and must stay there (see
@@ -28,8 +35,14 @@ export const TEST_PRINT_LABEL = 'a página de teste';
 
 export function buildTestPrintPage(request: TestPrintRequest, appVersion: string, now: Date): string {
   const width = normalizePaperWidth(request.paperWidth);
-  const device = request.deviceName === null ? 'padrão do Windows' : request.deviceName;
-  const when = now.toLocaleString('pt-BR');
+  const lines = testPrintDataLines({
+    printerName: request.printerName,
+    stationLabel: request.stationLabel,
+    deviceName: request.deviceName,
+    paperWidth: width,
+    when: now.toLocaleString('pt-BR'),
+    appVersion,
+  });
 
   // The frame and the ruler are what reveal a wrong width or margin. The frame is inset
   // by 2mm on purpose: thermal drivers commonly reserve a couple of non-printable
@@ -56,16 +69,11 @@ export function buildTestPrintPage(request: TestPrintRequest, appVersion: string
 </head>
 <body>
 <div class="frame">
-  <h1>TESTE DE IMPRESSÃO</h1>
-  <p>Cadastro: ${escapeHtml(request.printerName)}</p>
-  <p>Setor: ${escapeHtml(request.stationLabel)}</p>
-  <p>Impressora: ${escapeHtml(device)}</p>
-  <p>Papel: ${width} mm</p>
-  <p>Data: ${escapeHtml(when)}</p>
-  <p>Versão: ${escapeHtml(appVersion)}</p>
-  <div class="ruler">|&lt;-- ${width} mm --&gt;|</div>
-  <div class="ruler">1234567890123456789012345678901234567890</div>
-  <p>A moldura e a régua devem caber no papel sem cortar. Se a régua sai cortada ou quebra em duas linhas, a largura configurada não é a do papel.</p>
+  <h1>${escapeHtml(TEST_PRINT_TITLE)}</h1>
+${lines.map(line => `  <p>${escapeHtml(line)}</p>`).join('\n')}
+  <div class="ruler">${escapeHtml(testPrintWidthRuler(width))}</div>
+  <div class="ruler">${escapeHtml(TEST_PRINT_COLUMNS)}</div>
+  <p>${escapeHtml(TEST_PRINT_NOTE)}</p>
 </div>
 </body>
 </html>`;

@@ -1,7 +1,6 @@
 import React from 'react';
-import Typography from 'renderer/base/Typography';
+import TestPrint from '../components/test-print/TestPrint';
 
-// Skeleton: the screen itself arrives in its own task of spec 38. The route exists so the sidebar has somewhere to go.
-const PrintTestScreen: React.FC = () => <Typography variant="body1">Teste de impressão</Typography>;
+const PrintTestScreen: React.FC = () => <TestPrint />;
 
 export default PrintTestScreen;

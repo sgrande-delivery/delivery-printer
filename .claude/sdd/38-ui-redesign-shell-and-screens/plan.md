@@ -62,7 +62,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | executada |
 | 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | executada |
 | 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | executada |
-| 11 | Teste de impressão como tela própria | [#49](https://github.com/sgrande-delivery/delivery-printer/issues/49) | [49-test-print-screen.md](./tasks/49-test-print-screen.md) | 03, 09 | pendente |
+| 11 | Teste de impressão como tela própria | [#49](https://github.com/sgrande-delivery/delivery-printer/issues/49) | [49-test-print-screen.md](./tasks/49-test-print-screen.md) | 03, 09 | executada |
 | 12 | Limpeza dos tokens antigos e a regra da UI | [#50](https://github.com/sgrande-delivery/delivery-printer/issues/50) | [50-token-cleanup-and-ui-rule.md](./tasks/50-token-cleanup-and-ui-rule.md) | 01–11 | pendente |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
@@ -170,6 +170,40 @@ Para as nove tasks que criam tela:
 O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### Paridade entre o que a tela mostra e o que a impressora cospe: fonte única **mais** comparação de DOM (task 11)
+
+A linha 9 da tabela de fidelidade exigia que a pré-visualização espelhasse a página real. O padrão que resolveu, e que vale para qualquer pré-visualização futura, tem **duas** partes:
+
+1. **O texto mora em `src/shared/`** (`testPrintContent.ts`), importado pela página do main e pela tela — fonte única mata a divergência por esquecimento;
+2. **o teste parseia o HTML real com `DOMParser` e compara elemento por elemento** com o DOM renderizado, nas duas bobinas.
+
+A parte 2 é a que não é óbvia: **comparar as duas pontas contra a mesma constante não prova nada.** Medido nos dois sentidos — mudar o título só do lado da página derruba 2 testes, apagar uma linha só do lado da pré-visualização derruba 3.
+
+E o complemento, achado pelo review: **pré-visualização que mostra a hora envelhece.** O `now` era semeado no mount; num app que vive dias na bandeja, a tela dizia 15:42 e o papel saía 16:10. O teste não via, porque congela o tempo. Resolvido com o `useNow` da task 07. **Qualquer tela que afirme "é isto que vai sair" e inclua o instante atual tem esse furo por construção.**
+
+### Quarta confirmação de que o `expectNoUndefinedClasses` é piso, e a regra final (task 11)
+
+Nesta tela o helper estava chamado **duas vezes** e não pegava nada: o componente não tem **uma única** concatenação — é tudo `cx()` ou `className={styles.x}` direto, os dois casos já medidos como inertes. Oito chaves de layout mutadas juntas deixavam a suíte verde, inclusive com a pré-visualização sem fundo e as duas colunas sem `flex-direction`.
+
+**A regra, agora definitiva: a presença do helper num arquivo de teste não diz nada sobre cobertura de CSS.** Só asserção de presença **por elemento** cobre, e token inexistente não é coberto por nada — é olho humano nos dois temas.
+
+### `disabled` do React 18 basta contra duplo clique; trava por `useRef` aqui é código morto (task 11)
+
+Medido: tirar o `disabled` do botão derruba 2 testes, entre eles "dois cliques rápidos enfileiram uma página". Isso prova que o `setResult({phase:'sending'})` **já foi aplicado** entre dois cliques consecutivos — é o flush síncrono que o React 18 faz para evento discreto, ao fim do handler. Como o `setResult` é a primeira linha do handler, antes de qualquer `await`, não há janela; e botão desabilitado não recebe clique.
+
+Ou seja: a mutação da trava por `useRef` **sobreviver** era o sintoma correto, e removê-la foi o diagnóstico correto. Reentrância de verdade nesta base é a de listener de socket (`.claude/rules/printing.md`), que é outro problema.
+
+### Duas pré-visualizações desenham 80 mm com escalas diferentes, e as duas estão certas (task 11)
+
+Configurações usa 256 px (3,2 px/mm, a escala do script do desenho) e o Teste usa 240 px (3,0 px/mm, o valor literal do mock). **A incoerência é do desenho**, e as duas telas são fiéis a ele. Fica registrado para ninguém "consertar" uma delas e quebrar a fidelidade: se for unificar, é decisão de produto com as duas telas na mesa.
+
+A largura de 58 mm (174 px, proporcional) **não virou linha da tabela** porque o desenho não desenha esse estado — ele tem um papel só, de 80 mm, e para esse a implementação é exata. Mesmo critério da task 10, onde a largura também sai do dado.
+
+### Dois detalhes que valem para quem lê o código depois (task 11)
+
+- **`const` alias que parece gratuito e é carga:** sem `const printer = selected`, o `tsc` dá `TS2345`, porque declaração de função é *hoisted* e não herda o narrowing do `const`. É exatamente o comentário que o `CLAUDE.md` pede — o porquê de código que parece deletável —, e sem ele desaparece no próximo refactor.
+- **A mensagem de sucesso é terminal:** se a fila falhar as cinco tentativas, a tela continua dizendo "Enviado às 15:42"; quem mostra a falha é a tela de Fila. É o mesmo comportamento do botão do cartão, e o desenho não tem esse estado — mas é uma mentira por omissão que vale resolver quando houver task para isso.
 
 ### O achado da spec: uma rota que apaga-e-recria mais um baseline do login = perda de dado silenciosa (task 10)
 

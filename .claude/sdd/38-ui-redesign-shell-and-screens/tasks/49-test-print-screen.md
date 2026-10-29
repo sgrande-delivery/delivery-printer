@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** 03, 09
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -88,3 +88,52 @@ Decisão pendente 2 da spec: a tela é o caminho completo e o botão no cartão 
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-29
+
+### Processos tocados
+
+main (a página), renderer (a tela), `shared` (o texto comum)
+
+### Arquivos criados/alterados
+
+- `src/shared/testPrintContent.ts` (novo) — as palavras da página de teste, fonte única da página real e da pré-visualização
+- `src/main/testPrintPage.ts` — monta as linhas a partir do `shared`; ganhou `Acentos: ÁÉÍÓÚ ÂÊÔ ÃÕ Ç` depois da `Versão`
+- `src/renderer/components/test-print/` (novo) — `TestPrint.tsx`, `.module.css`, `testPrintView.ts` (funções puras) e três arquivos de teste
+- `src/renderer/screens/PrintTestScreen.tsx` — troca o esqueleto
+- `src/renderer/base/Button.tsx` + `.module.css` — tamanho `44`, só número
+
+### Canais IPC criados/alterados
+
+Nenhum. Usa o `printTest` existente.
+
+### Decisões que tomei por conta própria
+
+- O texto da página vive em `shared/testPrintContent.ts` e os dois lados o importam, mas o teste de paridade compara a página **parseada do HTML real** com o DOM da pré-visualização, não os dois contra a mesma constante
+- Papel da pré-visualização: 240 px para 80 mm e 174 px para 58 mm (proporcional); o desenho tem 240 fixo
+- Falha: linha `--err` inline (`role="alert"`) **e** o toast do `useMessaging()`
+- Opções ficam desabilitadas durante o envio, para a mensagem "Enviado" não ser lida como sendo da impressora escolhida depois
+- Sem trava por `useRef`: o `disabled` do botão já impede a reentrada (a mutação do ref sobrevivia à suíte, então saiu)
+- Cadastro sem device lido (`devicesRead` falso) fica neutro, sem aviso, como no cartão
+
+### O que o review mudou depois da primeira entrega
+
+Dois bloqueios, os dois mecânicos, mais cinco acabamentos. O miolo passou e foi verificado de forma independente: a página real mudou **exatamente uma linha** (provado gerando a página do commit anterior e a nova, e comparando byte a byte nas duas bobinas) e a paridade DOM-contra-DOM é real **nos dois sentidos**.
+
+**1. O `.map()` das opções virou `PrinterOptionList` + `PrinterOption`**, com os `.module.css` ao lado, no molde dos quatro precedentes desta spec.
+
+**2. Oito chaves de layout não tinham rede.** Mutadas juntas, a suíte do arquivo ficava verde — inclusive com a pré-visualização sem o fundo e as colunas sem `flex-direction`. O `expectNoUndefinedClasses()` estava chamado **duas vezes** e não pegava nada, porque o componente não tem uma única concatenação. Agora cada uma tem presença afirmada, e cada mutação derruba um teste.
+
+**3. A linha `Data:` envelhecia** — semeada no mount e atualizada só na troca de impressora. Num app que fica dias aberto, a tela mostrava uma hora e o papel saía com outra: **a própria paridade que esta task entrega, rompida em uso real**, e invisível ao teste porque ele congela o tempo. Agora usa o `useNow` da task 07, a cada 10 s, com teste que avança o relógio falso.
+
+**4. Os três textos de `shared/` não passavam pelo `escapeHtml`**, enquanto as linhas de dados e a régua passavam. Assimetria fechada: num módulo compartilhado, alguém acrescenta um `<` sem lembrar que ali virou HTML.
+
+**5. Três menores:** a lista vazia ganhou classe e teste, o `aria-label` do radiogroup virou `aria-labelledby` apontando para o rótulo visível, e o `const printer = selected` ganhou o comentário que explica por que não é alias gratuito (`handlePrint` é declaração *hoisted* e não herda o narrowing; sem o `const`, `TS2345`).
+
+### Verificação
+
+`npm run typecheck` 0; `npm run lint` 0 erros e 1 aviso (o de `Login.tsx`); `npm test` **62 arquivos, 586 testes, 0 falhas** (baseline 60/554).
+
+**Falta olho humano, e aqui é o que mais importa da spec inteira:** imprimir numa térmica de verdade para conferir **os acentos** da linha nova, se a régua cabe no papel de 58 e de 80 mm, e a moldura recuada em 2 mm. A página de código da impressora é exatamente o que esta linha existe para revelar, e nenhuma máquina daqui fecha isso.
