@@ -174,7 +174,7 @@ describe('TestPrint', () => {
 
     const busy = await screen.findByRole('button', { name: 'Imprimindo…' });
     expect(busy).toBeDisabled();
-    expect(busy).toHaveClass(buttonStyles.h44);
+    expect(busy).toHaveStyle({ height: '44px' });
     expect(busy).toHaveClass(buttonStyles.containedPrimary);
     expect(screen.getByText('Enviando para EPSON TM-T20…')).toHaveClass(styles.messageWorking);
     expect(screen.getByText('progress_activity')).toHaveClass('spin');

@@ -46,7 +46,7 @@ const Dashboard: React.FC = () => {
         <div className={styles.subtitle}>{health.subtitle}</div>
       </div>
       {action && (
-        <Button variant="contained" size="hero" onClick={() => navigate(action.to)}>
+        <Button variant="contained" size={48} onClick={() => navigate(action.to)}>
           {action.label}
         </Button>
       )}

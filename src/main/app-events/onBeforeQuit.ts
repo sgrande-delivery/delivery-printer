@@ -1,9 +1,10 @@
 import { app, BrowserWindow, Event, ipcMain } from 'electron';
 import { describeError } from 'shared/describeError';
+import { EVENT_CHANNELS, SEND_CHANNELS } from 'shared/ipcChannels';
 import { logger } from '../logger';
 
-export const BEFORE_QUIT_CHANNEL = 'app:before-quit';
-export const BEFORE_QUIT_DONE_CHANNEL = 'app:before-quit-done';
+export const BEFORE_QUIT_CHANNEL = EVENT_CHANNELS.beforeQuit;
+export const BEFORE_QUIT_DONE_CHANNEL = SEND_CHANNELS.beforeQuitDone;
 export const QUIT_TIMEOUT_MS = 300;
 
 let quitting = false;

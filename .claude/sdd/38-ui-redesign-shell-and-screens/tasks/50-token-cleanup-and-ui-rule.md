@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** renderer
 **Depende de:** 01–11
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -111,3 +111,70 @@ Preencher a seção "Aprendizados que valem para as próximas tasks" com o que a
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-29
+
+### Processos tocados
+
+renderer, main e preload (só a origem do nome do canal), build (`package.json`/lockfile)
+
+### Arquivos criados/alterados
+
+- `src/renderer/app.css` — bloco de apelidos `--color-*` apagado; `--paper-rule` e `--paper-sub` nos dois temas
+- `src/renderer/base/Button.tsx`, `Button.module.css` — tabela `METRICS` por altura, classe-base `.design`, um só `.containedPrimary`; `size`: `'medium' | 'small' | 32 | 34 | 38 | 42 | 44 | 46 | 48`
+- `src/renderer/base/IconButton.*`, `Typography.module.css`, `TextField.module.css` — tokens novos; `color="primary"` removido
+- `src/renderer/base/Select.*` e `__tests__/Select.test.tsx` — apagados (zero importadores)
+- `src/renderer/images/logo192.png` — apagado
+- `src/renderer/components/loading/InsideSaving.module.css` — véu por `color-mix` sobre `--bg`
+- `src/renderer/components/printer-settings/PrinterSettingsForm.module.css` — hex do papel viram `--paper-rule`/`--paper-sub`
+- `src/renderer/components/printers/printersGate.tsx` (novo), `Printers.tsx`, `test-print/TestPrint.tsx` — escada de estado extraída
+- `NoConnection`, `Dashboard`, `Login`, `ErrorBoundary`, `QueueRow` — `size` por altura
+- `src/shared/ipcChannels.ts` (novo), `src/main/preload.ts`, `main.ts`, `queue/print-queue.ts`, `app-events/onBeforeQuit.ts`
+- `package.json`, `package-lock.json` — `react-icons` removido
+- `.claude/rules/renderer-ui.md` (reescrita), `.claude/rules/printing.md` (fila durável, fluxo e IPC), `CLAUDE.md` (Stack e labels), `spec.md` (linha 14, decisões 6 e 7), `plan.md`
+- Testes: `Button.test.tsx`, `printersGate.test.tsx`, `ipcChannels.test.ts` novos; asserções de classe de tamanho dos consumidores viraram `toHaveStyle({ height })`
+
+### Canais IPC criados/alterados
+
+Nenhum canal novo e nenhum nome mudou: os 20 existentes passaram a vir de `src/shared/ipcChannels.ts`.
+
+### Decisões que tomei por conta própria
+
+- Padding do `Button`: derivado de **altura × variante**, linha 14 mantida (ver `spec.md`)
+- Três mudanças visuais mínimas, listadas no `plan.md`: hover do `contained` legado, hover `text` sem `rgba(0,0,0,.04)`, peso 400 do 38 px não-`contained`
+- Apaguei `base/Select` e `IconButton color="primary"`; mantive `TextField floating`
+- Acessibilidade (`--muted` e 14 px): **não decidi**, registrei como decisões 6 e 7 na `spec.md`
+
+### Verificação
+
+- `npm run typecheck`: 0
+- `npm run lint`: 0 erros, 1 aviso (`Login.tsx:22`, o do baseline)
+- `npm test`: 64 arquivos, 622 testes, 0 falhas (586 − 3 do `Select` + 39 novos)
+- `npm run build`: JS do renderer 641,90 → 642,26 kB; CSS 51,05 → 46,20 kB; main 36,71 → 37,48; preload 4,53 → 5,49
+- `npm ci` depois de mexer no `package.json`: limpo
+
+### Como testar
+
+1. `npm run dev`, as oito telas nos dois temas, lado a lado com o desenho
+2. Conferir o hover dos botões `text`/`IconButton` no tema escuro, o véu do login ao entrar, e o peso do "Cancelar" da gaveta
+
+### O que o review mudou depois da primeira entrega
+
+**Dois bloqueios, e os dois eram a própria ironia desta task:** ela existia em parte para consertar uma regra que mentia, e entregou **duas afirmações novas falsas**. Conferidas na fonte antes de corrigir:
+
+1. A `printing.md` dizia *"oscilação de rede imprime de novo o que ainda não foi marcado"*. A varredura re-dispara e **a fila suprime** — `orderUuid` + `kind`, `already-printed` para irmão `printed`, `duplicate` para `pending`/`failed` (`print-queue-worker.ts:246-271`), e o livro sobrevive sem o HTML. Sai papel de novo só se o registro foi podado (24 h / 200) ou se o painel re-emitiu, que chega como `source: 'event'` e **não** é suprimido de propósito.
+2. A `renderer-ui.md` dizia que a notificação nativa *"tem canal certo nos dois lados, mas ninguém a chama"*. É chamada em `usePrintingOrder.ts:41` e `usePrintingBoard.ts:49` desde a spec 13, e a assinatura é `{ title, body }`, não `orderSequence`.
+
+**Mais quatro `arquivo:linha` desatualizados** (os `socket?.on` e a varredura), **uma afirmação velha sobre o `rawPrint`** (nenhuma tela o chama mais; o único código do renderer que o encosta é o `helpers/printFailure.ts`), **a versão do `react-router-dom`** (declarado `^6.28.1`, resolve `6.30.6`) e **quem consulta `useTheme()`** (o `StateLayout` e o `AppearanceSection`; o `ErrorBoundary` não).
+
+**O `--page` ficou declarado nos dois temas e sem consumidor** desde a task 01, e a regra lhe dava uma função que nenhum CSS implementa. Virou linha "Reservado" na tabela de tokens, com a instrução de usar ou apagar — não inventar função nova.
+
+**Três acabamentos:** o `height: size as number` do `Button` deixou de precisar da asserção (a altura viaja dentro do objeto de métricas); o comentário do `printersGate` passou a dizer o motivo real de ser função e não componente (o `null` que significa "continue desenhando", que um componente não comunica ao pai); e o `quietText` do botão de 38 px ganhou asserção — mutá-lo passava calado, e ele é o "Cancelar" da gaveta, que o desenho declara como `--text-2` (`:431`).
+
+**A decisão do dev sobre acessibilidade entrou:** `--muted` do tema claro escurecido para `#756a64` (linha 15 da tabela de fidelidade, só no tema claro), corpo mantido em 14 px. As decisões pendentes 6 e 7 estão resolvidas na `spec.md`, e a seção de acessibilidade da `renderer-ui.md` — que até aqui mandava **não** escurecer — foi reescrita com o método: cor do desenho que carregue texto pequeno se mede contra os três fundos antes de ser aceita.
+
+### Verificação
+
+`npm run typecheck` 0; `npm run lint` 0 erros e 1 aviso (o de `Login.tsx`); `npm test` **64 arquivos, 622 testes, 0 falhas**; `npm run build` e `npm ci` passam. CSS do renderer **51,05 → 46,20 kB**; main e preload crescem ~1 kB cada, pelas constantes de canal inlinadas. `build.publish`, `version`, `electron-updater`, `electron-log`, `appId` e o teto do Electron 43: **intactos** — o diff do `package.json` é uma linha.

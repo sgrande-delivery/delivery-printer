@@ -33,11 +33,11 @@ const QueueRow: React.FC<QueueRowProps> = ({ row, onDiscard, onRetry }) => (
     <div className={styles.actions} role="cell">
       {row.failed && (
         <>
-          <Button size="row" aria-label={`Descartar ${row.title}`} onClick={() => onDiscard(row.id, row.title)}>
+          <Button size={32} aria-label={`Descartar ${row.title}`} onClick={() => onDiscard(row.id, row.title)}>
             Descartar
           </Button>
           <Button
-            size="row"
+            size={32}
             variant="contained"
             aria-label={`Tentar de novo ${row.title}`}
             onClick={() => onRetry(row.id, row.title)}

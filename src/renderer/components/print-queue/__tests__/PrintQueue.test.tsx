@@ -264,11 +264,12 @@ describe('PrintQueue', () => {
     expect(screen.getByText(`${MAX_ATTEMPTS}/${MAX_ATTEMPTS}`)).toHaveClass(rowStyles.attempts);
     expect(screen.getByText(/A impressora não respondeu/)).toHaveClass(rowStyles.situation, rowStyles.situationErr);
     expect(screen.getByRole('button', { name: /Descartar/ }).parentElement).toHaveClass(rowStyles.actions);
-    expect(screen.getByRole('button', { name: /Descartar/ })).toHaveClass(buttonStyles.row, buttonStyles.text);
-    expect(screen.getByRole('button', { name: /Tentar de novo/ })).toHaveClass(
-      buttonStyles.row,
-      buttonStyles.containedPrimary
-    );
+    const discard = screen.getByRole('button', { name: /Descartar/ });
+    const retry = screen.getByRole('button', { name: /Tentar de novo/ });
+    expect(discard).toHaveClass(buttonStyles.text);
+    expect(discard).toHaveStyle({ height: '32px' });
+    expect(retry).toHaveClass(buttonStyles.containedPrimary);
+    expect(retry).toHaveStyle({ height: '32px' });
     expectNoUndefinedClasses(container);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Pendentes · 1' }));

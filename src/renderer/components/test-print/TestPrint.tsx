@@ -1,9 +1,8 @@
 import React, { useEffect, useId, useState } from 'react';
 import Button from 'renderer/base/Button';
 import Icon from 'renderer/base/Icon';
-import Spinner from 'renderer/base/Spinner';
 import { cx } from 'renderer/base/cx';
-import PrintersNotice from 'renderer/components/printers/PrintersNotice';
+import { printersGate } from 'renderer/components/printers/printersGate';
 import { printFailureReason } from 'renderer/helpers/printFailure';
 import { clock } from 'renderer/helpers/text';
 import { useNow } from 'renderer/hooks/useNow';
@@ -52,27 +51,10 @@ const TestPrint: React.FC = () => {
     revalidate();
   }, [revalidate]);
 
-  if (status === 'loading') {
-    return <Spinner />;
-  }
+  const gate = printersGate(status, reload);
 
-  if (status === 'forbidden') {
-    return (
-      <PrintersNotice
-        title="Sem permissão para ver as impressoras"
-        text="O usuário desta sessão não tem permissão para consultar as impressoras cadastradas. Peça ao administrador do restaurante para liberar o acesso."
-      />
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <PrintersNotice
-        title="Não foi possível carregar as impressoras"
-        text="Verifique a internet deste computador e tente novamente."
-        onRetry={reload}
-      />
-    );
+  if (gate) {
+    return gate;
   }
 
   const selected = selectedPrinter(printers, selectedId);

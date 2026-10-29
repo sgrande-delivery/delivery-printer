@@ -7,21 +7,13 @@
   border: 0;
   border-radius: 50%;
   background-color: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-2);
   cursor: pointer;
   transition: background-color 150ms;
 }
 
 .root:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-.colorPrimary {
-  color: var(--color-primary);
-}
-
-.colorPrimary:hover {
-  background-color: rgba(240, 89, 42, 0.04);
+  background-color: var(--surface-2);
 }
 
 .small {

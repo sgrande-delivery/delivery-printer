@@ -167,12 +167,9 @@ describe('Login', () => {
       fieldStyles.boxedRoot,
       fieldStyles.fullWidth
     );
-    expect(screen.getByRole('button', { name: 'Próximo' })).toHaveClass(
-      buttonStyles.root,
-      buttonStyles.large,
-      buttonStyles.containedPrimary,
-      buttonStyles.fullWidth
-    );
+    const next = screen.getByRole('button', { name: 'Próximo' });
+    expect(next).toHaveClass(buttonStyles.root, buttonStyles.containedPrimary, buttonStyles.fullWidth);
+    expect(next).toHaveStyle({ height: '46px' });
     expectNoUndefinedClasses(container);
   });
 

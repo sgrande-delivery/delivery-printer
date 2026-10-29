@@ -1,3 +1,4 @@
+/* The legacy button: square, uppercase, the MUI v4 one. 'medium' and 'small' are the only users left. */
 .root {
   display: inline-flex;
   align-items: center;
@@ -6,7 +7,6 @@
   min-width: 64px;
   padding: 6px 16px;
   border: 0;
-  /* theme.shape.borderRadius was 0 */
   border-radius: 0;
   font-family: var(--font-family);
   font-size: 0.875rem;
@@ -22,15 +22,23 @@
   opacity: 0.6;
 }
 
+/* Height, padding, radius, size and weight of the design's buttons are inline, from METRICS in Button.tsx.
+   What is shared by all of them is here, once. */
+.design {
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-transform: none;
+  line-height: 1;
+}
+
 .containedPrimary {
-  background-color: var(--color-primary);
+  background-color: var(--accent);
   color: #fff;
-  /* MuiButton.contained override: no shadow */
   box-shadow: none;
 }
 
 .containedPrimary:hover:not(:disabled) {
-  background-color: #d94a1f;
+  background-color: var(--accent-hover);
 }
 
 .text {
@@ -40,65 +48,13 @@
 }
 
 .text:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--surface-2);
 }
 
-.small {
-  padding: 4px 5px;
-  font-size: 0.8125rem;
+.quiet {
+  color: var(--text-2);
 }
 
-.fullWidth {
-  width: 100%;
-}
-
-/* size="large": the 46 px button of the login (printer-v2.dc.html:463). */
-.large {
-  height: 46px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: none;
-  line-height: 1;
-}
-
-.large.containedPrimary {
-  background-color: var(--accent);
-}
-
-.large.containedPrimary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-}
-
-/* size="action": the 42 px button of the state screens (printer-v2.dc.html:493, :503-504).
-   Its own size because the design gives it 42 px and 14 px against the 46/15 of the login,
-   and because button size belongs to the primitive, never to an override on the screen. */
-.action {
-  height: 42px;
-  padding: 0 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: none;
-  line-height: 1;
-}
-
-.action.containedPrimary {
-  background-color: var(--accent);
-}
-
-.action.containedPrimary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-}
-
-/* The design gives the outlined one 18 px instead of 20 (:503). */
-.action.outlined {
-  padding: 0 18px;
-  font-weight: var(--font-weight-regular);
-}
-
-/* variant="outlined": the secondary button of the design (printer-v2.dc.html:503). */
 .outlined {
   background-color: var(--surface);
   color: var(--text);
@@ -109,137 +65,16 @@
   background-color: var(--surface-2);
 }
 
-.large.outlined {
-  font-weight: var(--font-weight-regular);
-}
-
-/* size="hero": the 48 px call to action of the dashboard (printer-v2.dc.html:164). */
-.hero {
-  height: 48px;
-  padding: 0 28px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: none;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.hero.containedPrimary {
-  background-color: var(--accent);
-}
-
-.hero.containedPrimary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-}
-
-/* size="row": the 32 px actions inside a table row (printer-v2.dc.html:210-211). */
-.row {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: none;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.row.containedPrimary {
-  background-color: var(--accent);
-}
-
-.row.containedPrimary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-}
-
-/* The quiet one next to the primary action: secondary text, regular weight. */
-.row.text {
-  padding: 0 10px;
-  color: var(--text-2);
-  font-weight: var(--font-weight-regular);
-}
-
-.row.text:hover:not(:disabled) {
-  background-color: var(--surface-2);
-}
-
-/* size={34} and size={38}: the printer card action (printer-v2.dc.html:266) and the drawer footer (:431-432). */
-.h34,
-.h38 {
-  border-radius: 6px;
-  font-size: 13px;
-  text-transform: none;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.h34 {
-  height: 34px;
-  padding: 0 14px;
-  font-weight: var(--font-weight-semibold);
-}
-
-.h38 {
-  height: 38px;
-  padding: 0 16px;
-}
-
-.h38.containedPrimary {
-  padding: 0 18px;
-  font-weight: var(--font-weight-semibold);
-}
-
-.h34.containedPrimary,
-.h38.containedPrimary {
-  background-color: var(--accent);
-}
-
-.h34.containedPrimary:hover:not(:disabled),
-.h38.containedPrimary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
-}
-
-/* The design's secondary button here is transparent on the card, not the surface fill of the 42 px one. */
-.h34.outlined {
+/* The secondary button on a card is transparent, not the surface fill of the one on the page. */
+.clearOutline {
   background-color: transparent;
 }
 
-.h34.outlined:hover:not(:disabled) {
-  background-color: var(--surface-2);
+.small {
+  padding: 4px 5px;
+  font-size: 0.8125rem;
 }
 
-/* "Descartar" next to the primary action of the settings bar (:340): no weight declared, so regular. */
-.h34.text {
-  font-weight: var(--font-weight-regular);
-}
-
-.h38.text {
-  color: var(--text-2);
-}
-
-.h38.text:hover:not(:disabled) {
-  background-color: var(--surface-2);
-}
-
-/* size={44}: the test page action (printer-v2.dc.html:359). */
-.h44 {
-  height: 44px;
-  padding: 0 22px;
-  gap: 8px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: var(--font-weight-semibold);
-  text-transform: none;
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.h44.containedPrimary {
-  background-color: var(--accent);
-}
-
-.h44.containedPrimary:hover:not(:disabled) {
-  background-color: var(--accent-hover);
+.fullWidth {
+  width: 100%;
 }

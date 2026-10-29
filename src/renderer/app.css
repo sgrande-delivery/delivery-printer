@@ -1,6 +1,6 @@
 /*
  * Design tokens: the values of the Claude Design, design/printer-v2.dc.html:13-14
- * (light palette on :root, dark on :root[data-theme='dark']). Same 26 tokens in both.
+ * (light palette on :root, dark on :root[data-theme='dark']). Same 30 colour tokens in both.
  * --bg and --text of both themes are ALSO hardcoded in src/main/theme.ts, for the
  * window's titleBarOverlay: the main process has no CSS variables, and the color is
  * needed in the BrowserWindow constructor, before a renderer exists. Change one, change
@@ -17,7 +17,10 @@
   --line: #eae2dc;
   --text: #2b2725;
   --text-2: #5a524e;
-  --muted: #857a74;
+  /* O desenho traz #857a74, que dá 3,91:1 sobre --bg: abaixo dos 4,5:1 de AA, e este token
+     carrega rótulo e dica em 12-13 px. Escurecido por decisão do dev — linha 15 da tabela de
+     fidelidade. O do tema escuro fica como o desenho, porque lá já dá 5,06:1. */
+  --muted: #756a64;
   --accent: #f4561c;
   --accent-hover: #dc4a14;
   --accent-soft: #ffe4d8;
@@ -39,6 +42,8 @@
   --scrim: rgba(20, 17, 16, 0.45);
   --paper: #ffffff;
   --paper-ink: #2b2725;
+  --paper-rule: #9c918b;
+  --paper-sub: #5a524e;
 
   --font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
@@ -48,18 +53,6 @@
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-
-  /* Aliases of the old palette. Temporary: they let the tasks of spec 38 migrate
-     one screen at a time; task #50 deletes them after the last screen moves. */
-  --color-primary: var(--accent);
-  --color-primary-light: var(--accent-hover);
-  --color-error: var(--err);
-  --color-success: var(--ok);
-  --color-text: var(--text);
-  --color-text-secondary: var(--text-2);
-  --color-divider: var(--line);
-  --color-input-border: var(--muted);
-  --color-secondary: var(--side-2);
 }
 
 :root[data-theme='dark'] {
@@ -92,6 +85,8 @@
   --scrim: rgba(20, 17, 16, 0.45);
   --paper: #faf7f5;
   --paper-ink: #2b2725;
+  --paper-rule: #9c918b;
+  --paper-sub: #5a524e;
 }
 
 /* Subset of Material Symbols Outlined, bundled (RN-01). See fonts/README.md. */

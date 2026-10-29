@@ -49,14 +49,12 @@ describe('ErrorBoundary', () => {
     expect(screen.getByRole('button', { name: 'Recarregar' }).parentElement).toHaveClass(styles.actions);
     expect(screen.getByText('Algo deu errado nesta tela')).toHaveClass(styles.title);
     expect(screen.getByText('error').parentElement).toHaveClass(styles.badge);
-    expect(screen.getByRole('button', { name: 'Abrir registros' })).toHaveClass(
-      buttonStyles.outlined,
-      buttonStyles.action
-    );
-    expect(screen.getByRole('button', { name: 'Recarregar' })).toHaveClass(
-      buttonStyles.containedPrimary,
-      buttonStyles.action
-    );
+    const reveal = screen.getByRole('button', { name: 'Abrir registros' });
+    const reload = screen.getByRole('button', { name: 'Recarregar' });
+    expect(reveal).toHaveClass(buttonStyles.outlined);
+    expect(reveal).toHaveStyle({ height: '42px' });
+    expect(reload).toHaveClass(buttonStyles.containedPrimary);
+    expect(reload).toHaveStyle({ height: '42px' });
     expectNoUndefinedClasses(container);
   });
 

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Icon from 'renderer/base/Icon';
-import Spinner from 'renderer/base/Spinner';
 import { usePrinters } from 'renderer/hooks/usePrinters';
 import { useMessaging } from 'renderer/providers/messaging';
 import PrinterDrawer from './PrinterDrawer';
 import PrinterList from './PrinterList';
 import PrintersNotice from './PrintersNotice';
+import { printersGate } from './printersGate';
 import styles from './Printers.module.css';
 
 // printer-v2.dc.html:256-283. The shell gives the title, the padding and the drag region.
@@ -21,27 +21,10 @@ const Printers: React.FC = () => {
     revalidate();
   }, [revalidate]);
 
-  if (status === 'loading') {
-    return <Spinner />;
-  }
+  const gate = printersGate(status, reload);
 
-  if (status === 'forbidden') {
-    return (
-      <PrintersNotice
-        title="Sem permissão para ver as impressoras"
-        text="O usuário desta sessão não tem permissão para consultar as impressoras cadastradas. Peça ao administrador do restaurante para liberar o acesso."
-      />
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <PrintersNotice
-        title="Não foi possível carregar as impressoras"
-        text="Verifique a internet deste computador e tente novamente."
-        onRetry={reload}
-      />
-    );
+  if (gate) {
+    return gate;
   }
 
   return (

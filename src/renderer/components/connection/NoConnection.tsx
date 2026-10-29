@@ -54,7 +54,7 @@ const NoConnection: React.FC<NoConnectionProps> = ({ onRetry }) => {
       <div className={styles.session}>Você continua conectado à sua conta — não é preciso entrar de novo.</div>
       <code className={styles.address}>{constants.BASE_URL}</code>
       <div className={styles.actions}>
-        <Button variant="contained" size="action" onClick={handleClick}>
+        <Button variant="contained" size={42} onClick={handleClick}>
           Tentar novamente
         </Button>
         <span className={styles.countdown}>nova tentativa em {countdown} s</span>

@@ -11,8 +11,7 @@
 
 /*
  * Literal colors in BOTH themes, on purpose (RN-11 exception): the design's toast does not follow the
- * theme, it is the light theme's --side. #FF9A73 on #2B2725 is 7.1:1 and the text #FAF7F5 is 13.9:1 (WCAG AA asks 4.5:1); the old
- * --color-primary-light on the old #313131 had fallen to ~3.1:1.
+ * theme, it is the light theme's --side. #FF9A73 on #2B2725 is 7.1:1 and the text #FAF7F5 is 13.9:1 (WCAG AA asks 4.5:1).
  */
 .content {
   display: flex;

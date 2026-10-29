@@ -93,7 +93,7 @@ const Login: React.FC = () => {
             loading={loading}
           />
         )}
-        <Button disabled={loading} type="submit" variant="contained" size="large" fullWidth>
+        <Button disabled={loading} type="submit" variant="contained" size={46} fullWidth>
           {step === 'email' ? 'Próximo' : 'Entrar'}
         </Button>
       </form>

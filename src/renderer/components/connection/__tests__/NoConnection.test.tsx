@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import NoConnection from '../NoConnection';
 import styles from '../NoConnection.module.css';
-import buttonStyles from 'renderer/base/Button.module.css';
 import iconStyles from 'renderer/base/Icon.module.css';
 import constants from 'constants/constants';
 import { expectNoUndefinedClasses } from 'renderer/__tests__/cssModules';
@@ -38,7 +37,7 @@ describe('NoConnection', () => {
     expect(screen.getByText('Sem conexão com o servidor')).toHaveClass(styles.title);
     expect(screen.getByText('cloud_off').parentElement).toHaveClass(styles.badge);
     expect(screen.getByText('cloud_off')).toHaveClass(iconStyles.root);
-    expect(screen.getByRole('button', { name: 'Tentar novamente' })).toHaveClass(buttonStyles.action);
+    expect(screen.getByRole('button', { name: 'Tentar novamente' })).toHaveStyle({ height: '42px' });
     expect(screen.getByText(/nova tentativa em/)).toHaveClass(styles.countdown);
     expectNoUndefinedClasses(container);
   });

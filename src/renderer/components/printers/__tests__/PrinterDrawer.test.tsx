@@ -106,11 +106,12 @@ describe('PrinterDrawer', () => {
       renderScreen();
       await openDrawer();
 
-      expect(screen.getByRole('button', { name: 'Cancelar' })).toHaveClass(buttonStyles.h38, buttonStyles.text);
-      expect(screen.getByRole('button', { name: 'Salvar no servidor' })).toHaveClass(
-        buttonStyles.h38,
-        buttonStyles.containedPrimary
-      );
+      const cancel = screen.getByRole('button', { name: 'Cancelar' });
+      const save = screen.getByRole('button', { name: 'Salvar no servidor' });
+      expect(cancel).toHaveClass(buttonStyles.text);
+      expect(cancel).toHaveStyle({ height: '38px' });
+      expect(save).toHaveClass(buttonStyles.containedPrimary);
+      expect(save).toHaveStyle({ height: '38px' });
     });
   });
 

@@ -39,15 +39,15 @@
 }
 
 .colorPrimary {
-  color: var(--color-primary);
+  color: var(--accent);
 }
 
 .colorTextPrimary {
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .colorTextSecondary {
-  color: var(--color-text-secondary);
+  color: var(--text-2);
 }
 
 .alignLeft {

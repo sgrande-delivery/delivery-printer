@@ -103,8 +103,8 @@
   background: var(--err-dot);
 }
 
-/* The design's literal #5A524E (printer-v2.dc.html:643): there is no token for it, and --text-2 is
-   a different color in the dark theme, where the sidebar looks the same. */
+/* --side-badge, not --text-2: the design's #5A524E (printer-v2.dc.html:643) is the same in both themes, and
+   --text-2 turns light in the dark one. */
 .badgePending {
   background: var(--side-badge);
 }

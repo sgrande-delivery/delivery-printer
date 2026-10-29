@@ -88,10 +88,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               </div>
             )}
             <div className={styles.actions}>
-              <Button variant="outlined" size="action" onClick={this.handleRevealLogs}>
+              <Button variant="outlined" size={42} onClick={this.handleRevealLogs}>
                 Abrir registros
               </Button>
-              <Button variant="contained" size="action" onClick={this.handleReload}>
+              <Button variant="contained" size={42} onClick={this.handleReload}>
                 Recarregar
               </Button>
             </div>

@@ -81,12 +81,12 @@
 
 .paperRule {
   margin: 6px 0;
-  border-top: 1px dashed #9c918b;
+  border-top: 1px dashed var(--paper-rule);
 }
 
 .paperSub {
   padding-left: 1.5em;
-  color: #5a524e;
+  color: var(--paper-sub);
 }
 
 .paperTotal {

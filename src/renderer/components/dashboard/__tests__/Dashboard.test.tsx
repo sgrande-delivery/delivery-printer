@@ -90,7 +90,8 @@ describe('Dashboard', () => {
     expect(screen.getByText('error').parentElement).toHaveClass(styles.badgeErr);
 
     const action = screen.getByRole('button', { name: 'Ver fila' });
-    expect(action).toHaveClass(buttonStyles.hero, buttonStyles.containedPrimary);
+    expect(action).toHaveClass(buttonStyles.containedPrimary);
+    expect(action).toHaveStyle({ height: '48px' });
     fireEvent.click(action);
 
     expect(screen.getByTestId('where')).toHaveTextContent('/queue|null');

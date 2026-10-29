@@ -62,7 +62,7 @@ Três consequências para quem trabalha aqui:
 | --- | --- |
 | Runtime | Electron **43.x** (teto duro — ver `.claude/rules/autoupdate.md`) |
 | Build | electron-vite 6 + Vite 7 (`electron.vite.config.ts`, `build-config.ts`) |
-| UI | React 18, react-router-dom 6, **CSS Modules** (sem biblioteca de UI, sem CSS-in-JS) |
+| UI | React 18, react-router-dom 6, **CSS Modules** (sem biblioteca de UI, sem CSS-in-JS); ícones pela fonte Material Symbols Outlined **empacotada** em `src/renderer/fonts/`, via o primitivo `Icon` |
 | Estado | Context (`providers/auth.tsx`, `providers/messaging.tsx`) — **não há Redux** |
 | HTTP | Axios (`src/renderer/services/api.ts`), cookie de sessão + refresh no interceptor |
 | Tempo real | socket.io-client 4 — três namespaces no renderer, um socket na raiz no main |
@@ -161,7 +161,7 @@ O trabalho é organizado por **feature**, não por task solta. Cada feature vive
 
 O `/create-task` acrescenta ou refaz uma task numa spec que já existe. Fora do ciclo, `/report-bug` e `/request-feature` abrem issue a partir do relato do tester ou do pedido do dev.
 
-**No GitHub:** a feature é uma issue com label `feature`; cada task é uma issue com label `task`, vinculada como **sub-issue** da feature. **Nenhuma das duas labels existe neste repo ainda** — o `/create-spec` cria a que faltar antes de abrir a primeira issue.
+**No GitHub:** a feature é uma issue com label `feature`; cada task é uma issue com label `task`, vinculada como **sub-issue** da feature. As duas labels **existem** neste repo (conferido em 2026-10-28, `gh label list`); o `/create-spec` ainda cria a que faltar antes de abrir a primeira issue.
 
 **Status da task**, na tabela do `plan.md`: `a especificar` → `pendente` → `executada` → `shipped`.
 

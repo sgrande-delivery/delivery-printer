@@ -69,7 +69,8 @@ describe('PrinterItem', () => {
 
     const edit = await screen.findByRole('button', { name: 'Editar' });
 
-    expect(edit).toHaveClass(buttonStyles.h34, buttonStyles.outlined);
+    expect(edit).toHaveClass(buttonStyles.outlined);
+    expect(edit).toHaveStyle({ height: '34px' });
     expect(edit).not.toHaveClass(buttonStyles.containedPrimary);
     expectNoUndefinedClasses(container);
   });
@@ -82,7 +83,8 @@ describe('PrinterItem', () => {
 
     const fix = await screen.findByRole('button', { name: 'Corrigir' });
 
-    expect(fix).toHaveClass(buttonStyles.h34, buttonStyles.containedPrimary);
+    expect(fix).toHaveClass(buttonStyles.containedPrimary);
+    expect(fix).toHaveStyle({ height: '34px' });
     expect(fix).not.toHaveClass(buttonStyles.outlined);
   });
 
