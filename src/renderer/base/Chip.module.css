@@ -1,0 +1,118 @@
+/* The pill of the design: header status (printer-v2.dc.html:70), back chip (:450), printer chip (:176). */
+.root {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+  white-space: nowrap;
+}
+
+.compact {
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+}
+
+.small {
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+}
+
+.medium {
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-size: 13px;
+}
+
+.large {
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  font-size: 13px;
+}
+
+.neutral {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Secondary text on the same pill (the back chip). The tone, not the size, decides the color. */
+.muted {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+/* The padding that is asymmetric belongs to the content (an icon first), not to the size. */
+.medium.iconFirst {
+  padding: 0 10px 0 6px;
+}
+
+/* An icon first in the 22 px status pill sits 4 px from the text (printer-v2.dc.html:269). */
+.compact.iconFirst {
+  gap: 4px;
+}
+
+.ok {
+  border: 0;
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.err {
+  border: 0;
+  background: var(--err-soft);
+  color: var(--err);
+}
+
+.inverse {
+  border: 1px solid var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.clickable {
+  cursor: pointer;
+  /* A chip inside the drag region of the header or the login stays clickable. */
+  -webkit-app-region: no-drag;
+}
+
+.clickable:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.small .dot {
+  width: 7px;
+  height: 7px;
+}
+
+.dotOk {
+  background: var(--ok-dot);
+}
+
+.dotErr {
+  background: var(--err-dot);
+}
+
+.dotMuted {
+  background: var(--muted);
+}

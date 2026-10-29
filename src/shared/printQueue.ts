@@ -29,7 +29,15 @@ export type PrintJob = {
 // What crosses the IPC to show the queue and to warn about a failure. The receipt
 // HTML (payload.content) stays in the main process: the type alone guarantees
 // nothing, the test on the channel payload does.
-export type PrintJobSummary = Omit<PrintJob, 'payload'> & { deviceName: string | null };
+export type PrintJobSummary = Omit<PrintJob, 'payload'> & {
+  deviceName: string | null;
+  // The only field of the payload the screens need ("2×" in the history).
+  copies: number;
+  // Printed or failed, and the main still holds the receipt HTML: the only case in which reprinting prints something.
+  reprintable: boolean;
+  // Epoch ms of the next attempt. Only for a pending job that already failed at least once.
+  nextAttemptAt?: number;
+};
 
 // Where the request came from. 'event' is something the operator or the panel
 // asked for (printOrder, printShipment, the board events): it is never held back

@@ -1,3 +1,6 @@
-.inputContainer {
-  margin: 30px 0 60px;
+/* The decorative icon takes the 34 px slot the password step gives its button, so the two fields line up. */
+.person {
+  width: 34px;
+  text-align: center;
+  color: var(--muted);
 }

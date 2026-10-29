@@ -82,6 +82,8 @@ Regras críticas:
 - **Nunca** colocar segredo nos `.env` versionados; **nunca** usar `.env` para configuração por instalação
 - **Nunca** mover `electron-updater`/`electron-log` para `devDependencies`, nem subir o Electron de major
 - **Nunca** reintroduzir MUI, styled-components, Redux ou layout de impressão em React
+- **Nunca** ramificar por versão de pedido (v1 × v2) nem propor build v2 deste app — o contrato é agnóstico de versão, e comprovante v2 sem complemento é defeito do renderizador da `delivery-api` (CLAUDE.md, "A v1 e a v2 da plataforma")
+- **Nunca** parar porque a outra ponta (rota ou evento novo) ainda não subiu — implementar contra o contrato da spec e dizer no relatório (CLAUDE.md, "Contrato cross-repo não bloqueia implementação")
 - **Nunca** montar URL absoluta com `constants.BASE_URL` — o `api` já tem `baseURL`
 
 ### 5. Código TS

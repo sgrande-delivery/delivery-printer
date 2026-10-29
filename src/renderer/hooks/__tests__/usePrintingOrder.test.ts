@@ -31,6 +31,8 @@ function summary(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     createdAt: 0,
     lastError: null,
     deviceName: null,
+    copies: 1,
+    reprintable: false,
     ...overrides,
   };
 }

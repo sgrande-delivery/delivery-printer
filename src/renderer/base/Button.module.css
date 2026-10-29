@@ -1,3 +1,4 @@
+/* The legacy button: square, uppercase, the MUI v4 one. 'medium' and 'small' are the only users left. */
 .root {
   display: inline-flex;
   align-items: center;
@@ -6,7 +7,6 @@
   min-width: 64px;
   padding: 6px 16px;
   border: 0;
-  /* theme.shape.borderRadius was 0 */
   border-radius: 0;
   font-family: var(--font-family);
   font-size: 0.875rem;
@@ -22,15 +22,23 @@
   opacity: 0.6;
 }
 
+/* Height, padding, radius, size and weight of the design's buttons are inline, from METRICS in Button.tsx.
+   What is shared by all of them is here, once. */
+.design {
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-transform: none;
+  line-height: 1;
+}
+
 .containedPrimary {
-  background-color: var(--color-primary);
+  background-color: var(--accent);
   color: #fff;
-  /* MuiButton.contained override: no shadow */
   box-shadow: none;
 }
 
 .containedPrimary:hover:not(:disabled) {
-  background-color: #d94a1f;
+  background-color: var(--accent-hover);
 }
 
 .text {
@@ -40,7 +48,26 @@
 }
 
 .text:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--surface-2);
+}
+
+.quiet {
+  color: var(--text-2);
+}
+
+.outlined {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+
+.outlined:hover:not(:disabled) {
+  background-color: var(--surface-2);
+}
+
+/* The secondary button on a card is transparent, not the surface fill of the one on the page. */
+.clearOutline {
+  background-color: transparent;
 }
 
 .small {

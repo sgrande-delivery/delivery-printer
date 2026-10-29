@@ -1,30 +1,29 @@
-import React, { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import DefaultLayout from 'renderer/components/layout/DefaultLayout';
+import React from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+import AppShell from 'renderer/components/layout/AppShell';
+import StateLayout from 'renderer/components/layout/StateLayout';
 import InsideLoading from 'renderer/components/loading/InsideLoading';
 import NoConnection from 'renderer/components/connection/NoConnection';
 import { useAuth } from 'renderer/providers/auth';
 
-interface ProtectedRouteProps {
-  element: ReactNode;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element }) => {
+// A layout route: the six screens are its children, so the AppShell (and the socket hooks it owns)
+// stays mounted while the operator navigates. One ProtectedRoute per screen would remount it each time.
+const ProtectedRoute: React.FC = () => {
   const { sessionStatus, retrySession } = useAuth();
 
   if (sessionStatus === 'loading') {
     return (
-      <DefaultLayout>
+      <StateLayout>
         <InsideLoading />
-      </DefaultLayout>
+      </StateLayout>
     );
   }
 
   if (sessionStatus === 'unreachable') {
     return (
-      <DefaultLayout>
+      <StateLayout>
         <NoConnection onRetry={retrySession} />
-      </DefaultLayout>
+      </StateLayout>
     );
   }
 
@@ -32,7 +31,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element }) => {
     return <Navigate to="/login" replace />;
   }
 
-  return <DefaultLayout>{element}</DefaultLayout>;
+  return (
+    <AppShell>
+      <Outlet />
+    </AppShell>
+  );
 };
 
 export default ProtectedRoute;

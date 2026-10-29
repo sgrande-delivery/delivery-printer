@@ -1,37 +1,49 @@
+/* printer-v2.dc.html:263-274. */
 .item {
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  border: 1px solid var(--color-divider);
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
 }
 
 /* A name that matches no device is the failure this screen exists to show. */
 .itemMissing {
-  border-color: var(--color-error);
+  border-color: var(--err);
 }
 
-.itemHeader {
+.icon {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
 }
 
-.found {
-  color: var(--color-success);
+.body {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
 }
 
-.missing {
-  color: var(--color-error);
-  font-weight: var(--font-weight-medium);
-}
-
-/* A failed write, which is not the same claim as "this name matches no device". */
-.error {
-  color: var(--color-error);
-}
-
-.actions {
+.titleRow {
   display: flex;
+  align-items: center;
   gap: 8px;
-  margin-top: 8px;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.detail {
+  font-size: 12px;
+  color: var(--text-2);
 }

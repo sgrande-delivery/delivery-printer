@@ -1,0 +1,200 @@
+/* printer-v2.dc.html:387-436. Fixed instead of absolute: the window is the stage here. */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  /* The veil and the panel catch the click even over the header's drag region of the shell. */
+  -webkit-app-region: no-drag;
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  -webkit-app-region: no-drag;
+}
+
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.2);
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+/* The right padding is the room of the three native window buttons (RN-04): the design puts the close
+   button under them, where no click would ever reach it. */
+.header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 56px;
+  padding: 0 152px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--surface-2);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.deviceSelected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.radioOn {
+  color: var(--accent);
+}
+
+.radioOff {
+  color: var(--muted);
+}
+
+.deviceName {
+  flex: 1;
+}
+
+.deviceTag {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.segmented {
+  display: flex;
+  width: max-content;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.segment {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.segmentOn {
+  background: var(--surface);
+}
+
+.activeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.activeText {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.error {
+  margin: 0;
+  color: var(--err);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.confirmText {
+  flex: 1;
+  font-size: 13px;
+}

@@ -7,19 +7,32 @@
   border: 0;
   border-radius: 50%;
   background-color: transparent;
-  color: var(--color-text-secondary);
+  color: var(--text-2);
   cursor: pointer;
   transition: background-color 150ms;
 }
 
 .root:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--surface-2);
 }
 
-.colorPrimary {
-  color: var(--color-primary);
+.small {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--muted);
 }
 
-.colorPrimary:hover {
-  background-color: rgba(240, 89, 42, 0.04);
+.small:hover {
+  background-color: var(--surface-2);
+}
+
+.root:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.root:disabled:hover {
+  background-color: transparent;
 }

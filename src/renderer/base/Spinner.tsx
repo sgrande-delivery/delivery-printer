@@ -8,7 +8,7 @@ interface SpinnerProps {
 
 /** Replaces MUI's CircularProgress. */
 const Spinner: React.FC<SpinnerProps> = ({ className }) => (
-  <span role="progressbar" aria-label="carregando" className={cx(styles.root, className)} />
+  <span role="progressbar" aria-label="carregando" className={cx(styles.root, 'spin', className)} />
 );
 
 export default Spinner;

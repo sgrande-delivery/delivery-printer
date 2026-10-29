@@ -1,0 +1,49 @@
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.optionSelected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.radio {
+  display: flex;
+  color: var(--muted);
+}
+
+.radioSelected {
+  color: var(--accent);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Said in the card's words (PrinterItem): the page will not come out where the name says. */
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  color: var(--err);
+  font-size: 12px;
+}
+
+.tag {
+  font-size: 12px;
+  color: var(--muted);
+}

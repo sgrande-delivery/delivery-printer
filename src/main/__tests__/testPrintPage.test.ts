@@ -38,4 +38,36 @@ describe('buildTestPrintPage', () => {
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
   });
+
+  it('prints the accents line after the version, with the letters intact', () => {
+    const html = buildTestPrintPage(request, '2.7.0', now);
+
+    expect(html).toContain('<p>Acentos: ÁÉÍÓÚ ÂÊÔ ÃÕ Ç</p>');
+    expect(html).not.toMatch(/&amp;[A-Za-z]+;|&amp;#/);
+    expect(html.indexOf('Versão: 2.7.0')).toBeLessThan(html.indexOf('Acentos:'));
+  });
+
+  it('keeps the frame, both rulers, the six data lines and the closing note', () => {
+    const html = buildTestPrintPage(request, '2.7.0', now);
+
+    expect(html).toContain('<div class="frame">');
+    expect(html).toContain('border: 2px solid #000');
+    expect(html.match(/<div class="ruler">/g)).toHaveLength(2);
+    expect(html).toContain('<div class="ruler">|&lt;-- 80 mm --&gt;|</div>');
+    expect(html).toContain('<div class="ruler">1234567890123456789012345678901234567890</div>');
+    expect(html).toContain('<h1>TESTE DE IMPRESSÃO</h1>');
+
+    for (const label of ['Cadastro:', 'Setor:', 'Impressora:', 'Papel:', 'Data:', 'Versão:']) {
+      expect(html).toContain(`<p>${label} `);
+    }
+
+    expect(html).toContain('A moldura e a régua devem caber no papel');
+  });
+
+  it('escapes a name that looks like an entity next to the accents line', () => {
+    const html = buildTestPrintPage({ ...request, printerName: 'A&B' }, '2.7.0', now);
+
+    expect(html).toContain('<p>Cadastro: A&amp;B</p>');
+    expect(html).toContain('<p>Acentos: ÁÉÍÓÚ ÂÊÔ ÃÕ Ç</p>');
+  });
 });

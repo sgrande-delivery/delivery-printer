@@ -59,3 +59,17 @@ export async function updatePrinterSettings(
 
   return payload;
 }
+
+// The session copy is a snapshot from login, and the PUT below rewrites every row from it: saving
+// over a stale one would undo what the admin panel changed since (the installer version included).
+// Returns null when the answer does not look like printer settings, so the caller keeps what it has.
+export async function fetchPrinterSettings(): Promise<PrinterSettingsData | null> {
+  const response = await api.get('/users/me');
+  const source: unknown = response?.data?.restaurant?.printer_settings;
+
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return null;
+  }
+
+  return hasKnownSettings(source as PrinterSettingsData) ? (source as PrinterSettingsData) : null;
+}

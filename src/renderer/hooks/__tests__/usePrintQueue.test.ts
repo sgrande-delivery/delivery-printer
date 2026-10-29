@@ -13,6 +13,8 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     createdAt: 0,
     lastError: null,
     deviceName: 'Cozinha',
+    copies: 1,
+    reprintable: false,
     ...overrides,
   };
 }
@@ -21,12 +23,13 @@ describe('usePrintQueue', () => {
   beforeEach(() => {
     vi.mocked(window.electron.queueState).mockReset().mockResolvedValue([]);
     vi.mocked(window.electron.retryFailed).mockReset().mockResolvedValue(1);
+    vi.mocked(window.electron.discardJob).mockReset().mockResolvedValue(true);
     vi.mocked(window.electron.onQueueChanged)
       .mockReset()
       .mockReturnValue(() => undefined);
   });
 
-  it('reflects the state from the channel, splitting pending from failed and ignoring printed', async () => {
+  it('reflects the state from the channel, splitting pending, failed and printed', async () => {
     vi.mocked(window.electron.queueState).mockResolvedValue([
       job({ id: 'a' }),
       job({ id: 'b', status: 'failed' }),
@@ -37,6 +40,7 @@ describe('usePrintQueue', () => {
 
     await waitFor(() => expect(result.current.pending.map(j => j.id)).toEqual(['a']));
     expect(result.current.failed.map(j => j.id)).toEqual(['b']);
+    expect(result.current.printed.map(j => j.id)).toEqual(['c']);
   });
 
   it('asks again when the main process announces that the queue changed', async () => {
@@ -112,6 +116,36 @@ describe('usePrintQueue', () => {
     expect(window.electron.queueState).toHaveBeenCalledTimes(3);
   });
 
+  it('discard calls the channel with the id and reads the queue even if the main announced nothing', async () => {
+    const { result } = renderHook(() => usePrintQueue());
+    await waitFor(() => expect(window.electron.queueState).toHaveBeenCalledTimes(1));
+
+    let discarded = false;
+    await act(async () => {
+      discarded = await result.current.discard('j-9');
+    });
+
+    expect(window.electron.discardJob).toHaveBeenCalledWith('j-9');
+    expect(discarded).toBe(true);
+    expect(window.electron.queueState).toHaveBeenCalledTimes(2);
+  });
+
+  it('discard that the main refuses resolves to false, and a rejected channel is logged, not thrown', async () => {
+    const { result } = renderHook(() => usePrintQueue());
+    await waitFor(() => expect(window.electron.queueState).toHaveBeenCalledTimes(1));
+
+    vi.mocked(window.electron.discardJob).mockResolvedValueOnce(false);
+    await act(async () => {
+      expect(await result.current.discard('j-1')).toBe(false);
+    });
+
+    vi.mocked(window.electron.discardJob).mockRejectedValueOnce(new Error('no handler'));
+    await act(async () => {
+      expect(await result.current.discard('j-1')).toBe(false);
+    });
+    expect(window.electron.queueState).toHaveBeenCalledTimes(3);
+  });
+
   it('removes the listener on unmount', async () => {
     const offChanged = vi.fn();
     vi.mocked(window.electron.onQueueChanged).mockReturnValue(offChanged);
@@ -122,5 +156,95 @@ describe('usePrintQueue', () => {
     unmount();
 
     expect(offChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not loaded until the main process answers, and an empty answer is loaded', async () => {
+    let answer: (jobs: PrintJobSummary[]) => void = () => undefined;
+    vi.mocked(window.electron.queueState).mockReturnValue(new Promise(resolve => (answer = resolve)));
+    const { result } = renderHook(() => usePrintQueue());
+
+    expect(result.current.loaded).toBe(false);
+
+    await act(async () => answer([]));
+
+    expect(result.current.loaded).toBe(true);
+  });
+
+  it('reprint sends the id to the main process, reads the queue again and returns what it answered', async () => {
+    vi.mocked(window.electron.reprintJob).mockReset().mockResolvedValue(true);
+    const { result } = renderHook(() => usePrintQueue());
+    await waitFor(() => expect(window.electron.queueState).toHaveBeenCalledTimes(1));
+
+    let accepted = false;
+    await act(async () => {
+      accepted = await result.current.reprint('j-9');
+    });
+
+    expect(accepted).toBe(true);
+    expect(window.electron.reprintJob).toHaveBeenCalledWith('j-9');
+    expect(window.electron.queueState).toHaveBeenCalledTimes(2);
+  });
+
+  it('reprint resolves to false, without throwing, when the channel rejects', async () => {
+    vi.mocked(window.electron.reprintJob).mockReset().mockRejectedValue(new Error('no handler'));
+    const { result } = renderHook(() => usePrintQueue());
+
+    let accepted = true;
+    await act(async () => {
+      accepted = await result.current.reprint('j-9');
+    });
+
+    expect(accepted).toBe(false);
+  });
+
+  describe('one queue for every reader', () => {
+    it('subscribes once and asks the main once, for the badge and the screen together', async () => {
+      const badge = renderHook(() => usePrintQueue());
+      const screen = renderHook(() => usePrintQueue());
+
+      await waitFor(() => expect(screen.result.current.loaded).toBe(true));
+      expect(window.electron.onQueueChanged).toHaveBeenCalledTimes(1);
+      expect(window.electron.queueState).toHaveBeenCalledTimes(1);
+
+      const onChanged = vi.mocked(window.electron.onQueueChanged).mock.calls[0][0];
+      vi.mocked(window.electron.queueState).mockResolvedValue([job({ id: 'x', status: 'failed' })]);
+
+      await act(async () => {
+        onChanged();
+      });
+
+      // One announcement, one read: it used to be one per mounted reader.
+      expect(window.electron.queueState).toHaveBeenCalledTimes(2);
+      await waitFor(() => expect(badge.result.current.failed.map(j => j.id)).toEqual(['x']));
+      expect(screen.result.current.failed.map(j => j.id)).toEqual(['x']);
+    });
+
+    it('lets go of the subscription only when the last reader leaves', async () => {
+      const off = vi.fn();
+      vi.mocked(window.electron.onQueueChanged).mockReturnValue(off);
+      const badge = renderHook(() => usePrintQueue());
+      const screen = renderHook(() => usePrintQueue());
+      await waitFor(() => expect(screen.result.current.loaded).toBe(true));
+
+      screen.unmount();
+      expect(off).not.toHaveBeenCalled();
+
+      badge.unmount();
+      expect(off).toHaveBeenCalledTimes(1);
+    });
+
+    it('an action taken through one reader reaches the other', async () => {
+      vi.mocked(window.electron.queueState).mockResolvedValue([job({ id: 'f', status: 'failed' })]);
+      const badge = renderHook(() => usePrintQueue());
+      const screen = renderHook(() => usePrintQueue());
+      await waitFor(() => expect(badge.result.current.failed).toHaveLength(1));
+
+      vi.mocked(window.electron.queueState).mockResolvedValue([]);
+      await act(async () => {
+        await screen.result.current.discard('f');
+      });
+
+      await waitFor(() => expect(badge.result.current.failed).toHaveLength(0));
+    });
   });
 });

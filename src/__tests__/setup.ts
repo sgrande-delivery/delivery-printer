@@ -16,6 +16,8 @@ Object.defineProperty(window, 'electron', {
     printTest: vi.fn().mockResolvedValue('enqueued'),
     queueState: vi.fn().mockResolvedValue([]),
     retryFailed: vi.fn().mockResolvedValue(0),
+    discardJob: vi.fn().mockResolvedValue(true),
+    reprintJob: vi.fn().mockResolvedValue(true),
     notifyConnection: vi.fn(),
     onJobPrinted: vi.fn().mockReturnValue(() => undefined),
     onJobFailed: vi.fn().mockReturnValue(() => undefined),
@@ -25,5 +27,9 @@ Object.defineProperty(window, 'electron', {
     log: vi.fn(),
     notification: vi.fn().mockResolvedValue(undefined),
     revealLogs: vi.fn().mockResolvedValue(true),
+    initialTheme: null,
+    uiTheme: vi.fn().mockResolvedValue({ preference: 'system', resolved: 'light' }),
+    setUiTheme: vi.fn().mockResolvedValue('light'),
+    onUiThemeChanged: vi.fn().mockReturnValue(() => undefined),
   },
 });

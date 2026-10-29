@@ -6,6 +6,8 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   fullWidth?: boolean;
   endAdornment?: ReactNode;
+  /** 'floating' is the MUI-style label that floats; 'boxed' is the label above a bordered box (login). */
+  variant?: 'floating' | 'boxed';
 }
 
 const TextField: React.FC<TextFieldProps> = ({
@@ -13,17 +15,32 @@ const TextField: React.FC<TextFieldProps> = ({
   fullWidth = false,
   endAdornment,
   className,
-  placeholder = ' ',
+  placeholder,
+  variant = 'floating',
   ...rest
 }) => {
   const id = useId();
+
+  if (variant === 'boxed') {
+    return (
+      <div className={cx(styles.boxedRoot, fullWidth && styles.fullWidth, className)}>
+        <label htmlFor={id} className={styles.boxedLabel}>
+          {label}
+        </label>
+        <div className={styles.box}>
+          <input id={id} className={styles.boxedInput} placeholder={placeholder} {...rest} />
+          {endAdornment}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cx(styles.root, fullWidth && styles.fullWidth, className)}>
       <div className={styles.inputWrapper}>
         {/* The input comes before the label so the label can react to :focus
             and :placeholder-shown through the sibling selector. */}
-        <input id={id} className={styles.input} placeholder={placeholder} {...rest} />
+        <input id={id} className={styles.input} placeholder={placeholder ?? ' '} {...rest} />
         <label htmlFor={id} className={styles.label}>
           {label}
         </label>

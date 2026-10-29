@@ -4,14 +4,17 @@ import path from 'node:path';
 import { describeError } from 'shared/describeError';
 import { writeFileAtomic } from '../atomicFile';
 import { logger } from '../logger';
+import { KEEP_PRINTED_HTML, MAX_AGE_MS } from 'shared/queueLimits';
 import type { PrintJob, PrintJobKind, PrintJobStatus } from 'shared/printQueue';
 
 const QUEUE_FILE = 'print-queue.ndjson';
 
-// Each job carries the whole receipt HTML (spec, decision 1), so the count is
-// what bounds the disk use (RN-04).
+// What bounds the disk use: pending and failed jobs carry the whole receipt HTML, and so do the
+// KEEP_PRINTED_HTML most recent printed ones (trimPrintedHtml drops it from the older ones). The
+// count is the cap; the limits live in shared/queueLimits.ts because the screen derives text
+// from them.
 export const MAX_JOBS = 200;
-export const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export { MAX_AGE_MS };
 
 const KINDS: readonly PrintJobKind[] = ['order-created', 'order-dispatched', 'board', 'board-billing', 'test'];
 const STATUSES: readonly PrintJobStatus[] = ['pending', 'printed', 'failed'];
@@ -180,15 +183,10 @@ export const printQueueStore = {
     return status ? jobs.filter(job => job.status === status) : jobs;
   },
 
-  // The record stays (the worker needs it to know the order was printed and to
-  // mark it in the API) but the receipt HTML does not: it is the heavy part.
+  // The HTML stays here: the history reprints from it. What drops it is trimPrintedHtml, which the
+  // worker calls right after.
   markPrinted(id: string): void {
-    const changed = update(id, job => ({
-      ...job,
-      status: 'printed',
-      lastError: null,
-      payload: { ...job.payload, content: '' },
-    }));
+    const changed = update(id, job => ({ ...job, status: 'printed', lastError: null }));
 
     if (changed) {
       logger.info(`print-queue: printed ${id}`);
@@ -225,6 +223,72 @@ export const printQueueStore = {
     }
 
     return count;
+  },
+
+  // Only the KEEP_PRINTED_HTML most recent printed jobs (by createdAt) keep the receipt HTML: the
+  // heavy part, and the customer's data. The record of the others stays as the deduplication ledger.
+  trimPrintedHtml(keep: number = KEEP_PRINTED_HTML): number {
+    const { jobs } = readJobs();
+    const stale = new Set(
+      jobs
+        .filter(job => job.status === 'printed')
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(keep)
+        .filter(job => job.payload.content !== '')
+    );
+
+    if (stale.size === 0) {
+      return 0;
+    }
+
+    writeJobs(jobs.map(job => (stale.has(job) ? { ...job, payload: { ...job.payload, content: '' } } : job)));
+
+    return stale.size;
+  },
+
+  // Reprint: the same job, same id (the id is the temp file name and the deduplication key), back
+  // to pending with a fresh count. Never a pending one (it is going out) and never one without HTML.
+  // Says which state it came from: reprinting a PRINTED job must not mark the order in the API
+  // again, but reprinting a FAILED one is its first successful print and must mark it.
+  requeue(id: string): 'requeued-printed' | 'requeued-failed' | 'not-found' | 'not-reprintable' {
+    const { jobs } = readJobs();
+    const target = jobs.find(job => job.id === id);
+
+    if (!target) {
+      return 'not-found';
+    }
+
+    if ((target.status !== 'printed' && target.status !== 'failed') || target.payload.content === '') {
+      return 'not-reprintable';
+    }
+
+    writeJobs(
+      jobs.map(job => (job === target ? { ...job, status: 'pending' as const, attempts: 0, lastError: null } : job))
+    );
+    logger.info(`print-queue: reprint requested for ${id}`);
+
+    return target.status === 'printed' ? 'requeued-printed' : 'requeued-failed';
+  },
+
+  // Only a failed job leaves: anything else is a receipt that has not come out, or the
+  // ledger that keeps the scan from printing an order twice.
+  removeFailed(id: string): 'removed' | 'not-found' | 'not-failed' {
+    const { jobs } = readJobs();
+    const target = jobs.find(job => job.id === id);
+
+    if (!target) {
+      logger.warn(`print-queue: job ${id} not found`);
+      return 'not-found';
+    }
+
+    if (target.status !== 'failed') {
+      return 'not-failed';
+    }
+
+    writeJobs(jobs.filter(job => job !== target));
+    logger.info(`print-queue: discarded ${id}`);
+
+    return 'removed';
   },
 
   incrementAttempt(id: string): void {

@@ -1,0 +1,113 @@
+/* printer-v2.dc.html:345-385. The shell gives the title, the padding and the drag region. */
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-2);
+}
+
+.intro {
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.messageMuted {
+  color: var(--muted);
+}
+
+.messageWorking {
+  color: var(--text-2);
+}
+
+.messageOk {
+  color: var(--ok);
+}
+
+.messageErr {
+  color: var(--err);
+}
+
+.previewColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.previewBackdrop {
+  display: flex;
+  justify-content: center;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+/* The roll width is set inline (58 or 80 mm, scaled): it follows the registration. */
+.paper {
+  box-sizing: border-box;
+  padding: 14px 14px 22px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  font-family: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  -webkit-mask: radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) 0 0 / 12px 100% repeat-x;
+}
+
+/* The frame of the real page (testPrintPage.ts), which is what measures the width. */
+.frame {
+  padding: 6px;
+  border: 2px solid var(--paper-ink);
+}
+
+.paperTitle {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.paperLine {
+  margin: 2px 0;
+  word-break: break-word;
+}
+
+.ruler {
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--paper-ink);
+  overflow: hidden;
+  white-space: nowrap;
+}

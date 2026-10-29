@@ -1,0 +1,48 @@
+/* printer-v2.dc.html:411-413 (drawer), :293-295 and :306-308 (settings). */
+.root {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+/* The design dims the whole control to 0.4 for a row that does not apply (:301). The buttons are
+   disabled too, and must not dim again on top of it. */
+.disabled {
+  opacity: 0.4;
+}
+
+.disabled .button:disabled {
+  opacity: 1;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.button:disabled {
+  cursor: default;
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.value {
+  text-align: center;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}

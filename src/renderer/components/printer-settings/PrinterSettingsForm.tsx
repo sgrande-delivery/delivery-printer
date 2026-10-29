@@ -1,105 +1,121 @@
 import React, { useState } from 'react';
 import { AxiosError } from 'axios';
 import Button from 'renderer/base/Button';
-import Select from 'renderer/base/Select';
-import Typography from 'renderer/base/Typography';
+import Stepper from 'renderer/base/Stepper';
+import Switch from 'renderer/base/Switch';
+import { useAuth } from 'renderer/providers/auth';
 import { useMessaging } from 'renderer/providers/messaging';
 import { log } from 'renderer/services/log';
 import { apiValidationMessage } from 'renderer/services/apiMessage';
 import {
   UntrustedBaselineError,
+  fetchPrinterSettings,
   updatePrinterSettings,
   type PrinterSettingsData,
 } from 'renderer/services/printerSettings';
-import type { PrinterSetting } from 'renderer/types/restaurant';
+import {
+  currentNoMargin,
+  currentValue,
+  diffChanges,
+  isDirty,
+  marginHint,
+  previewMetrics,
+  readNumber,
+  stepOptions,
+  type Draft,
+  type StepKey,
+} from './printerSettingsModel';
+import SettingsRow from './SettingsRow';
 import styles from './PrinterSettingsForm.module.css';
-
-type NumberKey = 'font_size' | 'production_template_copies' | 'shipment_template_copies' | 'margin_size';
-
-interface NumberField {
-  key: NumberKey;
-  label: string;
-  options: { value: number; label: string }[];
-}
-
-function range(values: number[], suffix = ''): NumberField['options'] {
-  return values.map(value => ({ value, label: `${value}${suffix}` }));
-}
-
-// Same labels and closed sets as the admin panel (PrinterSettingsForm there), so both screens
-// are the same configuration to the operator. The sets also keep out values that ruin the
-// print: font-size 0 is a blank receipt, 0 copies is no receipt. The server validates nothing.
-const numberFields: NumberField[] = [
-  { key: 'font_size', label: 'Tamanho da fonte', options: range([12, 14, 16, 18, 20, 22, 24]) },
-  { key: 'production_template_copies', label: 'Cópias impressão produção', options: range([1, 2, 3, 4]) },
-  { key: 'shipment_template_copies', label: 'Cópias impressão entrega', options: range([1, 2, 3, 4]) },
-  {
-    key: 'margin_size',
-    label: 'Tamanho das margens',
-    // The panel's "0px" is the value 1.
-    options: [{ value: 1, label: '0px' }, ...range([10, 15, 20, 25, 30, 35, 40], 'px')],
-  },
-];
-
-function initialText(settings: PrinterSettingsData, key: NumberKey): string {
-  const value = settings[key];
-
-  return typeof value === 'number' ? String(value) : '';
-}
 
 interface PrinterSettingsFormProps {
   settings: PrinterSettingsData;
   // Receives the full payload that was sent, to become the new baseline.
   onSaved(settings: PrinterSettingsData): void;
+  // The rest of the left column (the local appearance section), below the note.
+  children?: React.ReactNode;
 }
 
-const PrinterSettingsForm: React.FC<PrinterSettingsFormProps> = ({ settings, onSaved }) => {
+const PrinterSettingsForm: React.FC<PrinterSettingsFormProps> = ({ settings, onSaved, children }) => {
   const { handleOpen } = useMessaging();
-  const [texts, setTexts] = useState<Record<NumberKey, string>>({
-    font_size: initialText(settings, 'font_size'),
-    production_template_copies: initialText(settings, 'production_template_copies'),
-    shipment_template_copies: initialText(settings, 'shipment_template_copies'),
-    margin_size: initialText(settings, 'margin_size'),
-  });
-  const [noMargin, setNoMargin] = useState(settings.no_margin === true);
+  const { restaurant } = useAuth();
+  const [draft, setDraft] = useState<Draft>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Only what the operator changed goes in `changes`; the rest of the payload is the loaded
-  // object itself (see updatePrinterSettings). A key the API did not return and the operator
-  // did not fill stays absent, instead of being created with an invented value.
-  const changes: Partial<PrinterSetting> = {};
+  const dirty = isDirty(settings, draft);
+  const noMargin = currentNoMargin(settings, draft);
+  const preview = previewMetrics(settings, draft);
 
-  for (const { key } of numberFields) {
-    const text = texts[key].trim();
-
-    if (text === initialText(settings, key)) {
-      continue;
-    }
-
-    // The select only offers numbers; '' is the untouched "not set" option.
-    if (text !== '') {
-      changes[key] = Number(text);
-    }
+  function handleStep(key: StepKey, value: number): void {
+    setDraft(current => ({ ...current, [key]: value }));
   }
 
-  if (noMargin !== (settings.no_margin === true)) {
-    changes.no_margin = noMargin;
+  function handleDiscard(): void {
+    setDraft({});
+    setError(null);
   }
 
-  const dirty = Object.keys(changes).length > 0;
+  // The control walks the options (the closed set, plus a stored value outside it), not the number:
+  // from 12 the next is 14. A key the server did not return shows "—" and its first step lands on
+  // the first option, so nothing is invented until the operator moves it.
+  function renderStep(
+    settingKey: StepKey,
+    label: string,
+    hint: string,
+    valueWidth: number,
+    disabled = false
+  ): React.ReactNode {
+    const options = stepOptions(settingKey, readNumber(settings, settingKey));
+    const value = currentValue(settings, draft, settingKey);
+    const index = options.findIndex(option => option.value === value);
 
-  async function handleSubmit(event: React.FormEvent): Promise<void> {
-    event.preventDefault();
+    return (
+      <SettingsRow label={label} hint={hint}>
+        <Stepper
+          label={label}
+          value={index}
+          min={0}
+          max={options.length - 1}
+          display={index >= 0 ? options[index].label : '—'}
+          valueWidth={valueWidth}
+          disabled={disabled}
+          onChange={next => handleStep(settingKey, options[next].value)}
+        />
+      </SettingsRow>
+    );
+  }
+
+  // The save is a button handler, not a submit: the appearance radios live inside this form, and
+  // Enter on a focused radio submits implicitly in Chromium, which would write the restaurant's settings.
+  async function handleSave(): Promise<void> {
     setSaving(true);
     setError(null);
 
     try {
-      const saved = await updatePrinterSettings(settings, changes);
+      // PUT /printerSettings deletes every row and recreates the payload's keys, so the payload is
+      // built over the server's copy read right now, never over the session snapshot (days old, the
+      // app lives in the tray). If it cannot be read, nothing is sent.
+      let fresh: PrinterSettingsData | null = null;
+
+      try {
+        fresh = await fetchPrinterSettings();
+      } catch (err: unknown) {
+        log.error('printer settings read before save failed', err);
+      }
+
+      if (!fresh) {
+        setError('Não foi possível confirmar as configurações atuais. Nada foi salvo; tente de novo.');
+        return;
+      }
+
+      const saved = await updatePrinterSettings(fresh, diffChanges(fresh, draft));
 
       onSaved(saved);
+      setDraft({});
       handleOpen('Configurações de impressão salvas.');
     } catch (err: unknown) {
+      // The draft stays on screen in every failure: the operator keeps what they set.
       if (err instanceof AxiosError && err.response?.status === 403) {
         log.warn('update printer settings forbidden (403)');
         setError(
@@ -121,56 +137,83 @@ const PrinterSettingsForm: React.FC<PrinterSettingsFormProps> = ({ settings, onS
     }
   }
 
-  const version = typeof settings.delivery_printer_version === 'string' ? settings.delivery_printer_version : '';
+  const restaurantName = (restaurant?.name || 'Restaurante').toUpperCase();
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      {numberFields.map(({ key, label, options }) => {
-        const current = initialText(settings, key);
-        // A stored value outside the closed set stays selectable, so opening the screen never
-        // silently changes it.
-        const known = current === '' || options.some(option => String(option.value) === current);
-
-        return (
-          <Select
-            key={key}
-            label={label}
-            fullWidth
-            value={texts[key]}
-            onChange={event => setTexts(currentTexts => ({ ...currentTexts, [key]: event.target.value }))}
-          >
-            {current === '' && <option value="">Não definido</option>}
-            {!known && <option value={current}>{current}</option>}
-            {options.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        );
-      })}
-      <label className={styles.check}>
-        <input type="checkbox" checked={noMargin} onChange={event => setNoMargin(event.target.checked)} />
-        <span>Remover margens</span>
-      </label>
-      <div className={styles.readOnly}>
-        <Typography variant="caption" color="textSecondary">
-          Versão do instalador oferecida no painel
-        </Typography>
-        <Typography variant="body1">{version || 'não definida'}</Typography>
+    <form className={styles.grid} onSubmit={event => event.preventDefault()}>
+      <div className={styles.column}>
+        <section className={styles.card} aria-labelledby="copies-title">
+          <h2 className={styles.cardTitle} id="copies-title">
+            Cópias
+          </h2>
+          {renderStep(
+            'production_template_copies',
+            'Comprovante de produção',
+            'Sai na impressora do setor quando o pedido entra',
+            40
+          )}
+          {renderStep('shipment_template_copies', 'Comprovante de expedição', 'Sai quando o pedido é despachado', 40)}
+        </section>
+        <section className={styles.card} aria-labelledby="layout-title">
+          <h2 className={styles.cardTitle} id="layout-title">
+            Layout do comprovante
+          </h2>
+          {renderStep('font_size', 'Tamanho da fonte', 'Em pixels', 64)}
+          {renderStep('margin_size', 'Margem', marginHint(noMargin), 64, noMargin)}
+          <SettingsRow label="Sem margem" hint="Usa toda a largura da bobina" last>
+            <Switch
+              label="Sem margem"
+              checked={noMargin}
+              onChange={next => setDraft(current => ({ ...current, no_margin: next }))}
+            />
+          </SettingsRow>
+        </section>
+        <p className={styles.note}>
+          Estas configurações são do restaurante e valem também no painel administrativo. Quem aplica no comprovante é o
+          servidor.
+        </p>
+        {children}
       </div>
-      {error && (
-        <div role="alert">
-          <Typography variant="body2" className={styles.error}>
-            {error}
-          </Typography>
+      <aside className={styles.preview} aria-label="Pré-visualização">
+        <div className={styles.previewLabel}>Pré-visualização</div>
+        <div className={styles.stage}>
+          <div
+            className={styles.paper}
+            data-testid="preview-paper"
+            style={{ width: preview.width, fontSize: preview.fontSize, padding: preview.padding }}
+          >
+            <div className={styles.paperTitle}>{restaurantName}</div>
+            <div className={styles.paperCenter}>PEDIDO #0142 · 15:41</div>
+            <div className={styles.paperRule} />
+            <div>1x Pizza Margherita G</div>
+            <div className={styles.paperSub}>+ borda catupiry</div>
+            <div>2x Guaraná lata</div>
+            <div className={styles.paperRule} />
+            <div className={styles.paperTotal}>
+              <span>TOTAL</span>
+              <span>R$ 78,90</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+      {dirty && (
+        <div className={styles.bar} role="region" aria-label="Alterações não salvas">
+          <div className={styles.barText}>
+            <span>Alterações não salvas</span>
+            {error && (
+              <span role="alert" className={styles.barError}>
+                {error}
+              </span>
+            )}
+          </div>
+          <Button variant="text" size={34} disabled={saving} onClick={handleDiscard}>
+            Descartar
+          </Button>
+          <Button variant="contained" size={34} disabled={saving} onClick={handleSave}>
+            Salvar
+          </Button>
         </div>
       )}
-      <div className={styles.actions}>
-        <Button variant="contained" type="submit" size="small" disabled={saving || !dirty}>
-          Salvar
-        </Button>
-      </div>
     </form>
   );
 };
