@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { MIDNIGHT_CHECK_MS } from '../useMidnightTick';
 import { buildDashboard, startOfDay, useDashboardHealth } from '../useDashboardHealth';
 import { fetchPrinters } from 'renderer/services/printers';
 import type { ResolvedPrinter } from '../usePrinters';
@@ -21,6 +22,7 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     lastError: null,
     deviceName: 'Cozinha',
     copies: 1,
+    reprintable: false,
     ...overrides,
   };
 }
@@ -164,5 +166,25 @@ describe('useDashboardHealth', () => {
 
     await waitFor(() => expect(result.current.stats.failed).toBe(1));
     expect(result.current.health.tone).toBe('err');
+  });
+
+  it('counts a job of the new day once midnight passes with the screen otherwise idle', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date(2026, 9, 28, 23, 59, 30));
+    vi.mocked(window.electron.queueState).mockResolvedValue([
+      job({ id: 'late', status: 'printed', createdAt: new Date(2026, 9, 28, 23, 58).getTime() }),
+    ]);
+
+    const { result } = renderHook(() => useDashboardHealth());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.stats.printedToday).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIDNIGHT_CHECK_MS * 2);
+    });
+
+    expect(result.current.stats.printedToday).toBe(0);
   });
 });

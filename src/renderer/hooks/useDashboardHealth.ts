@@ -3,6 +3,7 @@ import { capitalize, clock } from 'renderer/helpers/text';
 import { RECEIPT_KINDS } from 'renderer/helpers/receiptKind';
 import { stations } from 'renderer/components/printers/stations';
 import { usePrintQueue } from 'renderer/hooks/usePrintQueue';
+import { useMidnightTick } from 'renderer/hooks/useMidnightTick';
 import { usePrinters } from 'renderer/hooks/usePrinters';
 import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import type { IconName } from 'renderer/base/Icon';
@@ -119,6 +120,10 @@ export function buildDashboard({
 export function useDashboardHealth(): DashboardView {
   const { pending, failed, printed } = usePrintQueue();
   const { printers, devicesRead } = usePrinters();
+
+  // Re-renders once a minute so that "hoje" turns over at midnight on an idle screen: nothing
+  // else re-renders this app on a quiet night (the printer_ping only emits).
+  useMidnightTick();
 
   // Computed on each render: `now` is what moves "hoje", and the inputs are fresh arrays anyway.
   return buildDashboard({ pending, failed, printed, printers, devicesRead, now: new Date() });

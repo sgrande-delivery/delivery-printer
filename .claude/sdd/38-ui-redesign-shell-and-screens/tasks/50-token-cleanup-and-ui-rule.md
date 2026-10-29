@@ -40,11 +40,17 @@ Enquanto estiver nessa varredura, caçar o que a migração deixou para trás:
 - **`InsideSaving` NÃO é órfão:** ele tem um importador, `Login.tsx:82`, e vai continuar tendo. O que ele precisa é de cor por token: o véu é `rgba(250,250,250,.5)` fixo, e desde a task 04 ele cobre **a coluna direita inteira** do login (~624×728) em vez do cartão de 400 px que deixou de existir — o ancestral posicionado mudou. No tema escuro isso é um véu claro grande
 - **CSS que ficou morto por causa da spec**, confirmado por mutação no review da task 04: a variante `floating` do `TextField` (os dois passos do login eram os únicos consumidores e viraram `boxed`) e o `IconButton` `color="primary"` (`.colorPrimary`, cujo último consumidor era o ícone de voltar antigo). Decidir aqui se a `floating` morre ou fica documentada — ela tem teste honesto, então ficar não custa mentira
 
-### 2. Racionalizar a escala de tamanho do `Button`
+### 2. `src/shared/ipcChannels.ts`: o nome do canal num lugar só
+
+Medido no review da task 08: **nenhum teste deste repo pega nome de canal divergente**. O `setup.ts` substitui `window.electron` inteiro, nenhum teste importa o `preload.ts` ou o `main.ts`, e os testes do main chamam os handlers direto — o `grep` da `printing.md` é o único gate. Pior nos quatro canais main→renderer, cujo nome é **literal duplicado em dois arquivos**: `queue:job-printed`, `queue:job-failed`, `queue:changed`, `app:before-quit` e `ui:theme-changed`. Renomear só o literal do preload deixa a suíte verde e a tela congelada.
+
+Criar `src/shared/ipcChannels.ts` com as constantes e importar dos dois lados mata a classe inteira — é o tipo de conserto que a regra de impressão pede há três specs sem ter como cobrar.
+
+### 3. Racionalizar a escala de tamanho do `Button`
 
 Ela virou um nome por tela: `medium`, `small`, `large` (46), `action` (42), `hero` (48), e as tasks 09 a 11 acrescentam mais. A recomendação medida está nos "Aprendizados" do plan, em duas partes — classe-base compartilhada, e união **fechada** de alturas com a tabela dentro do primitivo, no precedente do `Icon`. Fazer as duas; só a segunda deixa a duplicação de `containedPrimary`/`hover` de pé.
 
-### 3. Reescrever `.claude/rules/renderer-ui.md`
+### 4. Reescrever `.claude/rules/renderer-ui.md`
 
 Mesma estrutura e mesmo tom, conteúdo novo:
 
@@ -65,7 +71,7 @@ Duas correções pontuais, sem reescrever a seção:
 - a tabela da **Stack** diz "UI: React 18, react-router-dom 6, CSS Modules (sem biblioteca de UI, sem CSS-in-JS)" — acrescentar a fonte de ícones local, que é dependência visual nova
 - a seção **Fluxo de trabalho (SDD)** afirma que as labels `feature` e `task` **não existem** neste repo; elas existem (conferido em 2026-10-28, `gh label list`)
 
-### 4. Duas decisões de acessibilidade que são de produto, não de limpeza
+### 5. Duas decisões de acessibilidade que são de produto, não de limpeza
 
 Medidas no review da task 05, e as duas vêm de seguir o desenho:
 
@@ -74,7 +80,7 @@ Medidas no review da task 05, e as duas vêm de seguir o desenho:
 
 Escurecer o `--muted` fecha o AA e **diverge do desenho**; manter preserva a fidelidade e deixa texto pequeno abaixo do mínimo. **Não decida sozinho:** leve ao dev, e o que sair vira linha na tabela "Fidelidade ao desenho" da spec.
 
-### 5. Registrar os aprendizados no `plan.md`
+### 6. Registrar os aprendizados no `plan.md`
 
 Preencher a seção "Aprendizados que valem para as próximas tasks" com o que as onze tasks derrubaram ou descobriram. **Não é formalidade:** é o que a próxima spec de UI vai ler.
 

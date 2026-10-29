@@ -15,6 +15,10 @@ export function backoffMs(attempts: number): number {
   return Math.min(BACKOFF_BASE_MS * 2 ** (attempts - 1), BACKOFF_MAX_MS);
 }
 
+export function isReprintable(job: PrintJob): boolean {
+  return (job.status === 'printed' || job.status === 'failed') && job.payload.content !== '';
+}
+
 // An explicit pick, never a spread of the job: the receipt HTML must not cross
 // to the renderer (and the test on the channel payload holds this).
 export function toSummary(job: PrintJob, nextAttemptAt?: number): PrintJobSummary {
@@ -29,6 +33,7 @@ export function toSummary(job: PrintJob, nextAttemptAt?: number): PrintJobSummar
     lastError: job.lastError,
     deviceName: job.payload.deviceName,
     copies: job.payload.copies,
+    reprintable: isReprintable(job),
     ...(nextAttemptAt !== undefined && job.status === 'pending' ? { nextAttemptAt } : {}),
   };
 }
@@ -58,6 +63,8 @@ export type PrintQueueWorker = {
   retryFailed: (id?: string) => number;
   // Only a failed job can be discarded: a pending one is a receipt that is still going out.
   discardFailed: (id: string) => boolean;
+  // Puts a printed or failed job back to pending, same id. False when it is gone, still going out, or has no HTML left.
+  reprint: (id: string) => boolean;
   // When the backoff of a pending job ends; undefined if it is not waiting for one.
   nextAttemptOf: (id: string) => number | undefined;
   notifyConnection: (isConnected: boolean) => void;
@@ -73,6 +80,9 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
   // Printed, but the file could not record it. Without this the loop would print
   // the same receipt again on every iteration.
   const printedUnrecorded = new Set<string>();
+  // Reprints in flight. The order is already marked in the API, so its second print must not tell the
+  // renderer "printed" (that is what makes it PATCH /printed again): RN-09, reprinting never touches the API.
+  const reprinting = new Set<string>();
 
   function notify(callback: (job: PrintJobSummary) => void, job: PrintJobSummary): void {
     try {
@@ -142,7 +152,16 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
       logger.error(`print-queue: ${job.id} printed but the file could not record it`, describeError(err));
     }
 
-    notify(deps.onPrinted, toSummary({ ...job, status: 'printed', lastError: null }));
+    try {
+      printQueueStore.trimPrintedHtml();
+    } catch (err: unknown) {
+      logger.error('print-queue: could not trim the receipt HTML of old printed jobs', describeError(err));
+    }
+
+    if (!reprinting.delete(job.id)) {
+      notify(deps.onPrinted, toSummary({ ...job, status: 'printed', lastError: null }));
+    }
+
     announce();
   }
 
@@ -290,6 +309,30 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     return true;
   }
 
+  function reprint(id: string): boolean {
+    const result = printQueueStore.requeue(id);
+
+    if (result !== 'requeued-printed' && result !== 'requeued-failed') {
+      logger.warn(`print-queue: refused to reprint ${id}, reason: ${result}`);
+      return false;
+    }
+
+    nextAttemptAt.delete(id);
+    printedUnrecorded.delete(id);
+
+    // Only when it had already printed: that order is already marked in the API, so telling the
+    // renderer "printed" would PATCH it again. A failed job was never marked, and its reprint is
+    // the first print that worked — suppressing it would leave the order unmarked until the next
+    // reconnection scan.
+    if (result === 'requeued-printed') {
+      reprinting.add(id);
+    }
+    announce();
+    kick();
+
+    return true;
+  }
+
   function nextAttemptOf(id: string): number | undefined {
     return nextAttemptAt.get(id);
   }
@@ -304,5 +347,5 @@ export function createPrintQueueWorker(deps: PrintQueueWorkerDeps): PrintQueueWo
     kick();
   }
 
-  return { start: kick, enqueue, retryFailed, discardFailed, nextAttemptOf, notifyConnection };
+  return { start: kick, enqueue, retryFailed, discardFailed, reprint, nextAttemptOf, notifyConnection };
 }

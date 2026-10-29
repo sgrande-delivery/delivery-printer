@@ -59,7 +59,7 @@ O resto é composição de React com CSS Modules sobre o que já existe. Nada de
 | 05 | Telas de estado e toast | [#43](https://github.com/sgrande-delivery/delivery-printer/issues/43) | [43-state-screens-and-toast.md](./tasks/43-state-screens-and-toast.md) | 01, 03 | executada |
 | 06 | Painel (variação C) | [#44](https://github.com/sgrande-delivery/delivery-printer/issues/44) | [44-dashboard-variant-c.md](./tasks/44-dashboard-variant-c.md) | 03 | executada |
 | 07 | Fila de impressão, com descartar | [#45](https://github.com/sgrande-delivery/delivery-printer/issues/45) | [45-print-queue-screen.md](./tasks/45-print-queue-screen.md) | 03 | executada |
-| 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | pendente |
+| 08 | Histórico de hoje, com reimprimir | [#46](https://github.com/sgrande-delivery/delivery-printer/issues/46) | [46-history-screen-and-reprint.md](./tasks/46-history-screen-and-reprint.md) | 03, 07 | executada |
 | 09 | Impressoras: cartões e gaveta de edição | [#47](https://github.com/sgrande-delivery/delivery-printer/issues/47) | [47-printers-cards-and-drawer.md](./tasks/47-printers-cards-and-drawer.md) | 03 | pendente |
 | 10 | Configurações de impressão e aparência | [#48](https://github.com/sgrande-delivery/delivery-printer/issues/48) | [48-printing-settings-and-appearance.md](./tasks/48-printing-settings-and-appearance.md) | 02, 03 | pendente |
 | 11 | Teste de impressão como tela própria | [#49](https://github.com/sgrande-delivery/delivery-printer/issues/49) | [49-test-print-screen.md](./tasks/49-test-print-screen.md) | 03, 09 | pendente |
@@ -170,6 +170,49 @@ Para as nove tasks que criam tela:
 O aprendizado da task 02 chegou ao limite: nos três componentes do shell **não existe uma única concatenação de classe** — tudo é `cx()` ou `className={styles.x}` direto. Resultado medido: **27 das 41 chaves** não tinham rede nenhuma, inclusive as estruturais (`AppShell.root`, que é o `display:flex` sem o qual sidebar e conteúdo empilham; `Sidebar.root`, que são os 216 px; `Sidebar.item`, que são os 40 px e as cores de todos os itens de menu). As três chamadas do helper **não podiam falhar por chave nenhuma**.
 
 A rede entrou como 15 afirmações de presença, e a varredura por mutação confirma: cada uma das 15 chaves derruba ao menos um teste. **A regra prática, que vale para as nove tasks restantes:** o helper é piso, não rede. Afirme presença nas chaves que carregam o layout.
+
+### Dois bugs em código já commitado, e a classe deles é o achado de processo da spec (task 08)
+
+**Bug 1: o "Impressos hoje" do Painel mostrava zero no app real.** O `onQueueState` filtrava os impressos, **com um comentário justificando** ("the deduplication ledger … have no reader in the renderer"). Era verdade até a task 06 criar o leitor e **não tocar no handler**. Os testes passaram porque **mockam o canal**.
+
+**Bug 2: reimprimir disparava `PATCH /orders/:uuid/printed`.** O worker emite `onPrinted`, o `usePrintingOrder` reage marcando na API, e a RN-09 diz que nenhuma requisição sai. Consertado com um `Set` de reimpressões em voo — e o review achou o furo do conserto: ele valia também para job **falhado**, cuja reimpressão é a **primeira** impressão que funcionou, e que portanto **precisa** marcar. Hoje o `requeue` devolve `'requeued-printed' | 'requeued-failed'` e só o primeiro suprime.
+
+**A classe é "a ficção autoconsistente", e esta base já a documentou na task #21.** O renderer lê algo que o main não manda, todo teste mocka a borda, a suíte fica verde e a feature está morta. Três camadas não pegaram: implementador, review e eu.
+
+**O que o review mediu sobre a extensão do problema**, e que vale mais que os dois bugs:
+
+- **nenhum teste deste repo pode pegar nome de canal divergente.** O `setup.ts` substitui `window.electron` inteiro, nenhum teste importa o `preload.ts` nem o `main.ts`, e os testes do main chamam os handlers **direto**. O `grep` que a `printing.md` prescreve é o **único** gate;
+- pior nos quatro canais main→renderer, cujo nome é **literal duplicado em dois arquivos** sem constante compartilhada (`queue:job-printed`, `queue:job-failed`, `queue:changed`, `app:before-quit`, `ui:theme-changed`). Renomear só o literal do preload deixa a suíte verde e a tela congelada. **`src/shared/ipcChannels.ts` está endereçado à task 12**;
+- o antídoto já existe e é o modelo: `queue-ipc.test.ts` roda o **store real sobre arquivo real** mais o handler real, sem mock na borda. **Repetir nas tasks 09 a 11**;
+- varredura do resto da spec: `copies`, `nextAttemptAt` e `reprintable` têm produtor real e teste sem mock. O `initialTheme` **não é ficção** (os dois lados usam a mesma função), mas **não está provado** em Electron real — se `additionalArguments` não chegar ao `process.argv` do preload, degrada para claro em silêncio. **Só `npm run dev` fecha isso.**
+
+### O custo de ler a fila, medido (task 08)
+
+Com o arquivo realista (200 trabalhos, 20 deles com 10 kB de HTML): arquivo de **253 kB** (era ~55 kB, porque impresso não guardava HTML), `list()` + parse em **0,44 ms**, 200 summaries serializados em **54 kB** e **0,13 ms**, poda em **1,59 ms**.
+
+No pior caso composto com a task 07 (20 jobs falhando = 120 anúncios/min) e com os **dois** `usePrintQueue` montados: **240 invokes/min**, ~0,14 s de CPU do main por minuto nesta máquina, ~13 MB/min de clone estrutural. Num PDV fraco, ~5×: ~1% de um núcleo. **Aceitável — não precisa de paginação no handler.** A mitigação barata, quando incomodar, é a que o plan já pede por outro motivo: **um `usePrintQueue` só, compartilhado**, que corta tudo pela metade.
+
+### Reimprimir faz a linha sumir do Histórico, e pode apagar o registro do original (task 08)
+
+O trabalho reimpresso volta a `pending` (mesmo `id`, que é a chave da deduplicação), então **some do Histórico até imprimir de novo** e o resumo cai 1 nesse intervalo. Pior: **se a reimpressão falhar as cinco tentativas, a linha volta como "Falhou"**, apagando da tela o registro de que o comprovante original saiu.
+
+É consequência direta de "reimprimir não cria `id` novo", que é o que impede impressão duplicada. Fica declarado; mudar exigiria um registro de histórico separado da fila, que a RN-08 não quer.
+
+### Varredura por mutação precisa provar a restauração (task 08)
+
+O review desta task deixou **resíduo**: a chamada de `useMidnightTick()` sumiu do `useDashboardHealth` (a mutação "tirar o tique do Painel") e não voltou, embora o relatório afirmasse que a árvore estava idêntica. **Quem pegou foi o `tsc`**, pelo import órfão — se o import tivesse sido removido junto, a suíte teria ficado verde com a feature morta, que é a mesma classe do bug 1.
+
+**Regra para quem varrer:** restaurar por cópia de backup **e conferir com `git diff`** ao fim, não por afirmação. E rodar `npm run typecheck` depois da varredura, não só a suíte.
+
+### A spec afirmou uma premissa que o código desmentia, e o subagente parou certo (task 08)
+
+A RN-09 e a task 08 diziam que a fila guarda os impressos "com o HTML no payload". **Falso:** `markPrinted` fazia `payload: { ...job.payload, content: '' }`, com teste afirmando, por decisão da spec 15 — o HTML é a parte pesada do arquivo. Seguir a task ao pé da letra entregaria um botão "Reimprimir" que **imprime página em branco e a marca como impressa**, e o teste "mantém o payload original" **passaria**, porque o payload original já era vazio.
+
+**Erro meu, na escrita da spec:** li o cabeçalho do store e o validador `isPrintJob`, não o `markPrinted`. A premissa entrou como RN, que é o lugar mais caro para uma premissa errada — justamente o que a instrução do `/create-spec` diz ("premissa que não está escrita em lugar nenhum não pode ser questionada, então vira bug").
+
+**O subagente parou e perguntou, e isso foi o certo.** O `CLAUDE.md` manda não parar por falta da outra ponta, mas **premissa contradita é motivo legítimo de parada**: quem decide qual lado muda é o dev. Ele entregou a parte que não dependia da decisão (o tique de meia-noite) e deixou o resto.
+
+**Como não repetir:** RN que afirma comportamento de código existente precisa da linha conferida, não do cabeçalho do arquivo. Quando a spec disser "X guarda Y", abra a função que grava.
 
 ### A política de anúncio da fila foi revertida, e isso é a mudança mais sensível da spec (task 07)
 

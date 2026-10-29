@@ -1,7 +1,6 @@
 import React from 'react';
-import Typography from 'renderer/base/Typography';
+import History from 'renderer/components/history/History';
 
-// Skeleton: the screen itself arrives in its own task of spec 38. The route exists so the sidebar has somewhere to go.
-const HistoryScreen: React.FC = () => <Typography variant="body1">Histórico de hoje</Typography>;
+const HistoryScreen: React.FC = () => <History />;
 
 export default HistoryScreen;

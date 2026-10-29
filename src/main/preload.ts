@@ -36,6 +36,10 @@ const electronHandler = {
   // one is still going out, and the main process refuses it).
   discardJob: (id: string): Promise<boolean> => ipcRenderer.invoke('queue:discard', id),
 
+  // Sends a printed or failed job through the printer again, same id; the HTML stays in the main
+  // process. Resolves to false when the job is gone, is pending, or its HTML was already dropped.
+  reprintJob: (id: string): Promise<boolean> => ipcRenderer.invoke('queue:reprint', id),
+
   // Fire-and-forget: it only wakes the worker.
   notifyConnection: (isConnected: boolean): void => ipcRenderer.send('notifyConnection', isConnected),
 

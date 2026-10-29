@@ -14,6 +14,7 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     lastError: null,
     deviceName: 'Cozinha',
     copies: 1,
+    reprintable: false,
     ...overrides,
   };
 }
@@ -155,5 +156,44 @@ describe('usePrintQueue', () => {
     unmount();
 
     expect(offChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not loaded until the main process answers, and an empty answer is loaded', async () => {
+    let answer: (jobs: PrintJobSummary[]) => void = () => undefined;
+    vi.mocked(window.electron.queueState).mockReturnValue(new Promise(resolve => (answer = resolve)));
+    const { result } = renderHook(() => usePrintQueue());
+
+    expect(result.current.loaded).toBe(false);
+
+    await act(async () => answer([]));
+
+    expect(result.current.loaded).toBe(true);
+  });
+
+  it('reprint sends the id to the main process, reads the queue again and returns what it answered', async () => {
+    vi.mocked(window.electron.reprintJob).mockReset().mockResolvedValue(true);
+    const { result } = renderHook(() => usePrintQueue());
+    await waitFor(() => expect(window.electron.queueState).toHaveBeenCalledTimes(1));
+
+    let accepted = false;
+    await act(async () => {
+      accepted = await result.current.reprint('j-9');
+    });
+
+    expect(accepted).toBe(true);
+    expect(window.electron.reprintJob).toHaveBeenCalledWith('j-9');
+    expect(window.electron.queueState).toHaveBeenCalledTimes(2);
+  });
+
+  it('reprint resolves to false, without throwing, when the channel rejects', async () => {
+    vi.mocked(window.electron.reprintJob).mockReset().mockRejectedValue(new Error('no handler'));
+    const { result } = renderHook(() => usePrintQueue());
+
+    let accepted = true;
+    await act(async () => {
+      accepted = await result.current.reprint('j-9');
+    });
+
+    expect(accepted).toBe(false);
   });
 });

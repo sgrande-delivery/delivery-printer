@@ -12,6 +12,7 @@ const log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
 
 vi.mock('../../logger', () => ({ logger: log }));
 
+import { KEEP_PRINTED_HTML } from 'shared/queueLimits';
 import { MAX_AGE_MS, MAX_JOBS, printQueueStore } from '../print-queue-store';
 
 const NOW = new Date('2026-10-15T12:00:00Z').getTime();
@@ -70,7 +71,7 @@ describe('printQueueStore', () => {
     expect(log.error).not.toHaveBeenCalled();
   });
 
-  it('markPrinted takes the job out of the pending list and drops the receipt HTML', () => {
+  it('markPrinted takes the job out of the pending list and keeps the receipt HTML', () => {
     printQueueStore.enqueue(job('a'));
     printQueueStore.enqueue(job('b'));
 
@@ -80,8 +81,69 @@ describe('printQueueStore', () => {
     const printed = printQueueStore.list('printed');
 
     expect(printed).toHaveLength(1);
-    expect(printed[0].payload.content).toBe('');
+    expect(printed[0].payload.content).toBe('<html>a</html>');
     expect(printed[0].orderUuid).toBe('order-a');
+  });
+
+  it('trimPrintedHtml keeps the HTML of the most recent printed jobs and drops the rest', () => {
+    for (let i = 0; i <= KEEP_PRINTED_HTML; i += 1) {
+      printQueueStore.enqueue(job(`j${i}`, { createdAt: NOW + i * 1000 }));
+      printQueueStore.markPrinted(`j${i}`);
+    }
+
+    expect(printQueueStore.trimPrintedHtml()).toBe(1);
+
+    const printed = printQueueStore.list('printed');
+    const oldest = printed.find(j => j.id === 'j0');
+    const newest = printed.find(j => j.id === `j${KEEP_PRINTED_HTML}`);
+
+    expect(printed).toHaveLength(KEEP_PRINTED_HTML + 1);
+    expect(oldest?.payload.content).toBe('');
+    expect(oldest?.orderUuid).toBe('order-j0');
+    expect(newest?.payload.content).toBe(`<html>j${KEEP_PRINTED_HTML}</html>`);
+    expect(printed.filter(j => j.payload.content !== '')).toHaveLength(KEEP_PRINTED_HTML);
+    expect(printQueueStore.trimPrintedHtml()).toBe(0);
+  });
+
+  it('trimPrintedHtml ranks by createdAt, not by the order in the file, and never touches pending or failed', () => {
+    printQueueStore.enqueue(job('new', { createdAt: NOW + 5000 }));
+    printQueueStore.enqueue(job('old', { createdAt: NOW }));
+    printQueueStore.enqueue(job('waiting', { createdAt: NOW - 9000 }));
+    printQueueStore.enqueue(job('broken', { createdAt: NOW - 9000 }));
+    printQueueStore.markPrinted('new');
+    printQueueStore.markPrinted('old');
+    printQueueStore.markFailed('broken', 'Print job failed');
+
+    printQueueStore.trimPrintedHtml(1);
+
+    const content = (id: string): string | undefined => printQueueStore.list().find(j => j.id === id)?.payload.content;
+
+    expect(content('new')).toBe('<html>new</html>');
+    expect(content('old')).toBe('');
+    expect(content('waiting')).toBe('<html>waiting</html>');
+    expect(content('broken')).toBe('<html>broken</html>');
+  });
+
+  it('requeue sends a printed job back to pending with the same id and payload', () => {
+    printQueueStore.enqueue(job('a', { attempts: 2 }));
+    printQueueStore.markPrinted('a');
+
+    expect(printQueueStore.requeue('a')).toBe('requeued-printed');
+
+    expect(printQueueStore.list()).toEqual([job('a')]);
+  });
+
+  it('requeue refuses a pending job, one without HTML, and one that does not exist', () => {
+    printQueueStore.enqueue(job('waiting'));
+    printQueueStore.enqueue(
+      job('bare', { status: 'printed', payload: { content: '', copies: 1, deviceName: null, id: 'bare' } })
+    );
+    const before = fs.readFileSync(file(), 'utf8');
+
+    expect(printQueueStore.requeue('waiting')).toBe('not-reprintable');
+    expect(printQueueStore.requeue('bare')).toBe('not-reprintable');
+    expect(printQueueStore.requeue('nope')).toBe('not-found');
+    expect(fs.readFileSync(file(), 'utf8')).toBe(before);
   });
 
   it('markFailed keeps the job with the reason', () => {

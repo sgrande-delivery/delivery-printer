@@ -23,6 +23,7 @@ function job(overrides: Partial<PrintJobSummary> = {}): PrintJobSummary {
     lastError: null,
     deviceName: 'Cozinha',
     copies: 1,
+    reprintable: false,
     ...overrides,
   };
 }

@@ -33,6 +33,8 @@ export type PrintJobSummary = Omit<PrintJob, 'payload'> & {
   deviceName: string | null;
   // The only field of the payload the screens need ("2×" in the history).
   copies: number;
+  // Printed or failed, and the main still holds the receipt HTML: the only case in which reprinting prints something.
+  reprintable: boolean;
   // Epoch ms of the next attempt. Only for a pending job that already failed at least once.
   nextAttemptAt?: number;
 };

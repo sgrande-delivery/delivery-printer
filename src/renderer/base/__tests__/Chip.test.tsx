@@ -82,4 +82,28 @@ describe('Chip', () => {
     expect(css).toMatch(/\.medium\.iconFirst \{[^}]*padding: 0 10px 0 6px;/);
     expect(css).not.toMatch(/\.neutral\.medium/);
   });
+
+  it('the compact size and the inverse tone are the status pill and the selected filter', () => {
+    render(
+      <Chip size="compact" tone="inverse">
+        Todos
+      </Chip>
+    );
+
+    expect(screen.getByText('Todos')).toHaveClass(styles.compact);
+    expect(screen.getByText('Todos')).toHaveClass(styles.inverse);
+    expect(screen.getByText('Todos')).not.toHaveClass(styles.neutral);
+  });
+
+  it('pressed is aria-pressed on the button, and absent on a chip that is not a toggle', () => {
+    const { rerender } = render(
+      <Chip pressed onClick={() => undefined}>
+        filtro
+      </Chip>
+    );
+    expect(screen.getByRole('button', { name: 'filtro' })).toHaveAttribute('aria-pressed', 'true');
+
+    rerender(<Chip onClick={() => undefined}>filtro</Chip>);
+    expect(screen.getByRole('button', { name: 'filtro' })).not.toHaveAttribute('aria-pressed');
+  });
 });

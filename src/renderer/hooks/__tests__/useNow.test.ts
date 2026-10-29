@@ -23,6 +23,24 @@ describe('useNow', () => {
     expect(result.current - first).toBe(3000);
   });
 
+  it('ticks at the interval it is given', () => {
+    const { result } = renderHook(() => useNow(() => true, 5000));
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    const first = result.current;
+
+    act(() => {
+      vi.advanceTimersByTime(4999);
+    });
+    expect(result.current).toBe(first);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current - first).toBe(5000);
+  });
+
   it('does not tick, and sets no timer, while inactive', () => {
     const { result } = renderHook(() => useNow(() => false));
     const first = result.current;

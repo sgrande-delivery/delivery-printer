@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { EnqueueRequest, PrintJob, PrintJobSummary, PrintPayload } from 'shared/printQueue';
+import { KEEP_PRINTED_HTML } from 'shared/queueLimits';
 
 const electron = vi.hoisted(() => ({ userData: '' }));
 
@@ -311,6 +312,70 @@ describe('print queue worker', () => {
     await settle(60000);
 
     expect(print).toHaveBeenCalledTimes(1);
+  });
+
+  it('after a print, only the most recent printed jobs keep their receipt HTML', async () => {
+    print.mockResolvedValue(undefined);
+    const worker = newWorker();
+
+    for (let i = 0; i <= KEEP_PRINTED_HTML; i += 1) {
+      worker.enqueue(request(`r${i}`));
+      await settle(1000);
+    }
+
+    const printed = printQueueStore.list('printed');
+
+    expect(printed).toHaveLength(KEEP_PRINTED_HTML + 1);
+    expect(printed.find(job => job.id === 'r0')?.payload.content).toBe('');
+    expect(printed.filter(job => job.payload.content !== '')).toHaveLength(KEEP_PRINTED_HTML);
+  });
+
+  it('a failure to trim the HTML does not undo the print or silence the renderer', async () => {
+    print.mockResolvedValue(undefined);
+    vi.spyOn(printQueueStore, 'trimPrintedHtml').mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    newWorker().enqueue(request('a'));
+    await settle(60000);
+
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(onPrinted).toHaveBeenCalledTimes(1);
+    expect(log.error).toHaveBeenCalled();
+  });
+
+  it('reprint runs the same job again, keeping its id', async () => {
+    print.mockResolvedValue(undefined);
+    const worker = newWorker();
+
+    worker.enqueue(request('a'));
+    await settle();
+    expect(worker.reprint('a')).toBe(true);
+    await settle();
+
+    expect(print).toHaveBeenCalledTimes(2);
+    expect(print.mock.calls[1][0]).toEqual(print.mock.calls[0][0]);
+    expect(printQueueStore.list().map(job => job.id)).toEqual(['a']);
+    // The renderer is told "printed" once: the second one would make it mark the order in the API again.
+    expect(onPrinted).toHaveBeenCalledTimes(1);
+  });
+
+  it('reprinting a FAILED job does tell the renderer: that order was never marked in the API', async () => {
+    print.mockRejectedValue(new Error('printer off'));
+    const worker = newWorker();
+
+    worker.enqueue(request('a'));
+    await settle(60000);
+    expect(printQueueStore.list('failed').map(job => job.id)).toEqual(['a']);
+    expect(onPrinted).not.toHaveBeenCalled();
+
+    // The reprint of a failed job is its FIRST print that worked. Suppressing onPrinted here, as
+    // we do for an already printed one, would leave the order unmarked until the next scan.
+    print.mockResolvedValue(undefined);
+    expect(worker.reprint('a')).toBe(true);
+    await settle();
+
+    expect(onPrinted).toHaveBeenCalledTimes(1);
   });
 
   it('does not print again when the file could not record the print', async () => {

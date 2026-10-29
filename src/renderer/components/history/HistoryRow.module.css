@@ -1,0 +1,73 @@
+/* printer-v2.dc.html:238-251. The grid is shared with the header, which HistoryTable owns. */
+.grid {
+  display: grid;
+  grid-template-columns: 52px 76px minmax(0, 1fr) minmax(0, 1.2fr) 52px 110px 40px;
+  gap: 10px;
+  padding: 10px 16px;
+}
+
+.row {
+  align-items: center;
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.order {
+  font-weight: var(--font-weight-semibold);
+}
+
+.kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+
+.printer {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copies {
+  color: var(--text-2);
+}
+
+.situation {
+  justify-self: start;
+}
+
+.action {
+  display: flex;
+}
+
+.reprint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.reprint:hover {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+/* Holds the place (and the title) of the button, so the row keeps its height. */
+.unavailable {
+  width: 32px;
+  height: 32px;
+}

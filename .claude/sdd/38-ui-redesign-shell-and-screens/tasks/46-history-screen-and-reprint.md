@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer
 **Depende de:** 03, 07
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -14,7 +14,15 @@ A tela do que saiu hoje, com busca e filtro por tipo — e o botão que reimprim
 ## Contexto
 
 - O desenho: `../design/printer-v2.dc.html:223-254`. O mapa de tipos está em `:522-527` e a filtragem em `:664-667`.
-- **A tela é possível sem backend novo**, e é a parte menos óbvia desta spec: a fila durável guarda os trabalhos com `status: 'printed'`, **com o HTML no payload**, por até 24 h e no máximo 200 (`print-queue-store.ts:13-14`). O histórico é esse arquivo, filtrado.
+- **A tela é possível sem backend novo:** a fila durável guarda os trabalhos com `status: 'printed'` por até 24 h e no máximo 200 (`print-queue-store.ts:13-14`). O histórico é esse arquivo, filtrado.
+- **Mas o HTML do impresso era apagado**, e isso derrubou a premissa da primeira versão desta task. `markPrinted` fazia `payload: { ...job.payload, content: '' }` (`print-queue-store.ts:191`), com teste afirmando, por decisão da spec 15: o HTML é a parte pesada do arquivo. Reimprimir devolveria `content: ''` e **o worker imprimiria uma página em branco**.
+
+  **A decisão do dev (2026-10-28):** o store passa a manter o HTML dos **20 impressos mais recentes** e apagar o dos demais. Então, nesta task:
+
+  1. `markPrinted` **não** apaga o conteúdo; quem apaga é uma poda que roda depois, deixando com HTML só os `KEEP_PRINTED_HTML` impressos mais novos (por `createdAt`). A constante mora em `src/shared/queueLimits.ts`, ao lado de `MAX_ATTEMPTS` e `MAX_AGE_MS`;
+  2. o teste `"markPrinted … drops the receipt HTML"` (`print-queue-store.test.ts:73`) **muda de propósito**, e o novo afirma as duas metades: o recente mantém, o 21º perde;
+  3. o `PrintJobSummary` ganha **`reprintable: boolean`** — `status` é `printed` ou `failed` **e** `payload.content` não é vazio. **A linha sem HTML não mostra o botão** (com `title` dizendo por quê), em vez de mostrar um que imprime em branco. Isso é divergência deliberada do desenho, que põe o botão em toda linha: entra na tabela de fidelidade;
+  4. **declare no relatório** o efeito de privacidade: até 20 comprovantes passam a ter o HTML em disco por até 24 h, onde antes era apagado na impressão.
 - **E é por isso que reimprimir não toca na API** (RN-09): o HTML já está no disco. Buscar de novo em `GET orders/{uuid}/print-created` seria pior de três formas — depende de rede, o pedido já está marcado como impresso, e a varredura `GET /orders/print/list` não o traz mais.
 - **"Hoje" é o que a fila guarda** (RN-08): `createdAt` desde a meia-noite local. A tela **não** oferece dia anterior, e o resumo diz o recorte. Prometer histórico que o arquivo não tem é pior que não ter a tela.
 - **E "hoje" congela na virada do dia, hoje:** a meia-noite é calculada por render, e nada re-renderiza o app numa noite calma (o `printer_ping` de 30 s só emite, não mexe em estado). O Painel já tem o problema e o aceitou; **aqui é pior**, porque a tela é o histórico. Crie um `useMidnightTick()` em `renderer/hooks/` e use **nas duas** telas. Com `setInterval` de 60 s, **não** `setTimeout` para a próxima meia-noite: o PDV suspende de madrugada e um timeout de 7 h acordado pelo resume dispara tarde.
@@ -94,3 +102,39 @@ Substitui o esqueleto de `/history`.
 ## Branch
 
 `feat/38-ui-redesign-shell-and-screens`, cortada de `test/dev-build-integration` em 2026-10-28, com um commit por task. A base não é `master` porque master não tem o app que esta spec modifica — ver a linha **Branch de trabalho** do [plan.md](../plan.md).
+
+## Implementação
+
+**Concluída em:** 2026-10-28
+
+### Processos tocados
+
+main, preload, renderer
+
+### Arquivos criados/alterados
+
+- `src/shared/queueLimits.ts` — `KEEP_PRINTED_HTML = 20`
+- `src/shared/printQueue.ts` — `PrintJobSummary.reprintable`
+- `src/main/queue/print-queue-store.ts` — `markPrinted` não apaga mais; `trimPrintedHtml()` (poda por `createdAt`); `requeue(id)`
+- `src/main/queue/print-queue-worker.ts` — poda após cada impressão; `reprint(id)`; `isReprintable`; reimpressão não emite `onPrinted`
+- `src/main/ipc-events/onReprintJob.ts` (novo), `onQueueState.ts` (passa a incluir os impressos)
+- `src/renderer/components/history/` — `History`, `HistoryTable`, `HistoryRow` (+ `.module.css`), `historyView.ts` (funções puras)
+- `src/renderer/base/Chip.tsx` — `tone="inverse"`, `size="compact"`, `pressed`
+- `src/renderer/hooks/usePrintQueue.ts` — `loaded`, `reprint`
+- `src/renderer/screens/HistoryScreen.tsx`
+
+### Canais IPC criados/alterados
+
+- `queue:reprint` — preload `src/main/preload.ts:41`, handler `src/main/main.ts:35`, stub `src/__tests__/setup.ts:20`
+
+### Decisões que tomei por conta própria
+
+- `onQueueState` filtrava os `printed`; sem isso o Histórico (e o "Impressos hoje" do Painel) nunca veria nada. Passou a devolvê-los, e o teste de exclusão mudou.
+- O worker não emite `onPrinted` para reimpressão (senão o `usePrintingOrder` daria `PATCH /printed` de novo, violando a RN-09). O marcador vive em memória.
+- Resumo omite "falhas" quando 0 (como o desenho `:709`).
+- `Chip` ganhou `inverse`, `compact` e `pressed` (primitivo, não override).
+- Linha sem HTML: `<span title>` de 32 px no lugar do botão.
+
+### Verificação
+
+- `npm run typecheck`: 0; `npm run lint`: 0 erros, 1 aviso (baseline); `npm test`: 52 arquivos, 418 testes; varredura por mutação: 0 sobreviventes
