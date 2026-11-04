@@ -28,7 +28,7 @@
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | As seis faces de impressão em `assets/fonts/` | [#53](https://github.com/sgrande-delivery/delivery-printer/issues/53) | [tasks/53-print-fonts-in-assets.md](./tasks/53-print-fonts-in-assets.md) | — | executada |
-| 02 | Declarar os `@font-face` no HTML de impressão | [#54](https://github.com/sgrande-delivery/delivery-printer/issues/54) | [tasks/54-font-faces-in-print-html.md](./tasks/54-font-faces-in-print-html.md) | 01 | pendente |
+| 02 | Declarar os `@font-face` no HTML de impressão | [#54](https://github.com/sgrande-delivery/delivery-printer/issues/54) | [tasks/54-font-faces-in-print-html.md](./tasks/54-font-faces-in-print-html.md) | 01 | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -82,3 +82,13 @@ Era o risco real da task 01, e foi verificado empacotando (`npm run build && npx
 ### O `app.asar` não muda de tamanho, e isso é a prova (task 01)
 
 `npx asar list` deu 562 entradas e **zero** woff2 de impressão, e o `app.asar` saiu com 5 409 498 bytes — o mesmo byte a byte do build de 29/10. É a medição que mostra que `extraResources` põe os arquivos **fora** do pacote da aplicação, e que `asarUnpack` é desnecessário. O woff2 do renderer (`material-symbols-outlined-subset`) continua sendo o único dentro do bundle.
+
+### O bloco injetado tem teto de tamanho, por causa do prescan de charset (task 02)
+
+Medido no Electron 43: o bloco de `@font-face` tem ~1,5 kB e empurra o `<meta charset="utf-8">` da página de teste do byte 43 para o **1613** — fora da janela de **1 024 bytes** do prescan de charset do HTML. O Chromium ainda decodifica UTF-8 (o detector de encoding de `file://` cobre) e os acentos saem inteiros, inclusive na linha `ÁÉÍÓÚ ÂÊÔ ÃÕ Ç` da página de teste, que existe justamente para denunciar acento errado. **Não é defeito, é teto:** quem fizer o bloco crescer muito precisa medir isso de novo. E é mais um argumento contra a alternativa `data:` base64 — com ela o `<meta>` iria para ~160 kB de distância.
+
+No mesmo medidor: inserir `<style>` entre `<html>` e um `<head>` explícito faz o parser abrir um head implícito e **descartar o token `<head>`**. O head final fica com os filhos certos, na ordem certa; o único efeito seria perder atributo em `<head>`, e não existe nenhum neste repo.
+
+### Invariante de cache em módulo do main se testa com `resetModules` + import dinâmico (task 02)
+
+`vi.resetModules()` seguido de `await import('../printFonts')` é o padrão que `queue/__tests__/print-queue-store.test.ts:186`, `onBeforeQuit.test.ts:32` e `onRevealLogs.test.ts:42` já usam, e pelo mesmo motivo. O detalhe que faz funcionar: o `vi.hoisted` vive fora da factory do `vi.mock`, então a instância nova do módulo recebe **o mesmo** spy, e a contagem de chamadas atravessa o reset. Quem acrescentar outro teste que chame `getPrintFontFacesCss` tem de repetir o reset, senão herda o cache deste.

@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main
 **Depende de:** [#53](https://github.com/sgrande-delivery/delivery-printer/issues/53)
-**Status:** pendente
+**Status:** executada
 
 ## Branch
 
@@ -79,3 +79,52 @@ O stub do `logger` segue o que os testes de main já fazem (`src/main/__tests__/
 - [ ] Arquivo de fonte renomeado: um `warn` no log e o comprovante **continua saindo**, no fallback
 - [ ] Sem rede, a fonte continua aplicando
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` seguem como na baseline
+
+## Implementação
+
+Executada em 2026-11-04. `src/main/printFonts.ts` novo, `src/main/__tests__/printFonts.test.ts` novo (22 testes) e **uma** linha de comportamento no `printReceipt`.
+
+### Onde a injeção entrou, e por que ali
+
+`fs.writeFileSync(file, withPrintFontFaces(content, getPrintFontFacesCss(app)))` (`onRawPrint.ts:17`). Conferido por grep que **nenhum caminho de impressão escapa**: `webContents.print` existe uma vez só no repo, `printReceipt` tem dois chamadores (o worker da fila em `queue/print-queue.ts:20` e o canal `rawPrint`), e a página de teste não é um terceiro caminho — o `onPrintTest` enfileira, então volta pelo worker.
+
+Injetar **na gravação** e não no `enqueue` tem consequência que vale registrar: o `payload.content` fica **intacto** na fila durável, então o `print-queue.ndjson` em `userData` não engorda ~1,5 kB por trabalho, o `PrintJobSummary` não muda, e uma reimpressão re-injeta com os caminhos **atuais** — correto depois de uma atualização que mude o diretório de instalação.
+
+### O que ficou provado, e como
+
+**Prova de ponta** (módulo real bundlado, HTML na forma do `base.blade.php` da API, carregado de `os.tmpdir()` numa `BrowserWindow`, com `printToPDF` para ler qual fonte foi efetivamente embarcada):
+
+| `font_family` | Faces carregadas | Fontes no PDF |
+| --- | --- | --- |
+| `plex` | Plex 500 + 700 | `IBMPlexSansCond-Medium`, `-Bold` |
+| `atkinson` | Atkinson 400 + 700 | `AtkinsonHyperlegible-Regular`, `-Bold` |
+| `barlow` | Barlow 500 + 700 | `BarlowSemiCondensed-Medium`, `-Bold` |
+| `original` (pedido/mesa) | **nenhuma** | `DejaVuSans` (fonte do sistema) |
+| `original` (caixa) | **nenhuma** | `DejaVuSansMono` |
+
+Isso prova a **RF-03** (a escolha chega ao documento), a **RN-02** (com `original`, as seis faces são declaradas e nenhuma é usada: o comprovante sai como hoje) e, de carona, a **RN-07** — os dois pesos aparecem no PDF de cada família, o que confirma que o `700` é alcançado pelo `.bold` e que seis faces é o conjunto certo. O `<!DOCTYPE html>` é o primeiro byte nos cinco casos. Na máquina do cliente o fallback do `original` será Arial e o Courier New real; muda a fonte do sistema, não a conclusão.
+
+### Testes
+
+22 testes em `src/main/__tests__/printFonts.test.ts`, cada um dos cinco mutantes centrais medido e **morto**:
+
+| mutação | cai |
+| --- | --- |
+| `'file://' + caminho` no lugar de `pathToFileURL` | o teste da RN-06 |
+| inserir no início do HTML | o da RN-05 e os dois de fallback |
+| `font-weight` fora do CSS gerado | o de pares família+peso |
+| memoização removida | o de `warn` único por processo |
+| regex estreitado para `/<html>/` | os três casos de `<html>` com atributo |
+| `catch` relançando em vez de devolver `''` | o da RF-04 |
+
+O da **RN-07 no CSS** é o que tem consequência silenciosa em bobina e por isso foi o primeiro a ser fechado: sem o peso, as duas faces da mesma família ficam idênticas em família+peso+estilo, a última vence, e o **arquivo 700 passa a servir o corpo do texto** com negrito sintetizado em cima. Comprovante legível, fonte errada, nenhum erro.
+
+Sem dependência de ordem: suíte verde com `--sequence.shuffle` e `--sequence.shuffle.tests` em três seeds cada.
+
+**Não coberto por teste, de propósito:** a fiação do `printReceipt`, que precisa de `BrowserWindow` real — é o que a prova de ponta acima cobre.
+
+### Ajustes que o review pediu e entraram aqui
+
+Builtins para `node:fs`/`node:url` (convergência com o resto do main), o `warn` prefixado `print-fonts:` (o suporte lê o `main.log` pelo prefixo do módulo), `describeError(err)` no `catch` (o logger tem `breakLength: Infinity` para manter uma linha por entrada, e `Error` cru sai com stack), e a blindagem `try/catch` devolvendo `''`: sem ela, um throw voltaria em **toda** impressão, porque o cache só guarda o caminho de sucesso.
+
+Verificado: `npm run typecheck` 0, `npm run lint` 0 erros e 1 aviso pré-existente, `npm test` com 66 arquivos e **659** testes (baseline da branch: 65 e 637).

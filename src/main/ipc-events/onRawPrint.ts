@@ -1,9 +1,10 @@
-import { BrowserWindow, IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, IpcMainInvokeEvent } from 'electron';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
 import type { PrintPayload } from 'shared/printQueue';
 import { findPrinterByDeviceName } from 'shared/printerMatch';
+import { getPrintFontFacesCss, withPrintFontFaces } from '../printFonts';
 
 // Shared by the rawPrint channel and by the queue worker. Rejects with the
 // Electron reason when the printer refuses.
@@ -13,7 +14,7 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
   try {
     const file = path.join(os.tmpdir(), `${id}.print.html`);
 
-    fs.writeFileSync(file, content);
+    fs.writeFileSync(file, withPrintFontFaces(content, getPrintFontFacesCss(app)));
 
     const printers = await win.webContents.getPrintersAsync();
     const printer = findPrinterByDeviceName(printers, deviceName);
