@@ -64,4 +64,10 @@ describe('the sanity gate', () => {
     expect(hasKnownSettings({ delivery_printer_version: '1.0.0' })).toBe(true);
     expect(hasKnownSettings({ pizza_calculate: 'max' })).toBe(false);
   });
+
+  // RN-04: the list is the seven rows seeded at signup. These two are born absent, so a bag holding
+  // only them is a wrong source, and saving over it would delete the real rows.
+  it('refuses a baseline that has only document_model and font_family', () => {
+    expect(hasKnownSettings({ document_model: 'completo', font_family: 'plex' })).toBe(false);
+  });
 });
