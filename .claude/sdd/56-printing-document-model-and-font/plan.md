@@ -37,7 +37,7 @@ Tudo acontece no **renderer**, numa tela que já existe. Nenhum canal IPC novo, 
 |---|------|-------|---------|------------|--------|
 | 01 | O modelo das duas chaves de enum | [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57) | [57-enum-settings-model.md](./tasks/57-enum-settings-model.md) | — | executada |
 | 02 | As faces das três famílias no bundle do renderer | [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58) | [58-ui-font-faces-in-renderer.md](./tasks/58-ui-font-faces-in-renderer.md) | — | executada |
-| 03 | O grupo de cartões de rádio | [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59) | [59-option-card-group.md](./tasks/59-option-card-group.md) | 01 | pendente |
+| 03 | O grupo de cartões de rádio | [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59) | [59-option-card-group.md](./tasks/59-option-card-group.md) | 01 | executada |
 | 04 | Modelo e Fonte no cartão "Layout do comprovante" | [#60](https://github.com/sgrande-delivery/delivery-printer/issues/60) | [60-model-and-font-in-receipt-card.md](./tasks/60-model-and-font-in-receipt-card.md) | 01, 02, 03 | pendente |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
@@ -84,3 +84,12 @@ Além de `npm run typecheck`, `npm run lint` e `npm test`:
 - **Nome de arquivo de fonte carrega o peso, e isso é rede de teste.** Face declarada `500` apontando o arquivo `700` não aparece na tela: as duas faces ficam idênticas em família+peso+estilo e o negrito passa a servir o corpo. O `printFontFaces.test.ts` agora cobra o sufixo `-<peso>.woff2`.
 - **Número de RN sozinho é ambíguo neste repo:** há uma RN-07 na spec 52 (seis faces para a impressão) e outra na 56 (uma face por família no renderer), e as duas falam de peso de fonte. Comentário que cite RN diz de qual spec.
 
+**Da task 03:**
+
+- **`--accent-soft` é um quarto fundo, e o `--muted` falha nele.** 4,33:1 no tema claro e 4,34:1 no escuro para texto de 12 px, abaixo de AA. Texto pequeno sobre cartão selecionado usa `--text-2` (6,30 / 7,54). A regra manda medir contra `--bg`, `--surface` e `--surface-2` — esta frente mostrou que a lista tem um quarto item.
+- **Nome acessível de cartão com nome + descrição sai colado** (`"OriginalIgual ao que imprime hoje"`). O conserto é `aria-label` com o nome e `aria-describedby` para a descrição. O `Icon` já é `aria-hidden`, então glifo não entra no nome — mas entra no `textContent`, e é por texto que se testa qual glifo está desenhado.
+- **`NoInfer<T>` em callback de componente genérico.** Sem ele o `T` colapsa para `string` e setter de `useState` do tipo estreito não compila. E o `npm run typecheck` **é** a rede disso: o Vitest não typecheca, então vale deixar no teste uma chamada que só compila com o `NoInfer`.
+- **A rede de CSS Module deste repo é mais forte do que a regra diz.** Medido nas 7 chaves do módulo novo: o jest-dom 6 lança `"At least one expected class must be provided"` para `toHaveClass(undefined)` em vez de passar calado, então **rename no `.module.css` é pego**. A regra (`.claude/rules/renderer-ui.md`) afirma o contrário — vale corrigi-la numa passada própria.
+- **Já são três cópias do par "botão `role=radio` + borda `--accent` + fundo `--accent-soft` + glifo"** no app (`PrinterOption`, a lista de devices do `PrinterDrawer`, e agora este). Pela regra das duas telas, um primitivo em `base/` se justifica — **task própria**, não de passagem.
+- **Para a task #60, uma armadilha de tipo medida:** `FONT_OPTIONS` é assinável a `readonly OptionCard<PrintFontKey>[]` **como está**, porque `nameStyle` é opcional e `fontFamily`/`fontWeight` são extras ignorados fora de literal. Passar a tabela direto compila e **as faces nunca aplicam, em silêncio** (é a RN-06 falhando sem erro). A #60 tem de mapear para `nameStyle` explicitamente e assertar o `font-family` inline nos quatro nomes.
+- **`minmax(160px, 1fr)` é o primeiro `auto-fit` do renderer e é um chute:** na coluna esquerda do formulário os quatro cartões de fonte devem cair em duas colunas, e "IBM Plex Sans Condensed" (23 caracteres) quebra linha em 160 px. É item de conferência da #60 em `npm run dev`.

@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57)
-**Status:** pendente
+**Status:** executada
 
 ## Branch
 
@@ -86,3 +86,55 @@ Com uma lista de três opções fixas (não a real: o componente é genérico e 
 - [ ] Zero hex solto no módulo CSS, e o estado selecionado é visível nos dois temas
 - [ ] Nenhuma tela mudou nesta task
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` seguem como na baseline
+
+## Implementação
+
+Executada em 2026-11-05. `OptionCardGroup.tsx` + `.module.css` novos e 18 testes. Nenhuma tela mudou — a ligação é a task #60.
+
+### A API que a task #60 consome
+
+```ts
+export interface OptionCard<T extends string> {
+  value: T;
+  name: string;
+  description: string;
+  nameStyle?: CSSProperties;
+}
+// label, labelId, value, options, onChange(value: NoInfer<T>), children?
+function OptionCardGroup<T extends string>(props): React.ReactElement  // export default
+```
+
+O **rótulo visível é do componente**, não do chamador: ele renderiza o `<span id={labelId}>` e o `aria-labelledby` aponta para ele, então texto e nome acessível ficam no mesmo lugar.
+
+**`NoInfer<T>` no `onChange` não é enfeite.** Sem ele o callback entra como sítio de inferência, `T` colapsa para `string` e passar um setter de `useState<PrintDocumentModel>` **não compila** (`TS2322`, medido). Com ele, as formas de chamada que a #60 vai usar compilam sem anotação de genérico. O teste do foco usa um `useState` real **sem** anotar o genérico, de propósito: tirando o `NoInfer`, o `npm run typecheck` falha — é ele a rede, porque o Vitest não typecheca.
+
+### O que entrou depois do review
+
+- **Bloqueante de contraste, medido:** a descrição em `--muted` sobre o cartão selecionado (`--accent-soft`) dá **4,33:1** no tema claro e **4,34:1** no escuro, abaixo dos 4,5:1 de AA para 12 px — e essa linha é justamente a única coisa que distingue "Completo" de "Simples" para quem nunca viu os dois. `.selected .description` passa a usar `--text-2`: **6,30:1** e **7,54:1**. O `--accent-soft` é um **quarto fundo**, que o `--muted` do desenho nunca enfrentou (a regra manda medir contra `--bg`, `--surface` e `--surface-2`), e foi por esse mesmo critério que o `--muted` já tinha sido escurecido na spec 38.
+- **O glifo de rádio**, que a task não tinha pedido: `radio_button_checked`/`radio_button_unchecked` pelo `Icon`, como os outros dois cartões de rádio do app (`PrinterDrawer.tsx:228`). Duas razões: seleção sinalizada **só** por cor e borda é fraca para quem não distingue o `--accent-soft`, e um terceiro idioma visual para escolha exclusiva no mesmo app é dívida de desenho. Os dois nomes já estão na união `IconName` e no recorte da fonte — nada a regerar.
+- **Nome acessível explícito.** Com nome e descrição dentro do `<button>`, o nome acessível saía colado: `"OriginalIgual ao que imprime hoje"` (é o mesmo mecanismo que a regra registra em `'E-mailperson'`). Agora o `aria-label` é o nome da opção e a descrição vai por `aria-describedby`. O `Icon` já é `aria-hidden`, então o glifo não entra no nome — mas **entra no `textContent`**, e é por isso que o teste do glifo casa por texto.
+- **Ordem dos `children` assertada:** mover a linha de apoio para antes da grade sobrevivia à suíte, e a RF-02 diz "abaixo dos cartões".
+- O ternário encadeado do `stepFor` saiu (era o único do repo) e o guard `Math.max(current, 0)` foi apagado: a prop declara o valor já resolvido, os resolvedores garantem isso, e o módulo sozinho já devolve índice válido — era galho morto sem teste.
+
+### Testes
+
+18 casos; suíte em **69 arquivos / 723 testes**. Mutações medidas, todas mortas:
+
+| mutação | cai |
+| --- | --- |
+| `tabIndex` sempre 0 | 1 teste |
+| sem o `focus()` | 1 teste |
+| volta circular por `Math.min/max` | 5 testes |
+| sem `preventDefault` | 1 teste |
+| `aria-checked` só no selecionado | 1 teste |
+| `nameStyle` aplicado ao cartão | 1 teste |
+| sem `aria-labelledby` | 1 teste |
+| **sem `NoInfer`** | **o `npm run typecheck`** |
+| sem `aria-label` | 1 teste |
+| `children` antes da grade | 1 teste |
+| glifo sempre marcado | 2 testes |
+| rename de **qualquer** uma das 7 chaves do módulo CSS | 1 teste cada |
+
+### Não verificado
+
+O componente **renderizado**: nada de aparência nos dois temas nem teclado em Electron real (não há display na sessão, e a tela que o usa só existe na task #60). O contraste foi **calculado**, não visto — a função de contraste usada reproduz exatamente os quatro números que o `app.css` e a regra documentam.
