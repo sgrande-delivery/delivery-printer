@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer (build)
 **Depende de:** —
-**Status:** pendente
+**Status:** executada
 
 ## Branch
 
@@ -84,3 +84,35 @@ Esta task é a única da feature que muda o que vai dentro do instalador, e o po
 - [ ] O teste de contrato cai se a grafia da família divergir ou se o arquivo não existir
 - [ ] `assets/fonts/README.md` não afirma mais que o bundle do renderer tem zero faces
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` seguem como na baseline
+
+## Implementação
+
+Executada em 2026-11-05. Três `@font-face` no `src/renderer/app.css`, o `assets/fonts/README.md` corrigido e um teste de contrato novo (7 testes). **A decisão 2 da spec caiu no default:** o caminho relativo serve, e nada foi copiado para `src/renderer/fonts/`.
+
+### O caminho para fora do root do Vite funciona
+
+`url('../../assets/fonts/<arquivo>.woff2')` a partir do `app.css`, com o root do renderer em `src/renderer`. Medido em 2026-11-05:
+
+- **Build:** `npm run build` emite as três faces em `out/renderer/assets/`, com os bytes exatos de `assets/fonts/` (19 952 / 17 208 / 22 428), e o CSS construído as referencia por `url('./…woff2')` **relativo** — que é o que precisa funcionar sob `file://` em produção.
+- **Delta:** `out/renderer` passou de **739 021** para **799 917** bytes (**+60 896**: 59 588 de woff2 + ~1,3 kB de CSS). O JS não mudou.
+- **Empacotamento, conferido no asar:** `npx electron-builder --linux dir` deu `app.asar` de 5 475 059 bytes contendo as três faces em `out/renderer/assets/`, e `resources/assets/fonts/` **inalterado**, com os seis woff2. Ou seja: as faces entram **só** pelo bundle do renderer (`files: ["out/**"]`), e o caminho de impressão continua chegando por `extraResources`. Nada de `package.json`, `publish`, `appId`, `extraResources` ou `version` foi tocado.
+- **Dev:** servidor Vite com o mesmo root servindo o woff2 por `/@fs/…` com **200, `font/woff2`, 19 952 bytes** — o `fs.allow` default não recusou o arquivo fora do root. **É aproximação, não prova:** o `npm run dev` com Electron real não foi medido (não há display na sessão). Se der 403, a saída é a da decisão 2.
+
+### O teste de contrato, e o furo que ele não tinha
+
+O teste lê o `app.css` com `node:fs` e casa cada família de `FONT_OPTIONS` contra um `@font-face` com a grafia **exata** e o peso. Cinco divergências realistas medidas, todas morrendo: família com espaço no fim, família renomeada só num dos dois lados, bloco apagado, os três blocos apagados, `src` para arquivo inexistente, e `fonts.googleapis.com` num `.tsx` do renderer.
+
+**Faltava uma, e o review a mediu:** face declarada `500` apontando o **arquivo 700** passava nos sete testes. É o erro que não aparece na tela — as duas faces da família ficam idênticas em família+peso+estilo, a última vence, e o arquivo de negrito passa a servir o corpo do texto. Fechada com uma asserção que usa a convenção de nome do diretório (`-<peso>.woff2`), e a mutação agora derruba o teste.
+
+### Ajustes que o review pediu e entraram aqui
+
+- **Bloqueante:** o `assets/fonts/README.md` fechava a seção "Quem consome" com *"Os `700` e nenhum outro peso vão ao renderer"* — o **inverso** do que o diff faz, na frase-resumo que o próximo leitor usa para decidir o peso da próxima face. Corrigida.
+- O total rotulado "no instalador" (119 708 bytes) tinha virado o total do diretório: agora diz os dois números, e que o instalador carrega 179 296 bytes de fonte de impressão.
+- O comentário do `app.css` qualifica a spec de cada RN: o `src/main/printFonts.ts` também cita uma "RN-07", mas é a da spec 52.
+- `.svg` entrou na varredura da RN-08 (um `<style>` dentro de SVG também importa fonte), o `listFiles` passou a usar o `readdirSync` recursivo com `parentPath` — o idioma que o `brandAssets.test.ts:18` já usa —, e os três "por quês" do arquivo foram escritos: por que o `3` é fixo, por que `.md` fica fora da varredura (o `fonts/README.md` tem a URL do Google de propósito) e por que o arquivo se exclui.
+
+### Não verificado
+
+O `npm run dev` com Electron real, o teste com a máquina sem rede, e o rótulo aparecendo na face certa — os três dependem de tela, e o cartão de fonte só existe depois da task #60. Ficam na verificação manual do dev.
+
+`npm run typecheck` 0, `npm run lint` 0 erros e 1 aviso (o da baseline), `npm test` **68 arquivos / 705 testes**.

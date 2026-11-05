@@ -11,7 +11,7 @@ Seis arquivos `woff2` das três famílias que o gestor pode escolher na tela de 
 | `barlow-semi-condensed-500.woff2`   | Barlow Semi Condensed   | 500  | 22 428 | `0d7513795eaf8fdab7f340144841bd2d9fac7d9303c03aa6b525a2c908e9b371` |
 | `barlow-semi-condensed-700.woff2`   | Barlow Semi Condensed   | 700  | 23 244 | `fb958c8c20a05552ac8a85d925d96028d52565792650e941a5fe96b6997aa5cb` |
 
-Total: **119 708 bytes** (~117 kB), no instalador e **zero no bundle do renderer** (eles não passam pelo Vite). Chegam ao PC do restaurante por `extraResources: ["./assets/**"]`, em `resources/assets/fonts/`, e o main os resolve por `getAssetPath(app, 'fonts', …)`.
+Total deste diretório: **119 708 bytes** (~117 kB). Eles chegam ao PC do restaurante por `extraResources: ["./assets/**"]`, em `resources/assets/fonts/`, e o main os resolve por `getAssetPath(app, 'fonts', …)`. Três deles (os pesos de corpo) vão **também** dentro do bundle do renderer, então o instalador carrega **179 296 bytes** de fonte de impressão no total — ver "Quem consome".
 
 ## De onde vieram
 
@@ -50,4 +50,9 @@ As seis faces cobrem `AÇÃO ação ÁÀÃÂÉÊÍÓÕÔÚÜÇ 0123456789 R$ º�
 
 ## Quem consome
 
-O consumidor é o `src/main/printFonts.ts` (task #54), no **main**, que declara os `@font-face` no HTML antes de gravá-lo para impressão. **Não** é o CSS do renderer: a impressão é um documento `file://` em `os.tmpdir()` numa `BrowserWindow` própria, e o `@font-face` do `app.css` não o alcança (RN-03). Se a fonte escolhida não sair na bobina, é lá que se procura. O aviso no log para arquivo de fonte ausente (RF-04) também é da task #54 — até ela entrar, este diretório não é lido por ninguém.
+**Dois consumidores, com listas diferentes.**
+
+1. `src/main/printFonts.ts` (task #54), no **main**, declara os seis `@font-face` no HTML antes de gravá-lo para impressão. A impressão é um documento `file://` em `os.tmpdir()` numa `BrowserWindow` própria, e o `@font-face` do `app.css` não o alcança (RN-03). Se a fonte escolhida não sair na bobina, é lá que se procura. O aviso no log para arquivo de fonte ausente (RF-04) também é de lá.
+2. `src/renderer/app.css` (spec 56, task #58) declara **três** faces, as de corpo (Plex 500, Atkinson 400, Barlow 500), para a tela de impressão escrever o nome de cada fonte na própria face. O `src` aponta direto para este diretório (`../../assets/fonts/…`), fora do root do Vite (`src/renderer`); o Vite emite os arquivos com hash em `out/renderer/assets/`. Medido em 2026-11-05: o build emite as três, e o `out/renderer` passou de **739 021** para **799 917** bytes (**+60 896**: 59 588 de woff2 + ~1,3 kB de CSS). O teste `printFontFaces.test.ts` amarra a grafia da família à tabela `FONT_OPTIONS` e confere que o arquivo existe.
+
+Por isso os mesmos bytes dessas três faces vão **duas vezes** no instalador: aqui, em `resources/assets/fonts/` (impressão), e dentro do bundle do renderer (rótulo). Os `700` **não** vão ao renderer, nem nenhum outro peso: lá o único consumidor é o rótulo, que usa um peso só (RN-07 da spec 56).

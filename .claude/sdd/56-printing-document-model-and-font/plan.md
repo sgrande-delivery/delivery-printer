@@ -36,7 +36,7 @@ Tudo acontece no **renderer**, numa tela que já existe. Nenhum canal IPC novo, 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | O modelo das duas chaves de enum | [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57) | [57-enum-settings-model.md](./tasks/57-enum-settings-model.md) | — | executada |
-| 02 | As faces das três famílias no bundle do renderer | [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58) | [58-ui-font-faces-in-renderer.md](./tasks/58-ui-font-faces-in-renderer.md) | — | pendente |
+| 02 | As faces das três famílias no bundle do renderer | [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58) | [58-ui-font-faces-in-renderer.md](./tasks/58-ui-font-faces-in-renderer.md) | — | executada |
 | 03 | O grupo de cartões de rádio | [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59) | [59-option-card-group.md](./tasks/59-option-card-group.md) | 01 | pendente |
 | 04 | Modelo e Fonte no cartão "Layout do comprovante" | [#60](https://github.com/sgrande-delivery/delivery-printer/issues/60) | [60-model-and-font-in-receipt-card.md](./tasks/60-model-and-font-in-receipt-card.md) | 01, 02, 03 | pendente |
 
@@ -76,3 +76,11 @@ Além de `npm run typecheck`, `npm run lint` e `npm test`:
 - **`FONT_OPTIONS[].fontFamily` é a família *exata*, sem pilha de fallback** — diferente do painel, que guarda `"'Print IBM Plex Sans Condensed', sans-serif"`. É proposital: o teste de contrato da task #58 casa essa string contra o `@font-face` do `app.css`, e uma pilha ali o quebraria. **Consequência para as tasks #59 e #60:** o fallback é composto no ponto de uso, no `nameStyle` — a família da opção entre apóstrofos, vírgula, `var(--font-family)` —, senão face que falhe cai na serifada default do Chromium em vez da fonte da interface.
 - **Chave de enum nova entra num lugar só:** `ENUM_KEYS` é a fonte do tipo `EnumKey`. Acrescentar ao tipo e esquecer a lista mostraria o controle e nunca gravaria — o "Salvar" limparia a barra sem escrever nada.
 - **`toEqual` não serve para provar ausência de chave num payload:** ele ignora propriedade cujo valor é `undefined`. Sob a RN-03 (o `PUT` apaga e recria toda linha), chave que entra como `undefined` no corpo **apaga a linha** da loja. Use `toStrictEqual` sempre que o teste for sobre a forma do payload.
+
+**Da task 02:**
+
+- **O `@font-face` do renderer pode apontar para fora do root do Vite.** `url('../../assets/fonts/…')` do `app.css` (root em `src/renderer`) é emitido pelo build com hash em `out/renderer/assets/` e referenciado por caminho relativo, que é o que funciona sob `file://`. O `fs.allow` default não recusou o arquivo num servidor Vite de mesmo root — mas **o `npm run dev` com Electron real segue sem medição**; se aparecer 403 ali, a saída é copiar as três faces para `src/renderer/fonts/` (decisão 2 da spec).
+- **As faces do rótulo entram só pelo bundle do renderer.** Conferido no asar: `resources/assets/fonts/` (impressão, por `extraResources`) segue com os seis woff2 intocados, e as três do rótulo vão dentro do `app.asar` por `files: ["out/**"]`. Os mesmos bytes vão duas vezes no instalador, de propósito, e isso está escrito no `assets/fonts/README.md`.
+- **Nome de arquivo de fonte carrega o peso, e isso é rede de teste.** Face declarada `500` apontando o arquivo `700` não aparece na tela: as duas faces ficam idênticas em família+peso+estilo e o negrito passa a servir o corpo. O `printFontFaces.test.ts` agora cobra o sufixo `-<peso>.woff2`.
+- **Número de RN sozinho é ambíguo neste repo:** há uma RN-07 na spec 52 (seis faces para a impressão) e outra na 56 (uma face por família no renderer), e as duas falam de peso de fonte. Comentário que cite RN diz de qual spec.
+
