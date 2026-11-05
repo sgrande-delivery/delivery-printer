@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57), [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58), [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59)
-**Status:** pendente
+**Status:** executada
 
 ## Branch
 
@@ -74,3 +74,40 @@ O arquivo já tem toda a infraestrutura: `api` mockado (`:15`), store de auth co
 - [ ] A pré-visualização continua sendo ilustração de geometria em monospace
 - [ ] A linha 16 está na tabela de fidelidade da spec 38
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` seguem como na baseline
+
+## Implementação
+
+Executada em 2026-11-05. Quatro arquivos, **277 inserções e nenhuma remoção**: o `handleSave` não foi tocado, e nenhum teste existente foi renomeado, enfraquecido ou apagado (42 → 56 `it(` no arquivo de tela).
+
+### Como ficou na tela
+
+Os dois grupos entram no cartão `Layout do comprovante`, cada um num `.group` cujo padding e divisor são os do `SettingsRow` (`12px 16px` + `border-bottom`), na ordem **Modelo de documento → Fonte → Tamanho da fonte → Margem → Sem margem** — e a última linha segue sem divisor. O `font_size` **não** mudou de cartão.
+
+**`.groupLabel` não existe, e isso diverge da task de propósito:** a task foi escrita antes de a #59 mover o rótulo visível para dentro do `OptionCardGroup`. Criar o `<span>` por fora daria rótulo duplicado ou CSS morto.
+
+**`FONT_CARDS` mapeia `FONT_OPTIONS` explicitamente**, compondo o fallback no ponto de uso (`'<família>', var(--font-family)`) e deixando `original` sem `nameStyle`. **O mapeamento não é cerimônia:** `FONT_OPTIONS` é assinável a `OptionCard<PrintFontKey>[]` como está, então `options={FONT_OPTIONS}` **compila** e as faces nunca aplicam — a RF-03 falhando sem erro nenhum. A mutação que faz exatamente isso derruba o teste das faces.
+
+### Os testes que pagam
+
+14 testes novos. Quatro mutações medidas no review, todas pegas:
+
+| mutação | cai |
+| --- | --- |
+| payload montado a partir de `KNOWN_KEYS` em vez da bag | **6 testes**, inclusive os dois da RN-03 |
+| `diffChanges` comparando o valor bruto | o teste da RN-02 na tela |
+| `options={FONT_OPTIONS}` direto | o teste das faces |
+| `fontFamily` inline no papel da pré-visualização | o teste da RN-09 |
+
+O teste de ponta usa `toStrictEqual` e nomeia `max_width`, `delivery_printer_version` e a `unknown_key`; e há um teste que prova o contrário dele — salvar outra mudança numa loja **sem** as duas chaves não as leva no corpo.
+
+Dois ajustes de robustez entraram depois do review: o `.group` passou a ser alcançado por `closest()` em vez de dois saltos de `parentElement`, e o nome "Original" do grupo de fonte por `getByText` em vez do primeiro de um `getAllByText` — assim o teste assere a unicidade em vez de aceitar duplicata.
+
+### A linha 16 da tabela de fidelidade
+
+Entrou em `.claude/sdd/38-ui-redesign-shell-and-screens/spec.md`, no formato das 15 anteriores, com as duas razões: as chaves são posteriores ao desenho, e a alternativa (cartão "Documentos", como o painel) obrigaria a mover um controle que o desenho já posicionou. **Uma linha só** — o parágrafo defasado "São doze linhas" ficou intocado, porque corrigir de passagem não é desta task.
+
+### Não verificado
+
+`npm run dev` e a tela real, os dois temas, as faces com a máquina sem rede, e o `minmax(160px, 1fr)` na coluna de verdade — ninguém viu esta tela renderizada em Electron. **Duas coisas para o olho do dev:** se os quatro cartões de fonte caem em duas colunas e como "IBM Plex Sans Condensed" (23 caracteres) quebra; e que "Original" sai mais pesado (600) que os três nomes com face (500/400/500), consequência direta de haver uma face só por família — sem o peso inline, o 600 pediria uma face inexistente e o Chromium sintetizaria negrito, mentindo sobre o traço.
+
+`npm run typecheck` 0, `npm run lint` 0 erros e 1 aviso (o da baseline), `npm test` **69 arquivos / 737 testes**, `npm run build` verde com as três faces emitidas.

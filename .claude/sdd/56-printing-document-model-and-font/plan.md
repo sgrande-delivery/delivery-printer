@@ -38,7 +38,7 @@ Tudo acontece no **renderer**, numa tela que já existe. Nenhum canal IPC novo, 
 | 01 | O modelo das duas chaves de enum | [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57) | [57-enum-settings-model.md](./tasks/57-enum-settings-model.md) | — | executada |
 | 02 | As faces das três famílias no bundle do renderer | [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58) | [58-ui-font-faces-in-renderer.md](./tasks/58-ui-font-faces-in-renderer.md) | — | executada |
 | 03 | O grupo de cartões de rádio | [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59) | [59-option-card-group.md](./tasks/59-option-card-group.md) | 01 | executada |
-| 04 | Modelo e Fonte no cartão "Layout do comprovante" | [#60](https://github.com/sgrande-delivery/delivery-printer/issues/60) | [60-model-and-font-in-receipt-card.md](./tasks/60-model-and-font-in-receipt-card.md) | 01, 02, 03 | pendente |
+| 04 | Modelo e Fonte no cartão "Layout do comprovante" | [#60](https://github.com/sgrande-delivery/delivery-printer/issues/60) | [60-model-and-font-in-receipt-card.md](./tasks/60-model-and-font-in-receipt-card.md) | 01, 02, 03 | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -93,3 +93,9 @@ Além de `npm run typecheck`, `npm run lint` e `npm test`:
 - **Já são três cópias do par "botão `role=radio` + borda `--accent` + fundo `--accent-soft` + glifo"** no app (`PrinterOption`, a lista de devices do `PrinterDrawer`, e agora este). Pela regra das duas telas, um primitivo em `base/` se justifica — **task própria**, não de passagem.
 - **Para a task #60, uma armadilha de tipo medida:** `FONT_OPTIONS` é assinável a `readonly OptionCard<PrintFontKey>[]` **como está**, porque `nameStyle` é opcional e `fontFamily`/`fontWeight` são extras ignorados fora de literal. Passar a tabela direto compila e **as faces nunca aplicam, em silêncio** (é a RN-06 falhando sem erro). A #60 tem de mapear para `nameStyle` explicitamente e assertar o `font-family` inline nos quatro nomes.
 - **`minmax(160px, 1fr)` é o primeiro `auto-fit` do renderer e é um chute:** na coluna esquerda do formulário os quatro cartões de fonte devem cair em duas colunas, e "IBM Plex Sans Condensed" (23 caracteres) quebra linha em 160 px. É item de conferência da #60 em `npm run dev`.
+
+**Da task 04:**
+
+- **Tabela de opções é assinável ao tipo do cartão sem o `nameStyle`,** e é assim que a feature mente: `options={FONT_OPTIONS}` compila, a tela desenha os quatro cartões e **nenhuma face aplica**. Quem acrescentar opção visual a esta tela mapeia explicitamente e assere o `style` inline no teste.
+- **Nome de face sem peso inline sintetiza negrito.** Como há uma face por família (RN-07), o `--font-weight-semibold` do cartão pediria um peso que não existe no pacote e o Chromium o sintetizaria — o nome sairia num traço que a bobina não imprime. Por isso o peso vai inline junto da família, e "Original" (na fonte da interface) sai mais pesado que os três.
+- **Dívida encontrada e deliberadamente não consertada:** o parágrafo introdutório da tabela "Fidelidade ao desenho" da spec 38 diz "São **doze** linhas" e a tabela tem **16**. A defasagem é anterior a esta spec. Passada própria, não limpeza de carona.
