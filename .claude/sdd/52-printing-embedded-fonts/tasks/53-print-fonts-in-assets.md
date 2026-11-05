@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main (empacotamento)
 **Depende de:** (nenhuma)
-**Status:** executada
+**Status:** shipped
 
 ## Branch
 

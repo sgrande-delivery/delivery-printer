@@ -27,8 +27,8 @@
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | As seis faces de impressão em `assets/fonts/` | [#53](https://github.com/sgrande-delivery/delivery-printer/issues/53) | [tasks/53-print-fonts-in-assets.md](./tasks/53-print-fonts-in-assets.md) | — | executada |
-| 02 | Declarar os `@font-face` no HTML de impressão | [#54](https://github.com/sgrande-delivery/delivery-printer/issues/54) | [tasks/54-font-faces-in-print-html.md](./tasks/54-font-faces-in-print-html.md) | 01 | executada |
+| 01 | As seis faces de impressão em `assets/fonts/` | [#53](https://github.com/sgrande-delivery/delivery-printer/issues/53) | [tasks/53-print-fonts-in-assets.md](./tasks/53-print-fonts-in-assets.md) | — | shipped |
+| 02 | Declarar os `@font-face` no HTML de impressão | [#54](https://github.com/sgrande-delivery/delivery-printer/issues/54) | [tasks/54-font-faces-in-print-html.md](./tasks/54-font-faces-in-print-html.md) | 01 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

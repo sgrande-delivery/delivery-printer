@@ -1,6 +1,6 @@
 # Spec — Fontes de impressão embarcadas no app
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-11-04
 **Escopo:** main
 **Issue:** [#52](https://github.com/sgrande-delivery/delivery-printer/issues/52)
@@ -66,3 +66,5 @@ A fonte que o gestor escolhe na tela do painel sai na bobina do restaurante, nos
 |---|------|----------------------|
 | 1 | De onde vêm os binários | **Copiar os seis do `delivery-admin` (`public/fonts/print/`), não baixar de novo.** São os bytes já vetados em folha de teste térmica a 203 dpi na task [delivery-admin#1027](https://github.com/sgrande-delivery/delivery-admin/issues/1027), e a cobertura de pt-BR deles foi medida nesta spec. Baixar de novo troca um arquivo conferido por um não conferido, e o Google atualiza glifo sem avisar |
 | 2 | Esperar `document.fonts.ready` antes do `print` | **Não esperar.** Medido nos dois modos: o `printToPDF` embarca a fonte real com e sem a espera, porque o `loadFile` resolve depois de a fonte ter sido buscada e o `font-display: block` não pinta no fallback. O `delivery-admin` precisou da espera porque lá é `window.print()` no navegador, caminho diferente. Se algum dia aparecer comprovante em fallback no parque, a espera é a primeira coisa a tentar — está registrada no plan por isso |
+
+**As duas foram resolvidas no default, durante a execução (2026-11-04):** os binários vieram copiados do `delivery-admin` e conferidos por `cmp` como idênticos à origem, e a espera por `document.fonts.ready` **não** entrou — medido com `printToPDF` que a fonte real é embarcada com e sem ela. As duas decisões estão detalhadas em "Decisões arquiteturais" do `plan.md`.
