@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer (par de canais IPC)
 **Depende de:** —
-**Status:** executada
+**Status:** shipped
 
 ## Branch
 

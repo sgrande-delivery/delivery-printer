@@ -1,6 +1,6 @@
 # Spec — Identidade da loja e sidebar redimensionável no shell
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-11-07
 **Escopo:** main+renderer
 **Issue:** [#62](https://github.com/sgrande-delivery/delivery-printer/issues/62)

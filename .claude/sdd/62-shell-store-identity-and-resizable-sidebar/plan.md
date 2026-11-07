@@ -2,7 +2,7 @@
 
 **Spec:** [spec.md](./spec.md)
 **Issue da feature:** [#62](https://github.com/sgrande-delivery/delivery-printer/issues/62)
-**Branch de trabalho:** `feat/62-shell-store-identity-and-resizable-sidebar`, cortada de `origin/feature/api-v2-and-redesign` em 2026-11-07. Uma branch por spec, com todas as tasks em sequência, um commit por task e um PR no fim. A base é onde a #51, a #55 e a #61 (spec 56) já foram mergeadas — a #61 entrou em 2026-11-07, então a tabela de fidelidade da spec 38 já tem a linha 16 e as desta spec são a 17 e a 18. `master` não tem a tela redesenhada
+**Branch de trabalho:** `feat/62-shell-store-identity-and-resizable-sidebar`, cortada de `origin/feature/api-v2-and-redesign` em 2026-11-07. **O PR é `/ship-pr` contra `feature/api-v2-and-redesign`**, confirmado com o dev em 2026-11-07: nada é publicado naquele merge. Uma branch por spec, com todas as tasks em sequência, um commit por task e um PR no fim. A base é onde a #51, a #55 e a #61 (spec 56) já foram mergeadas — a #61 entrou em 2026-11-07, então a tabela de fidelidade da spec 38 já tem a linha 16 e as desta spec são a 17 e a 18. `master` não tem a tela redesenhada
 
 ## Abordagem técnica
 
@@ -31,9 +31,9 @@ Três camadas, e a fronteira entre elas é o que a spec protege.
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | O nome da loja no pé da sidebar | [#63](https://github.com/sgrande-delivery/delivery-printer/issues/63) | [63-store-name-in-sidebar.md](./tasks/63-store-name-in-sidebar.md) | — | executada |
-| 02 | A largura como preferência em `userData` | [#64](https://github.com/sgrande-delivery/delivery-printer/issues/64) | [64-sidebar-width-preference.md](./tasks/64-sidebar-width-preference.md) | — | executada |
-| 03 | O punho de redimensionar a sidebar | [#65](https://github.com/sgrande-delivery/delivery-printer/issues/65) | [65-sidebar-resize-handle.md](./tasks/65-sidebar-resize-handle.md) | 02 | executada |
+| 01 | O nome da loja no pé da sidebar | [#63](https://github.com/sgrande-delivery/delivery-printer/issues/63) | [63-store-name-in-sidebar.md](./tasks/63-store-name-in-sidebar.md) | — | shipped |
+| 02 | A largura como preferência em `userData` | [#64](https://github.com/sgrande-delivery/delivery-printer/issues/64) | [64-sidebar-width-preference.md](./tasks/64-sidebar-width-preference.md) | — | shipped |
+| 03 | O punho de redimensionar a sidebar | [#65](https://github.com/sgrande-delivery/delivery-printer/issues/65) | [65-sidebar-resize-handle.md](./tasks/65-sidebar-resize-handle.md) | 02 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
