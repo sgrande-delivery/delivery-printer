@@ -117,6 +117,19 @@
   gap: 10px;
 }
 
+/* Truncated like .userName, with the whole name in the title. The ellipsis works because .footer is a
+   column flex container, so this element gets a definite width from the .root's own — a .root sized by
+   its content instead (width: max-content) would widen the sidebar and drop the ellipsis. */
+.storeName {
+  padding: 0 4px;
+  color: var(--side-text);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status {
   background: var(--side-2);
   border-radius: 8px;

@@ -84,6 +84,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
         })}
       </nav>
       <div className={styles.footer}>
+        {restaurant?.name && (
+          <div className={styles.storeName} title={restaurant.name}>
+            {restaurant.name}
+          </div>
+        )}
         <div className={styles.status}>
           <div className={styles.statusLine}>
             <span className={cx(styles.dot, isConnected ? styles.dotOk : styles.dotErr)} />
