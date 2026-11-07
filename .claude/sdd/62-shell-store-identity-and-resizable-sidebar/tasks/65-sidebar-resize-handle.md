@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** [#64](https://github.com/sgrande-delivery/delivery-printer/issues/64)
-**Status:** pendente
+**Status:** executada
 
 ## Branch
 
@@ -86,3 +86,43 @@ Sob jsdom, com eventos de ponteiro sintéticos (`pointerdown`/`pointermove`/`poi
 - [ ] O punho recebe o mouse no Electron real (RN-05)
 - [ ] A linha 18 está na tabela de fidelidade da spec 38
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` seguem como na baseline
+
+## Implementação
+
+Executada em 2026-11-07. `SidebarResizeHandle.tsx` + `.module.css` novos, a sidebar lendo `var(--sidebar-width, 216px)`, uma regra global em `app.css`, três suítes e a linha 18 da tabela de fidelidade. Suíte em **73 arquivos / 807 testes**.
+
+### As decisões que o review julgou, e por que elas ficaram
+
+- **O punho vai de `top: 0` a `bottom: 0`, cobrindo os 56 px de região de arraste da janela**, e depende do `no-drag`. A alternativa (começar abaixo da marca) **não** elimina a dependência — só reduz a sobreposição — e cria um modo de falha permanente: 56 px da borda direita onde o cursor não muda e o arrasto não começa, sem pista visual, exatamente onde o olho do operador vai primeiro. Com a escolha feita, se o `no-drag` falhasse, 6×56 px não pegariam e o resto pegaria: degradação graciosa. O mecanismo não é aposta nova — o Chromium soma os `drag` e subtrai os `no-drag` em ordem de árvore, e o punho é o **último** filho do `<aside>`; é o mesmo em que o app já aposta em cinco lugares que funcionam em produção.
+- **`right: 0` sem `z-index`:** o punho é o único elemento posicionado dentro do `<aside>`, o `.root` não tem `overflow` que o recorte, e os 6 px caem dentro da calha do `.nav`/`.footer` — não cobrem item de menu, "Sair" nem "abrir logs". Um `right: -3px` invadiria o `.content`, que é `position: relative` e irmão posterior.
+- **`role="separator"` focável, não `slider`:** é o padrão "Window Splitter" do WAI-ARIA APG. `slider` anunciaria seleção de valor, que não é isto. `aria-orientation="vertical"` é obrigatório, porque o default do separator é horizontal.
+- **Não gravar quando o valor não mudou** paga um bônus que ninguém pediu: é o freio do key-repeat. Segurar a seta percorre 216→360 em 9 gravações e **para** na borda, em vez de bater no `writeFileAtomic` 30×/s.
+- **Falha de gravação mantém a largura na tela**, com toast e `log.error`: o que falhou foi o disco, não o pedido — reverter faria a barra pular de volta sob a mão do operador por causa de uma preferência cosmética.
+
+### A mutação que achou um furo de verdade
+
+O primeiro corte cancelava o arrasto com **qualquer** tecla, não só `Escape`: a mutação passou viva. Fechado com teste (`Enter` e `a` no meio do arrasto não mexem), e o filtro agora checa a tecla **e** exige arrasto em andamento.
+
+E, depois do review, a seta durante o arrasto deixou de comitar: sem o guard ela gravava um valor intermediário que o `pointerup` sobrescrevia — uma escrita em disco para nada. Mesmo guard que o caminho do `Escape` já tinha, com teste próprio, e a mutação o derruba.
+
+### O limite medido da sonda da RN-07
+
+O `AppShellResize.test.tsx` **prova** que o shell não remonta e não re-renderiza por pixel, mas o review mediu **qual** asserção carrega o peso: a mutação "estado no lugar da CSS var" derruba 8 testes em 3 arquivos, e dentro daquele arquivo só o **contador de renders da `Sidebar`** morre — o do shell não. Faz sentido (o estado vive na `Sidebar`), e as asserções de mount/unmount do shell são o seguro contra a regressão futura em que a largura sobe para o `AppShell` ou vira `key`. **O limite:** um `setState` que fique **dentro** do punho passa 60/60 — a RN-07 é sobre o shell, não sobre uma `div` de 6 px.
+
+### Mutações
+
+| mutação | cai |
+| --- | --- |
+| `pointermove` escrevendo estado em vez da CSS var | **8 testes**, em 3 arquivos |
+| commit a cada `pointermove` | 5 |
+| `Escape` → qualquer tecla cancela | 1 |
+| seta durante o arrasto comitando | 1 |
+| sem o guard de valor igual | 2 |
+| sem `Math.round` | 1 |
+| não adotar a largura devolvida pelo main | 1 |
+| **tirar o `-webkit-app-region: no-drag`** | **0 — é olho em Electron** |
+| `.root` com `width: max-content` | **0 — é olho** |
+
+### Não verificado
+
+Tudo que depende de Electron real: o punho **recebendo o mouse** (RN-05, e nenhum teste pega), o `no-drag` subtraindo a região de arraste, o foco visível nos dois temas (o anel colapsa num traço de ~2 px em `--accent`, que dá 4,42:1 no claro e 4,97:1 no escuro — acima dos 3:1 de componente), se o mínimo de 180 px corta o rótulo "Configurações de impressão", a linha de hover durante o arrasto, e o arrasto não interromper a impressão. Mais a RN-01 de ponta: fechar pela bandeja e reabrir mantendo largura **e** tema.

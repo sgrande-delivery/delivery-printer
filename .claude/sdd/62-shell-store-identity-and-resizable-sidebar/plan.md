@@ -33,7 +33,7 @@ Três camadas, e a fronteira entre elas é o que a spec protege.
 |---|------|-------|---------|------------|--------|
 | 01 | O nome da loja no pé da sidebar | [#63](https://github.com/sgrande-delivery/delivery-printer/issues/63) | [63-store-name-in-sidebar.md](./tasks/63-store-name-in-sidebar.md) | — | executada |
 | 02 | A largura como preferência em `userData` | [#64](https://github.com/sgrande-delivery/delivery-printer/issues/64) | [64-sidebar-width-preference.md](./tasks/64-sidebar-width-preference.md) | — | executada |
-| 03 | O punho de redimensionar a sidebar | [#65](https://github.com/sgrande-delivery/delivery-printer/issues/65) | [65-sidebar-resize-handle.md](./tasks/65-sidebar-resize-handle.md) | 02 | pendente |
+| 03 | O punho de redimensionar a sidebar | [#65](https://github.com/sgrande-delivery/delivery-printer/issues/65) | [65-sidebar-resize-handle.md](./tasks/65-sidebar-resize-handle.md) | 02 | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -77,3 +77,11 @@ Além de `npm run typecheck`, `npm run lint` e `npm test`:
 - **O default não é o mínimo.** `'280'`, `''`, `null`, `true` e objeto caem em **216**, não em 180. Só número finito fora da faixa é clampado para a borda.
 - **Largura fracionária passa inteira e calada** (`220.7` lê `220.7`): o clamp não arredonda, de propósito, porque arredondar na leitura mudaria o valor lido do disco. A task #65 grava inteiro.
 - **O caminho de escrita avisa** quando o valor pedido não é o salvo — é o que separa "a barra volta sozinha" de um `NaN` no cálculo do arrasto.
+
+**Da task 03:**
+
+- **A sonda da RN-07 tem um limite medido:** a mutação "estado por pixel em vez da CSS var" é morta pelo contador de renders da **`Sidebar`**, não pelo do `AppShell` — e um `setState` que fique dentro do próprio punho passa a suíte inteira. Quem mexer no `AppShellResize.test.tsx` precisa saber disso antes de "simplificar" as asserções de mount/unmount, que são o seguro contra a largura subir para o shell ou virar `key`.
+- **Duas coisas nesta frente não têm mutação que as pegue:** o `-webkit-app-region: no-drag` do punho e o `.root` virar `max-content` (que mataria o truncamento do nome da loja). As duas estão comentadas no código e na lista de verificação manual — é o máximo que dá para fazer sob jsdom.
+- **`:focus-visible`, nunca `:focus`,** em elemento que recebe `focus()` programático no `pointerdown`: com `:focus` o anel apareceria depois de cada arrasto de mouse.
+- **Não gravar quando o valor não mudou é também o freio do key-repeat** — sem ele, segurar a seta martela o `writeFileAtomic` dezenas de vezes por segundo. O ponto morto: retentar depois de falha de gravação **no mesmo pixel** não reenvia.
+- **`body[data-resizing]` é a única forma de pintar cursor e `user-select` na página inteira:** CSS Module não alcança o `body`, e `app.css` é o único lugar de CSS global. O atributo tem cinco saídas (`pointerup`, `pointercancel`, `lostpointercapture`, `Escape`, desmontagem), quatro delas assertadas — atributo grudado deixaria a janela inteira com `col-resize`.

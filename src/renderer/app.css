@@ -201,3 +201,9 @@ p {
     transform: rotate(360deg);
   }
 }
+
+/* Set on the body by the sidebar resize handle while it is dragged: the cursor and the selection of the whole page. */
+body[data-resizing] {
+  cursor: col-resize;
+  user-select: none;
+}
