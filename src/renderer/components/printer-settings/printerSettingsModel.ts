@@ -1,10 +1,26 @@
 import type { PrinterSetting } from 'renderer/types/restaurant';
 import type { PrinterSettingsData } from 'renderer/services/printerSettings';
+import { resolveDocumentModel, resolveFontKey, type PrintDocumentModel, type PrintFontKey } from './printDocuments';
 
 export type StepKey = 'font_size' | 'production_template_copies' | 'shipment_template_copies' | 'margin_size';
 
 // What the operator has touched and not saved yet. A key is here only while it differs from the baseline.
-export type Draft = Partial<Pick<PrinterSetting, StepKey | 'no_margin'>>;
+// The baseline is wide (any string) and the draft is narrow: a draft only comes from a click on an option.
+export type Draft = Partial<Pick<PrinterSetting, StepKey | 'no_margin'>> & {
+  document_model?: PrintDocumentModel;
+  font_family?: PrintFontKey;
+};
+
+// The list is the source of the type, not a second copy of it: a key declared in the type and
+// missing from the list would show its control, never reach diffChanges, and make "Salvar" write
+// nothing at all — the bar clears and the choice is gone, with no error anywhere.
+const ENUM_KEYS = ['document_model', 'font_family'] as const;
+
+export type EnumKey = (typeof ENUM_KEYS)[number];
+
+function resolveEnum(settings: PrinterSettingsData, key: EnumKey): PrintDocumentModel | PrintFontKey {
+  return key === 'document_model' ? resolveDocumentModel(settings) : resolveFontKey(settings);
+}
 
 // The closed sets of the admin panel (delivery-admin, pages/printer-settings/PrinterSettingsForm.tsx).
 // The delivery-api validates nothing on PUT /printerSettings (no FormRequest; the use case stores
@@ -62,6 +78,12 @@ export function currentNoMargin(settings: PrinterSettingsData, draft: Draft): bo
   return draft.no_margin ?? settings.no_margin === true;
 }
 
+export function currentEnum(settings: PrinterSettingsData, draft: Draft, key: 'document_model'): PrintDocumentModel;
+export function currentEnum(settings: PrinterSettingsData, draft: Draft, key: 'font_family'): PrintFontKey;
+export function currentEnum(settings: PrinterSettingsData, draft: Draft, key: EnumKey): string {
+  return draft[key] ?? resolveEnum(settings, key);
+}
+
 // Only the keys that differ from the baseline. Going back to the stored value leaves the draft clean.
 export function diffChanges(settings: PrinterSettingsData, draft: Draft): Partial<PrinterSetting> {
   const changes: Partial<PrinterSetting> = {};
@@ -76,6 +98,17 @@ export function diffChanges(settings: PrinterSettingsData, draft: Draft): Partia
 
   if (draft.no_margin !== undefined && draft.no_margin !== (settings.no_margin === true)) {
     changes.no_margin = draft.no_margin;
+  }
+
+  // Against the RESOLVED value, never the raw one: "Original" over an absent row is not a change, or
+  // opening the screen and clicking around would create rows in the store's database. The price: a row
+  // holding an invalid string is not fixed by picking "Original" — for every reader it already means that.
+  for (const key of ENUM_KEYS) {
+    const next = draft[key];
+
+    if (next !== undefined && next !== resolveEnum(settings, key)) {
+      changes[key] = next;
+    }
   }
 
   return changes;

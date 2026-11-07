@@ -660,6 +660,225 @@ describe('PrinterSettings', () => {
     });
   });
 
+  describe('document model and font', () => {
+    const SUPPORT = 'A cozinha e os entregadores continuam vendo o mesmo documento de hoje.';
+
+    function modelGroup(): HTMLElement {
+      return screen.getByRole('radiogroup', { name: 'Modelo de documento' });
+    }
+
+    function fontGroup(): HTMLElement {
+      return screen.getByRole('radiogroup', { name: 'Fonte' });
+    }
+
+    function choose(radiogroup: HTMLElement, name: string): void {
+      fireEvent.click(within(radiogroup).getByRole('radio', { name }));
+    }
+
+    function checked(radiogroup: HTMLElement): string[] {
+      return within(radiogroup)
+        .getAllByRole('radio')
+        .filter(radio => radio.getAttribute('aria-checked') === 'true')
+        .map(radio => radio.getAttribute('aria-label') ?? '');
+    }
+
+    it('opens on "Original" in both groups when the keys are absent (every store today)', () => {
+      renderScreen();
+
+      expect(checked(modelGroup())).toEqual(['Original']);
+      expect(checked(fontGroup())).toEqual(['Original']);
+      expect(screen.getByText(SUPPORT)).toBeInTheDocument();
+    });
+
+    it('shows the three models and the four fonts, in the order of the spec', () => {
+      renderScreen();
+
+      expect(
+        within(modelGroup())
+          .getAllByRole('radio')
+          .map(radio => radio.getAttribute('aria-label'))
+      ).toEqual(['Original', 'Completo', 'Simples']);
+      expect(
+        within(fontGroup())
+          .getAllByRole('radio')
+          .map(radio => radio.getAttribute('aria-label'))
+      ).toEqual(['Original', 'IBM Plex Sans Condensed', 'Atkinson Hyperlegible', 'Barlow Semi Condensed']);
+      expect(screen.getByText('Seções, linhas e destaques para leitura rápida')).toBeInTheDocument();
+      expect(screen.getByText('Só o essencial, usa menos papel')).toBeInTheDocument();
+      expect(screen.getByText('Meio-termo, traço uniforme')).toBeInTheDocument();
+    });
+
+    it('opens on "Original" for a value outside the enum, and does not break the screen', () => {
+      givenSettings({ ...loaded, document_model: 'foo', font_family: 42 });
+      renderScreen();
+
+      expect(checked(modelGroup())).toEqual(['Original']);
+      expect(checked(fontGroup())).toEqual(['Original']);
+    });
+
+    it('opens on the stored value', () => {
+      givenSettings({ ...loaded, document_model: 'simples', font_family: 'barlow' });
+      renderScreen();
+
+      expect(checked(modelGroup())).toEqual(['Simples']);
+      expect(checked(fontGroup())).toEqual(['Barlow Semi Condensed']);
+    });
+
+    it('writes each font name in its own face, with the interface font as fallback', () => {
+      renderScreen();
+
+      const name = (text: string): HTMLElement => within(fontGroup()).getByText(text, { selector: 'span' });
+
+      expect(name('IBM Plex Sans Condensed').style.fontFamily).toBe("'IBM Plex Sans Condensed', var(--font-family)");
+      expect(name('IBM Plex Sans Condensed').style.fontWeight).toBe('500');
+      expect(name('Atkinson Hyperlegible').style.fontFamily).toBe("'Atkinson Hyperlegible', var(--font-family)");
+      expect(name('Atkinson Hyperlegible').style.fontWeight).toBe('400');
+      expect(name('Barlow Semi Condensed').style.fontFamily).toBe("'Barlow Semi Condensed', var(--font-family)");
+      expect(name('Barlow Semi Condensed').style.fontWeight).toBe('500');
+      // "Original" stays in the interface font: no inline family at all.
+      expect(within(fontGroup()).getByText('Original', { selector: 'span' }).style.fontFamily).toBe('');
+    });
+
+    it('clicking "Original" with the keys absent is not a change; "Completo" is', () => {
+      renderScreen();
+
+      choose(modelGroup(), 'Original');
+      choose(fontGroup(), 'Original');
+      expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument();
+
+      choose(modelGroup(), 'Completo');
+      expect(screen.getByText('Alterações não salvas')).toBeInTheDocument();
+
+      choose(modelGroup(), 'Original');
+      expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument();
+    });
+
+    it('sends nothing about the new keys when another change is saved on a store without them', async () => {
+      renderScreen();
+
+      increase('Comprovante de produção');
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      await waitFor(() => expect(api.put).toHaveBeenCalled());
+      const body = vi.mocked(api.put).mock.calls[0][1] as Record<string, unknown>;
+
+      expect(body).toStrictEqual({ ...loaded, production_template_copies: 3 });
+      expect('document_model' in body).toBe(false);
+      expect('font_family' in body).toBe(false);
+    });
+
+    // The test that pays: the PUT deletes every row and recreates the keys of the body, so the new
+    // keys have to ride on top of the whole bag, or max_width and the installer version are erased.
+    it('saves both choices in the same PUT, over the whole bag', async () => {
+      renderScreen();
+
+      choose(modelGroup(), 'Completo');
+      choose(fontGroup(), 'IBM Plex Sans Condensed');
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      await waitFor(() => expect(api.put).toHaveBeenCalledTimes(1));
+      expect(api.put).toHaveBeenCalledWith('/printerSettings', expect.anything());
+      expect(vi.mocked(api.put).mock.calls[0][1]).toStrictEqual({
+        ...loaded,
+        document_model: 'completo',
+        font_family: 'plex',
+      });
+      expect(vi.mocked(api.put).mock.calls[0][1]).toMatchObject({
+        max_width: 80,
+        delivery_printer_version: '1.4.2',
+        unknown_key: 'keep me',
+      });
+    });
+
+    it('shows the saved choice after the save, with the bar gone', async () => {
+      renderScreen();
+
+      choose(fontGroup(), 'Atkinson Hyperlegible');
+      fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+
+      expect(await screen.findByText('Configurações de impressão salvas.')).toBeInTheDocument();
+      expect(checked(fontGroup())).toEqual(['Atkinson Hyperlegible']);
+      expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument();
+    });
+
+    it('"Descartar" goes back to the server value and sends nothing', () => {
+      givenSettings({ ...loaded, document_model: 'simples' });
+      renderScreen();
+
+      choose(modelGroup(), 'Completo');
+      choose(fontGroup(), 'Barlow Semi Condensed');
+      fireEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+
+      expect(checked(modelGroup())).toEqual(['Simples']);
+      expect(checked(fontGroup())).toEqual(['Original']);
+      expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument();
+      expect(api.put).not.toHaveBeenCalled();
+    });
+
+    it('shows the support line only while "Original" is the model in force', () => {
+      renderScreen();
+
+      expect(screen.getByText(SUPPORT)).toBeInTheDocument();
+
+      choose(modelGroup(), 'Completo');
+      expect(screen.queryByText(SUPPORT)).not.toBeInTheDocument();
+
+      choose(modelGroup(), 'Original');
+      expect(screen.getByText(SUPPORT)).toBeInTheDocument();
+    });
+
+    it('puts the two groups at the top of the layout card, above "Tamanho da fonte"', () => {
+      renderScreen();
+
+      const card = screen.getByRole('heading', { name: 'Layout do comprovante' }).closest('section') as HTMLElement;
+      const size = within(card).getByRole('group', { name: 'Tamanho da fonte' });
+
+      expect(card).toContainElement(modelGroup());
+      expect(card).toContainElement(fontGroup());
+      expect(modelGroup().compareDocumentPosition(fontGroup())).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(fontGroup().compareDocumentPosition(size)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(screen.getByRole('heading', { name: 'Cópias' }).closest('section')).not.toContainElement(modelGroup());
+    });
+
+    // RN-09: the preview is an illustration of geometry. The model and the font do not reach it.
+    it('does not change the preview paper with the model or the font', () => {
+      renderScreen();
+
+      const before = {
+        className: paper().className,
+        width: paper().style.width,
+        fontFamily: paper().style.fontFamily,
+        fontSize: paper().style.fontSize,
+        padding: paper().style.padding,
+        html: paper().innerHTML,
+      };
+
+      choose(modelGroup(), 'Simples');
+      choose(fontGroup(), 'Atkinson Hyperlegible');
+
+      expect(paper().className).toBe(before.className);
+      expect(paper().className).toContain(formStyles.paper);
+      expect(paper().style.width).toBe(before.width);
+      expect(paper().style.fontFamily).toBe('');
+      expect(paper().style.fontFamily).toBe(before.fontFamily);
+      expect(paper().style.fontSize).toBe(before.fontSize);
+      expect(paper().style.padding).toBe(before.padding);
+      expect(paper().innerHTML).toBe(before.html);
+    });
+
+    it('has the classes that carry the layout', () => {
+      const { container } = renderScreen();
+
+      expect(modelGroup().closest('section')?.className).toContain(formStyles.card);
+      expect(modelGroup().closest(`.${formStyles.group}`)).not.toBeNull();
+      expect(fontGroup().closest(`.${formStyles.group}`)).not.toBeNull();
+      expect(screen.getByText(SUPPORT).className).toContain(formStyles.support);
+      expect(formStyles.group).toBeTruthy();
+      expect(formStyles.support).toBeTruthy();
+      expectNoUndefinedClasses(container);
+    });
+  });
+
   describe('appearance', () => {
     it('is on the screen and says it is local', async () => {
       renderScreen();

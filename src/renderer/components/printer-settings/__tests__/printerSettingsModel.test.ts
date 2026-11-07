@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLOSED_SETS,
+  currentEnum,
   currentNoMargin,
   currentValue,
   diffChanges,
@@ -125,5 +126,55 @@ describe('previewMetrics', () => {
   it('uses the thin fixed padding of the design when there is no margin, whatever the margin value', () => {
     expect(previewMetrics(settings, { no_margin: true }).padding).toBe('10px 4px 22px');
     expect(previewMetrics(settings, { no_margin: true, margin_size: 40 }).padding).toBe('10px 4px 22px');
+  });
+});
+
+describe('enum keys (document_model, font_family)', () => {
+  it('currentEnum returns the draft when there is one, else the resolved value', () => {
+    expect(currentEnum(settings, {}, 'document_model')).toBe('original');
+    expect(currentEnum({ ...settings, document_model: 'simples' }, {}, 'document_model')).toBe('simples');
+    expect(currentEnum({ ...settings, font_family: 'foo' }, {}, 'font_family')).toBe('original');
+    expect(currentEnum({ ...settings, font_family: 'plex' }, { font_family: 'barlow' }, 'font_family')).toBe('barlow');
+  });
+
+  // RN-02: "Original" over an absent row must not create a row.
+  it('an absent key with the draft on original is not a change', () => {
+    expect(diffChanges(settings, { document_model: 'original', font_family: 'original' })).toEqual({});
+    expect(isDirty(settings, { document_model: 'original', font_family: 'original' })).toBe(false);
+  });
+
+  it('an absent key with another choice is a change', () => {
+    expect(diffChanges(settings, { document_model: 'completo' })).toEqual({ document_model: 'completo' });
+    expect(isDirty(settings, { font_family: 'plex' })).toBe(true);
+  });
+
+  it('a stored invalid string already means original', () => {
+    const stored = { ...settings, document_model: 'foo' };
+
+    expect(diffChanges(stored, { document_model: 'original' })).toEqual({});
+    expect(diffChanges(stored, { document_model: 'simples' })).toEqual({ document_model: 'simples' });
+  });
+
+  it('leaves an untouched enum key out of the payload, not in it as undefined', () => {
+    const stored = { ...settings, document_model: 'completo', font_family: 'plex' };
+
+    expect(diffChanges(stored, { font_size: 18 })).toStrictEqual({ font_size: 18 });
+  });
+
+  it('going back to the stored valid value is clean', () => {
+    expect(isDirty({ ...settings, font_family: 'atkinson' }, { font_family: 'atkinson' })).toBe(false);
+    expect(isDirty({ ...settings, document_model: 'completo' }, { document_model: 'completo' })).toBe(false);
+  });
+
+  it('both enum keys, a numeric key and no_margin come out together', () => {
+    expect(
+      diffChanges(settings, { document_model: 'simples', font_family: 'barlow', font_size: 18, no_margin: true })
+    ).toEqual({ document_model: 'simples', font_family: 'barlow', font_size: 18, no_margin: true });
+  });
+
+  it('does not affect previewMetrics', () => {
+    expect(previewMetrics(settings, { document_model: 'completo', font_family: 'plex' })).toEqual(
+      previewMetrics(settings, {})
+    );
   });
 });

@@ -1,0 +1,74 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.label {
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.radioOn {
+  color: var(--accent);
+}
+
+.radioOff {
+  color: var(--muted);
+}
+
+.name {
+  color: var(--text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.description {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* --muted over --accent-soft is 4,33:1 in the light theme and 4,34:1 in the dark one, under the 4,5:1
+   of WCAG AA for 12 px text -- and this line is the only thing that tells two models apart. --text-2
+   gives 6,30:1 and 7,54:1. Measured 2026-11-05; --accent-soft is a fourth background, which the
+   --muted of the design never faced (rules/renderer-ui.md, "Acessibilidade"). */
+.selected .description {
+  color: var(--text-2);
+}

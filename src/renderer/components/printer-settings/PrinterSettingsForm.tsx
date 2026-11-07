@@ -13,7 +13,10 @@ import {
   updatePrinterSettings,
   type PrinterSettingsData,
 } from 'renderer/services/printerSettings';
+import OptionCardGroup, { type OptionCard } from './OptionCardGroup';
+import { DOCUMENT_MODEL_OPTIONS, FONT_OPTIONS, type PrintDocumentModel, type PrintFontKey } from './printDocuments';
 import {
+  currentEnum,
   currentNoMargin,
   currentValue,
   diffChanges,
@@ -23,6 +26,7 @@ import {
   readNumber,
   stepOptions,
   type Draft,
+  type EnumKey,
   type StepKey,
 } from './printerSettingsModel';
 import SettingsRow from './SettingsRow';
@@ -36,6 +40,21 @@ interface PrinterSettingsFormProps {
   children?: React.ReactNode;
 }
 
+const SUPPORT_LINE = 'A cozinha e os entregadores continuam vendo o mesmo documento de hoje.';
+
+// Explicit on purpose: FONT_OPTIONS is assignable to OptionCard[] as it is (nameStyle is optional, the
+// extra fields are ignored), so passing it straight compiles and no face ever applies. The family is
+// the exact name of the @font-face in app.css; the fallback is composed here, otherwise a face that
+// fails would fall to the browser's default serif instead of the interface font.
+const FONT_CARDS: readonly OptionCard<PrintFontKey>[] = FONT_OPTIONS.map(option => ({
+  value: option.value,
+  name: option.name,
+  description: option.description,
+  nameStyle: option.fontFamily
+    ? { fontFamily: `'${option.fontFamily}', var(--font-family)`, fontWeight: option.fontWeight }
+    : undefined,
+}));
+
 const PrinterSettingsForm: React.FC<PrinterSettingsFormProps> = ({ settings, onSaved, children }) => {
   const { handleOpen } = useMessaging();
   const { restaurant } = useAuth();
@@ -46,8 +65,14 @@ const PrinterSettingsForm: React.FC<PrinterSettingsFormProps> = ({ settings, onS
   const dirty = isDirty(settings, draft);
   const noMargin = currentNoMargin(settings, draft);
   const preview = previewMetrics(settings, draft);
+  const documentModel = currentEnum(settings, draft, 'document_model');
+  const fontKey = currentEnum(settings, draft, 'font_family');
 
   function handleStep(key: StepKey, value: number): void {
+    setDraft(current => ({ ...current, [key]: value }));
+  }
+
+  function handleEnum<K extends EnumKey>(key: K, value: NonNullable<Draft[K]>): void {
     setDraft(current => ({ ...current, [key]: value }));
   }
 
@@ -158,6 +183,26 @@ const PrinterSettingsForm: React.FC<PrinterSettingsFormProps> = ({ settings, onS
           <h2 className={styles.cardTitle} id="layout-title">
             Layout do comprovante
           </h2>
+          <div className={styles.group}>
+            <OptionCardGroup<PrintDocumentModel>
+              label="Modelo de documento"
+              labelId="document-model-label"
+              value={documentModel}
+              options={DOCUMENT_MODEL_OPTIONS}
+              onChange={next => handleEnum('document_model', next)}
+            >
+              {documentModel === 'original' && <p className={styles.support}>{SUPPORT_LINE}</p>}
+            </OptionCardGroup>
+          </div>
+          <div className={styles.group}>
+            <OptionCardGroup<PrintFontKey>
+              label="Fonte"
+              labelId="font-family-label"
+              value={fontKey}
+              options={FONT_CARDS}
+              onChange={next => handleEnum('font_family', next)}
+            />
+          </div>
           {renderStep('font_size', 'Tamanho da fonte', 'Em pixels', 64)}
           {renderStep('margin_size', 'Margem', marginHint(noMargin), 64, noMargin)}
           <SettingsRow label="Sem margem" hint="Usa toda a largura da bobina" last>
