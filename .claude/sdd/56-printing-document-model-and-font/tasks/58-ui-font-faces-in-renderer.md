@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer (build)
 **Depende de:** —
-**Status:** executada
+**Status:** shipped
 
 ## Branch
 

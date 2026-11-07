@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** renderer
 **Depende de:** [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57)
-**Status:** executada
+**Status:** shipped
 
 ## Branch
 

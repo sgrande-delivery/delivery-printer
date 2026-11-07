@@ -2,7 +2,7 @@
 
 **Spec:** [spec.md](./spec.md)
 **Issue da feature:** [#56](https://github.com/sgrande-delivery/delivery-printer/issues/56)
-**Branch de trabalho:** `feat/56-printing-document-model-and-font`, cortada de `origin/feature/api-v2-and-redesign` em 2026-11-05. Uma branch por spec, com todas as tasks em sequência, um commit por task e um PR no fim. A base é onde a #51 (redesenho) e a #55 (fontes de impressão) foram mergeadas, e `master` não tem nem a tela redesenhada nem as faces
+**Branch de trabalho:** `feat/56-printing-document-model-and-font`, cortada de `origin/feature/api-v2-and-redesign` em 2026-11-05. **O PR é `/ship-pr` contra `feature/api-v2-and-redesign`**, confirmado com o dev em 2026-11-07: é lá que a #51 (redesenho) e a #55 (fontes) foram mergeadas, e nada é publicado no merge. Uma branch por spec, com todas as tasks em sequência, um commit por task e um PR no fim. A base é onde a #51 (redesenho) e a #55 (fontes de impressão) foram mergeadas, e `master` não tem nem a tela redesenhada nem as faces
 
 ## Abordagem técnica
 
@@ -35,10 +35,10 @@ Tudo acontece no **renderer**, numa tela que já existe. Nenhum canal IPC novo, 
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | O modelo das duas chaves de enum | [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57) | [57-enum-settings-model.md](./tasks/57-enum-settings-model.md) | — | executada |
-| 02 | As faces das três famílias no bundle do renderer | [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58) | [58-ui-font-faces-in-renderer.md](./tasks/58-ui-font-faces-in-renderer.md) | — | executada |
-| 03 | O grupo de cartões de rádio | [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59) | [59-option-card-group.md](./tasks/59-option-card-group.md) | 01 | executada |
-| 04 | Modelo e Fonte no cartão "Layout do comprovante" | [#60](https://github.com/sgrande-delivery/delivery-printer/issues/60) | [60-model-and-font-in-receipt-card.md](./tasks/60-model-and-font-in-receipt-card.md) | 01, 02, 03 | executada |
+| 01 | O modelo das duas chaves de enum | [#57](https://github.com/sgrande-delivery/delivery-printer/issues/57) | [57-enum-settings-model.md](./tasks/57-enum-settings-model.md) | — | shipped |
+| 02 | As faces das três famílias no bundle do renderer | [#58](https://github.com/sgrande-delivery/delivery-printer/issues/58) | [58-ui-font-faces-in-renderer.md](./tasks/58-ui-font-faces-in-renderer.md) | — | shipped |
+| 03 | O grupo de cartões de rádio | [#59](https://github.com/sgrande-delivery/delivery-printer/issues/59) | [59-option-card-group.md](./tasks/59-option-card-group.md) | 01 | shipped |
+| 04 | Modelo e Fonte no cartão "Layout do comprovante" | [#60](https://github.com/sgrande-delivery/delivery-printer/issues/60) | [60-model-and-font-in-receipt-card.md](./tasks/60-model-and-font-in-receipt-card.md) | 01, 02, 03 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

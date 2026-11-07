@@ -1,6 +1,6 @@
 # Spec — Modelo de documento e fonte na tela de impressão
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-11-05
 **Escopo:** renderer
 **Issue:** [#56](https://github.com/sgrande-delivery/delivery-printer/issues/56)
