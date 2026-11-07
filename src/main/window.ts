@@ -7,7 +7,7 @@ import { registerDevtools } from './devtools';
 import { AppUpdater } from './updater';
 import { START_MINIMIZED_ARG } from './autostart';
 import { themeArgument } from 'shared/uiTheme';
-import { currentTheme, titleBarOverlayFor } from './theme';
+import { currentTheme, titleBarOverlayFor } from './uiPreferences';
 
 export class MainWindowBuilder {
   private window: BrowserWindow;

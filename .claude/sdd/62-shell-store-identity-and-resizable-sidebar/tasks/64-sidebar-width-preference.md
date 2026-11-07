@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer (par de canais IPC)
 **Depende de:** —
-**Status:** pendente
+**Status:** executada
 
 ## Branch
 
@@ -83,3 +83,54 @@ Ele é o gate de texto do par de canais: se um dos dois lados ficar de fora, ele
 - [ ] Os quatro pontos do canal existem (`grep`), e o `ipcChannels.test.ts` passa
 - [ ] Nenhuma UI mudou nesta task
 - [ ] `npm run typecheck`, `npm run lint` e `npm test` seguem como na baseline
+
+## Implementação
+
+**Concluída em:** 2026-11-07
+
+### Processos tocados
+
+main, preload (renderer: só o stub de teste)
+
+### Arquivos criados/alterados
+
+- `src/shared/sidebarWidth.ts` (novo) — faixa 216/180/360 e `clampSidebarWidth`
+- `src/main/theme.ts` -> `src/main/uiPreferences.ts` (renomeado) — leitura única do objeto, `readSidebarWidth`, `writeSidebarWidth`, escrita ler-modificar-gravar
+- `src/main/ipc-events/onUiSidebarWidth.ts`, `onSetUiSidebarWidth.ts` (novos)
+- `src/main/main.ts`, `window.ts`, `preload.ts`, `ipc-events/onUiTheme.ts`, `onSetUiTheme.ts`, `src/shared/ipcChannels.ts`, `src/__tests__/setup.ts`
+- Testes: `src/main/__tests__/uiPreferences.test.ts` (renomeado e ampliado), `src/shared/__tests__/sidebarWidth.test.ts` (novo)
+- Referências ao nome antigo: `src/renderer/app.css`, `.claude/rules/renderer-ui.md`
+
+### Canais IPC criados
+
+- `ui:sidebar-width` (`uiSidebarWidth`) e `ui:set-sidebar-width` (`setUiSidebarWidth`) — constante, preload, `main.ts` e stub do `setup.ts`
+
+### Decisões que tomei por conta própria
+
+- Renomeei para `uiPreferences.ts`: o módulo já não é só do tema, e só havia 5 importadores.
+- Ausência da chave `theme` deixou de gerar `warn` (arquivo só com largura é normal e a leitura roda a cada refresh); tema presente e inválido ainda gera. O caso "a missing key" do teste antigo mudou de acordo.
+- `writeSidebarWidth` aceita `unknown` e clampa em vez de recusar (o tema recusa): a tela adota o valor devolvido.
+- Gravar sobre arquivo ilegível recomeça de `{}`.
+
+### Verificação
+
+- typecheck 0; lint 0 erros + 1 aviso (`Login.tsx`); 71 arquivos / 778 testes
+- Mutações: escrita ingênua derruba 3 testes; leitura que regrava derruba 7; remover do preload derruba o `ipcChannels.test.ts`
+
+### Fechamento (depois do review)
+
+Quatro ajustes entraram, todos de "atenção" do review — nenhum bloqueante:
+
+- **O caminho de escrita passou a deixar rastro.** `readSidebarWidth` já avisava; `writeSidebarWidth` não. Cenário concreto da task #65: o arrasto calcula `start + delta`, `start` chega `undefined` num re-render, vira `NaN`, grava **216**, a sidebar pula para o padrão e o `main.log` não tem uma linha — o relato que chegaria ao suporte é "a barra volta sozinha às vezes". Com teste próprio (`NaN`, `'x'`, `99999` avisam; 250 não), e a mutação que tira o aviso derruba 3 testes.
+- **Os stubs do `setup.ts` passaram a clampar**, importando `clampSidebarWidth`/`SIDEBAR_DEFAULT_WIDTH` em vez de ecoar o argumento e do literal `216`. Sem isso, um teste da #65 que arraste para 900 veria o stub devolver 900 — valor que o canal real **nunca** resolve — e um bug de "o renderer não clampa o arrasto" passaria verde.
+- O `{}` literal voltou para a asserção de silêncio, num `it.each` com os dois corpos.
+- O único `as` do diff (`parsed as Stored`) ganhou a meia linha de justificativa que o `CLAUDE.md` pede.
+
+Suíte final: **71 arquivos / 783 testes** (baseline da task 01: 70 / 744).
+
+### O que o review mediu e vale guardar
+
+- **Não há segundo caminho de escrita:** `writeFileAtomic` tem um só chamador neste módulo (`writeFields`), e `writePreference`/`writeSidebarWidth` passam os dois por ele. A RN-01 não tem furo — e a mutação para a escrita ingênua derruba 3 testes.
+- **A leitura não cria arquivo:** com o `userData` vazio, ler as duas preferências deixa o diretório **vazio** — nem o `.tmp` do `writeFileAtomic` aparece.
+- **O rename não deixou importador para trás**, e o `npm run build` passa — era o jeito objetivo de provar que renomear um módulo do main não quebra o bundling (o electron-vite tem `lib.entry` em `main.ts`/`preload.ts` e bundla o resto).
+- **Um limite conhecido, não consertado:** `readStored()` devolve `null` para **qualquer** falha de leitura, inclusive um `EBUSY`/`EPERM` transitório do Windows (antivírus segurando o arquivo logo depois do `rename` do `writeFileAtomic`). Nesse instante o conteúdo era válido, e gravar a largura apagaria um tema fixado. Distinguir "não parseou" de "não abriu" é o conserto, se algum dia incomodar.

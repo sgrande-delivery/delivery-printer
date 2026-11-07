@@ -32,7 +32,7 @@ Três camadas, e a fronteira entre elas é o que a spec protege.
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | O nome da loja no pé da sidebar | [#63](https://github.com/sgrande-delivery/delivery-printer/issues/63) | [63-store-name-in-sidebar.md](./tasks/63-store-name-in-sidebar.md) | — | executada |
-| 02 | A largura como preferência em `userData` | [#64](https://github.com/sgrande-delivery/delivery-printer/issues/64) | [64-sidebar-width-preference.md](./tasks/64-sidebar-width-preference.md) | — | pendente |
+| 02 | A largura como preferência em `userData` | [#64](https://github.com/sgrande-delivery/delivery-printer/issues/64) | [64-sidebar-width-preference.md](./tasks/64-sidebar-width-preference.md) | — | executada |
 | 03 | O punho de redimensionar a sidebar | [#65](https://github.com/sgrande-delivery/delivery-printer/issues/65) | [65-sidebar-resize-handle.md](./tasks/65-sidebar-resize-handle.md) | 02 | pendente |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
@@ -68,3 +68,12 @@ Além de `npm run typecheck`, `npm run lint` e `npm test`:
 - **`min-width: 0` só é necessário em flex de linha** (é o caso do `.userText` dentro do `.user`). Em flex de **coluna** o `min-width` é eixo cruzado e `auto` já computa 0 — e `overflow: hidden` no próprio elemento zera o mínimo automático de qualquer jeito.
 - **Para a task #65, um recado do review:** o truncamento do nome depende de o `.root` manter largura **definida**. `width: var(--sidebar-width)` continua funcionando; o que quebra é o `.root` passar a ser dimensionado por conteúdo (`width: max-content`, ou `flex-basis: auto` sem `width`) — aí o nome longo deixa de truncar e **alarga a sidebar**. Nenhum teste de jsdom pega isso.
 - **A fixture `shellMocks.ts` é tipada à mão** e cresce quando um componente do layout passa a ler um campo novo. Preferir isso a `as unknown as` no caso de teste: o duplo cast apaga a checagem do objeto inteiro, e o `tsc` deixa de ser o gate quando a fixture divergir do provider real.
+
+**Da task 02:**
+
+- **O módulo das preferências agora é `src/main/uiPreferences.ts`** (era `theme.ts`). A `spec.md` e a seção "Abordagem técnica" acima ainda citam o nome antigo no texto de contexto — é história, mas quem der `grep` por `main/theme.ts` não acha nada.
+- **Os dois canais:** `ui:sidebar-width` (lê) e `ui:set-sidebar-width` (grava). **O setter resolve para a largura clampada**, não para a pedida — é ela que a tela tem de adotar. Os quatro pontos de cada um estão conferidos por `grep`, inclusive o stub do `setup.ts`, que também clampa (um stub que ecoasse faria um arrasto para 900 parecer aceito).
+- **A RMW é segura porque é síncrona.** `readFileSync` + `writeFileAtomic` não têm `await` no meio, então dois invokes quase simultâneos (tema e largura) não se intercalam na thread do main. **Trocar por `fs.promises` reabriria a RN-01 como corrida** — é a invariante que mantém a regra viva, e não está no nome de nenhuma função.
+- **O default não é o mínimo.** `'280'`, `''`, `null`, `true` e objeto caem em **216**, não em 180. Só número finito fora da faixa é clampado para a borda.
+- **Largura fracionária passa inteira e calada** (`220.7` lê `220.7`): o clamp não arredonda, de propósito, porque arredondar na leitura mudaria o valor lido do disco. A task #65 grava inteiro.
+- **O caminho de escrita avisa** quando o valor pedido não é o salvo — é o que separa "a barra volta sozinha" de um `NaN` no cálculo do arrasto.

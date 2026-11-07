@@ -15,7 +15,9 @@ import { onLog } from './ipc-events/onLog';
 import { onRevealLogs } from './ipc-events/onRevealLogs';
 import { onUiTheme } from './ipc-events/onUiTheme';
 import { onSetUiTheme } from './ipc-events/onSetUiTheme';
-import { onResolvedChange, titleBarOverlayFor } from './theme';
+import { onUiSidebarWidth } from './ipc-events/onUiSidebarWidth';
+import { onSetUiSidebarWidth } from './ipc-events/onSetUiSidebarWidth';
+import { onResolvedChange, titleBarOverlayFor } from './uiPreferences';
 import { describeError } from 'shared/describeError';
 import { EVENT_CHANNELS, INVOKE_CHANNELS, SEND_CHANNELS } from 'shared/ipcChannels';
 import { logger } from './logger';
@@ -40,6 +42,8 @@ ipcMain.on(SEND_CHANNELS.log, onLog);
 ipcMain.handle(INVOKE_CHANNELS.revealLogs, onRevealLogs);
 ipcMain.handle(INVOKE_CHANNELS.uiTheme, onUiTheme);
 ipcMain.handle(INVOKE_CHANNELS.setUiTheme, onSetUiTheme);
+ipcMain.handle(INVOKE_CHANNELS.uiSidebarWidth, onUiSidebarWidth);
+ipcMain.handle(INVOKE_CHANNELS.setUiSidebarWidth, onSetUiSidebarWidth);
 
 app.on('window-all-closed', () => onWindowAllClosed(app));
 

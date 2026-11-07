@@ -18,6 +18,8 @@ export const INVOKE_CHANNELS = {
   revealLogs: 'revealLogs',
   uiTheme: 'ui:theme',
   setUiTheme: 'ui:set-theme',
+  uiSidebarWidth: 'ui:sidebar-width',
+  setUiSidebarWidth: 'ui:set-sidebar-width',
 } as const;
 
 // renderer -> main, fire-and-forget (ipcMain.on / ipcRenderer.send)

@@ -108,6 +108,12 @@ const electronHandler = {
   setUiTheme: (preference: ThemePreference): Promise<ResolvedTheme> =>
     ipcRenderer.invoke(INVOKE_CHANNELS.setUiTheme, preference),
 
+  // The sidebar width saved for this installation, already within the allowed range.
+  uiSidebarWidth: (): Promise<number> => ipcRenderer.invoke(INVOKE_CHANNELS.uiSidebarWidth),
+
+  // Saves and resolves to the width that now applies (clamped): adopt it, not what was asked.
+  setUiSidebarWidth: (width: number): Promise<number> => ipcRenderer.invoke(INVOKE_CHANNELS.setUiSidebarWidth, width),
+
   // Only when the resolved light/dark changes, not on every system appearance event.
   onUiThemeChanged: (listener: (resolved: ResolvedTheme) => void): (() => void) => {
     const handler = (_event: unknown, resolved: ResolvedTheme): void => listener(resolved);

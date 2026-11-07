@@ -56,7 +56,7 @@ Pesos: `--font-weight-regular/medium/semibold/bold` = 400/500/600/700. Corpo em 
 
 - **Cor nova é token em `:root` _e_ no bloco escuro.** Token que existe só num tema é um tema quebrado em algum canto. O seletor escuro é `:root[data-theme='dark']` e não `[data-theme='dark']`: o segundo empata em especificidade com `:root` e só venceria por ordem, então um `:root` acrescentado depois desligaria o escuro em silêncio
 - Hex solto num módulo é defeito, com as **exceções legítimas**: o `#fff` sobre `--accent` e sobre `--side` (o desenho também); os literais do toast (`Messaging.module.css`: fundo, texto e hover), que não seguem o tema de propósito; sombras `rgba(0,0,0,…)`; e o `#000` do `mask` do papel
-- `--bg` e `--text` dos dois temas também estão **escritos à mão** em `src/main/theme.ts`, para o `titleBarOverlay`, porque o main não tem CSS. Mudou um, mudou o outro
+- `--bg` e `--text` dos dois temas também estão **escritos à mão** em `src/main/uiPreferences.ts`, para o `titleBarOverlay`, porque o main não tem CSS. Mudou um, mudou o outro
 - Não existe mais camada de apelido (`--color-primary` & cia. foram apagados na task #50). O `grep -rn "\-\-color-" src/` tem de sair vazio
 
 ## O tema
