@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import Icon from 'renderer/base/Icon';
 import { cx } from 'renderer/base/cx';
@@ -10,7 +10,9 @@ import { useAuth } from 'renderer/providers/auth';
 import { useMessaging } from 'renderer/providers/messaging';
 import { log } from 'renderer/services/log';
 import packageJson from '../../../../package.json';
+import { SIDEBAR_DEFAULT_WIDTH, clampSidebarWidth } from 'shared/sidebarWidth';
 import { NAV_ITEMS } from './navigation';
+import SidebarResizeHandle, { applySidebarWidth } from './SidebarResizeHandle';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -28,6 +30,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
   const { pending, failed } = usePrintQueue();
   const { printers, devicesRead } = usePrinters();
   const logout = useLogout();
+  const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const committedRef = useRef(false);
+
+  // The first paint is the default and this adjusts it (spec 62, decision 2). A read that fails or returns
+  // garbage stays on the default; one that arrives after the operator already dragged is ignored.
+  useEffect(() => {
+    window.electron
+      .uiSidebarWidth()
+      .then(saved => {
+        if (committedRef.current) {
+          return;
+        }
+
+        const next = clampSidebarWidth(saved);
+        applySidebarWidth(next);
+        setWidth(next);
+      })
+      .catch((err: unknown) => {
+        log.error('read sidebar width failed', err);
+      });
+  }, []);
+
+  function handleCommitWidth(next: number): void {
+    committedRef.current = true;
+    applySidebarWidth(next);
+    setWidth(next);
+
+    // Integer: the clamp does not round, and a fractional width would be saved as is. The main answers with
+    // the width it kept, which is the one the screen adopts.
+    window.electron
+      .setUiSidebarWidth(Math.round(next))
+      .then(saved => {
+        const kept = clampSidebarWidth(saved);
+        applySidebarWidth(kept);
+        setWidth(kept);
+      })
+      .catch((err: unknown) => {
+        log.error('save sidebar width failed', err);
+        handleOpen('Não foi possível salvar a largura do menu.');
+      });
+  }
 
   // Same rule as the printer card (PrinterItem): without a read of this machine's devices nobody is accused.
   // The list is shared with the printers screen, so a fix made there reaches this badge on its own.
@@ -84,6 +127,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
         })}
       </nav>
       <div className={styles.footer}>
+        {restaurant?.name && (
+          <div className={styles.storeName} title={restaurant.name}>
+            {restaurant.name}
+          </div>
+        )}
         <div className={styles.status}>
           <div className={styles.statusLine}>
             <span className={cx(styles.dot, isConnected ? styles.dotOk : styles.dotErr)} />
@@ -126,6 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
           </button>
         </div>
       </div>
+      <SidebarResizeHandle width={width} onCommit={handleCommitWidth} />
     </aside>
   );
 };

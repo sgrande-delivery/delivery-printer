@@ -1,6 +1,9 @@
 /* Measures from the design, printer-v2.dc.html:28-66. */
 .root {
-  width: 216px;
+  position: relative;
+  /* The var is written by the resize handle; the fallback is the design's width. Keep the width definite:
+     sized by content, the long store name would widen the sidebar instead of truncating. */
+  width: var(--sidebar-width, 216px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -115,6 +118,19 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* Truncated like .userName, with the whole name in the title. The ellipsis works because .footer is a
+   column flex container, so this element gets a definite width from the .root's own — a .root sized by
+   its content instead (width: max-content) would widen the sidebar and drop the ellipsis. */
+.storeName {
+  padding: 0 4px;
+  color: var(--side-text);
+  font-size: 13px;
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status {

@@ -1,6 +1,6 @@
 import { describeError } from 'shared/describeError';
 import { logger } from '../logger';
-import { setPreference } from '../theme';
+import { setPreference } from '../uiPreferences';
 import { isThemePreference } from 'shared/uiTheme';
 import type { ResolvedTheme } from 'shared/uiTheme';
 
