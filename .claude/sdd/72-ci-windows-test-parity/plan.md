@@ -25,10 +25,10 @@ Três mudanças pequenas e independentes, em três arquivos:
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Asserção da RN-06 sem depender da plataforma | [#73](https://github.com/sgrande-delivery/delivery-printer/issues/73) | [73-platform-agnostic-font-url-assertion.md](./tasks/73-platform-agnostic-font-url-assertion.md) | — | executada |
-| 02 | Rodar a suíte também no `windows-latest` | [#74](https://github.com/sgrande-delivery/delivery-printer/issues/74) | [74-ci-windows-matrix.md](./tasks/74-ci-windows-matrix.md) | 01 | executada |
-| 03 | Recusar promoção de release sem `latest.yml` | [#75](https://github.com/sgrande-delivery/delivery-printer/issues/75) | [75-guard-release-promotion.md](./tasks/75-guard-release-promotion.md) | — | executada |
-| 04 | Guarda do instalador de teste derivada dos `.env` | [#76](https://github.com/sgrande-delivery/delivery-printer/issues/76) | [76-derive-leak-guard-hosts.md](./tasks/76-derive-leak-guard-hosts.md) | — | executada |
+| 01 | Asserção da RN-06 sem depender da plataforma | [#73](https://github.com/sgrande-delivery/delivery-printer/issues/73) | [73-platform-agnostic-font-url-assertion.md](./tasks/73-platform-agnostic-font-url-assertion.md) | — | shipped |
+| 02 | Rodar a suíte também no `windows-latest` | [#74](https://github.com/sgrande-delivery/delivery-printer/issues/74) | [74-ci-windows-matrix.md](./tasks/74-ci-windows-matrix.md) | 01 | shipped |
+| 03 | Recusar promoção de release sem `latest.yml` | [#75](https://github.com/sgrande-delivery/delivery-printer/issues/75) | [75-guard-release-promotion.md](./tasks/75-guard-release-promotion.md) | — | shipped |
+| 04 | Guarda do instalador de teste derivada dos `.env` | [#76](https://github.com/sgrande-delivery/delivery-printer/issues/76) | [76-derive-leak-guard-hosts.md](./tasks/76-derive-leak-guard-hosts.md) | — | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

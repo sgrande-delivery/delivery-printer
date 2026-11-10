@@ -5,7 +5,7 @@
 **Tipo:** bug
 **Processo:** main (teste)
 **Depende de:** (nenhuma)
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

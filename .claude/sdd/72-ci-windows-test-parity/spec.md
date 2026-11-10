@@ -1,6 +1,6 @@
 # Spec — Paridade de plataforma entre o gate de PR e a esteira de publicação
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-11-10
 **Escopo:** renderer/main (um teste) + build/empacotamento (CI)
 **Issue:** [#72](https://github.com/sgrande-delivery/delivery-printer/issues/72)
