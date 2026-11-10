@@ -27,7 +27,7 @@ Três mudanças pequenas e independentes, em três arquivos:
 |---|------|-------|---------|------------|--------|
 | 01 | Asserção da RN-06 sem depender da plataforma | [#73](https://github.com/sgrande-delivery/delivery-printer/issues/73) | [73-platform-agnostic-font-url-assertion.md](./tasks/73-platform-agnostic-font-url-assertion.md) | — | executada |
 | 02 | Rodar a suíte também no `windows-latest` | [#74](https://github.com/sgrande-delivery/delivery-printer/issues/74) | [74-ci-windows-matrix.md](./tasks/74-ci-windows-matrix.md) | 01 | executada |
-| 03 | Recusar promoção de release sem `latest.yml` | [#75](https://github.com/sgrande-delivery/delivery-printer/issues/75) | [75-guard-release-promotion.md](./tasks/75-guard-release-promotion.md) | — | pendente |
+| 03 | Recusar promoção de release sem `latest.yml` | [#75](https://github.com/sgrande-delivery/delivery-printer/issues/75) | [75-guard-release-promotion.md](./tasks/75-guard-release-promotion.md) | — | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -47,6 +47,9 @@ Nenhuma. A frente é inteiramente local.
 
 ## Aprendizados que valem para as próximas tasks
 
+- **Release criada direto como normal dispara `published` E `released`** (fonte: `github/docs`, `src/webhooks/data/fpt/release.json`, conferido em 2026-11-10). São dois runs para a mesma tag, serializados pelo `concurrency`. Quem acrescentar evento ao `on` de qualquer workflow daqui: meça o que ele dispara, não deduza do nome.
+- **O payload do evento é um retrato do instante, não o estado de agora.** Com o `concurrency` enfileirando, um run pode decidir com dados de antes do build que já terminou — foi o que obrigou a mensagem do gate a mandar conferir com `gh release view` antes de concluir que o build falhou. Vale para qualquer job que leia `github.event.*` e espere em fila.
+- **Duas folgas conhecidas do gate, escritas na `autoupdate.md`:** apagar o asset `latest.yml` da `Latest` não dispara webhook nenhum (não existe evento de asset de release), e o predicado do portão é só o `latest.yml` — release com ele e sem o `.exe` passa verde. Nenhuma das duas é escopo desta spec; as duas são candidatas a task própria.
 - **`if: runner.os == 'Linux'`, nunca `matrix.os == '<label>'`.** Condicionar step ao valor literal do label faz o `if` deixar de casar no dia em que alguém fixa a versão (`ubuntu-24.04`), e o step some em silêncio — gate que para de checar sem ficar vermelho. `runner.os` é imune.
 - **A matriz renomeia o check:** `check` virou `check (ubuntu-latest)` e `check (windows-latest)`. Hoje é inofensivo porque o ruleset `master-protection` não tem `required_status_checks` (conferido em 2026-11-10); quem for exigir check por nome tem de usar os dois novos.
 - **Repo público: minuto de runner Windows não é faturado.** O multiplicador 2× do Windows só vale em repo privado. O custo da matriz é fila e tempo de parede (~1,5 min → ~3 min, com os legs em paralelo), não dinheiro.

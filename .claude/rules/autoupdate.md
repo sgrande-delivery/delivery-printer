@@ -48,7 +48,7 @@ Cada instalador carrega `resources/app-update.yml` com o owner/repo do momento d
 
 ## Como o release sai
 
-Dois workflows. `ci.yml` checa (`pull_request` e `push: master`) e **não publica**. `publish.yml` publica, no evento **`release: [published]`**, e é onde moram as armadilhas abaixo.
+Dois workflows. `ci.yml` checa (`pull_request` e `push: master`) e **não publica**. `publish.yml` publica, nos eventos **`release: [published, released]`**, e é onde moram as armadilhas abaixo.
 
 **O `ci.yml` roda em matriz, `[ubuntu-latest, windows-latest]`, e isso é invariante de release, não preferência:** `npm ci`, `test` e `build` rodam nos **dois**; `typecheck` e `lint` só no Linux, porque o veredito deles não muda com o SO e o único eixo que mudaria (caixa de nome de arquivo) é mais estrito lá. O motivo é paridade com este arquivo: o `publish.yml` empacota em `windows-latest`, então um teste cujo resultado depende da plataforma **não podia falhar no gate de PR nem passar na esteira** — foi exatamente assim que uma asserção de caminho do `printFonts` derrubou o step Test da **v3.0.0**, deixando a pré-release sem assets. Promovida em seguida, ela virou a `Latest` sem `latest.yml`, e todo app instalado tomou 404. Tirar a matriz reabre essa porta.
 
@@ -81,16 +81,29 @@ Consequência operacional: o nome do check deixou de ser `check` e passou a ser 
 
 ### O gate, e por que ele olha estado e não evento
 
-A documentação **não** diz quais activity types disparam quando uma pré-release é promovida. Então o `gate` não infere intenção pelo tipo do evento — ele lê o estado real da release:
+**Promover uma pré-release dispara `released`, e não `published`.** Medido em 2026-11-10: a `v3.0.0` foi criada como pré-release, o `publish` falhou no step Test e deixou zero assets; ao promovê-la, o `publish.yml` (que escutava só `published`) **não rodou**, e ela virou a `Latest` sem `latest.yml`. O `gate` tinha o ramo certo para esse estado e nunca foi chamado. Por isso o `on` escuta `[published, released]` e o `gate` não infere intenção pelo tipo do evento — ele lê o estado que vem **no payload**, em todo evento que possa produzir o estado ruim. Não acrescente outros tipos (`edited` dispararia a cada salvamento de notas; nenhum produz o estado ruim).
 
-| Estado | Decisão |
-| --- | --- |
-| pré-release | builda e publica |
-| não-pré, **com** `latest.yml` nos assets | promoção: não builda, sai verde |
-| não-pré, **sem** `latest.yml` | **falha** — já é a `Latest` sem `latest.yml`, e todo app instalado tomaria 404 em silêncio |
-| payload de assets ilegível | **falha**, com mensagem própria (não mande apagar release por erro de leitura) |
+**O payload é um retrato do instante do evento, não o estado de agora** — e isso tem corolário prático, porque o `concurrency` enfileira: promover **com a esteira ainda rodando** faz o run do `released` decidir com a lista de assets de **antes** do build, então ele sai vermelho mesmo que os três arquivos tenham chegado no meio-tempo. O alarme não é falso (no instante da promoção o estado ruim existiu), mas o diagnóstico precisa ser conferido com `gh release view <tag>` antes de concluir que o build falhou. A mensagem do job diz isso.
 
-Esse desenho é correto nos dois cenários possíveis de semântica do evento. **Quando um gatilho do GitHub tiver semântica incerta, copie esta abordagem.**
+**Release criada direto como normal dispara os dois eventos** (conferido na fonte da doc do GitHub em 2026-11-10: `published` = *"A release, pre-release, or draft of a release was published"*; `released` = *"A release was published, or a pre-release was changed to a release"*). Consequência: dois runs vermelhos para a mesma tag, serializados pelo `concurrency`. É ruído aceitável — o primeiro ato é o mesmo nas duas mensagens.
+
+| Evento | Estado | Decisão |
+| --- | --- | --- |
+| `published` | pré-release | builda e publica |
+| `published` | não-pré, **com** `latest.yml` nos assets | promoção: não builda, sai verde |
+| `published` | não-pré, **sem** `latest.yml` | **falha** — já é a `Latest` sem `latest.yml`, e todo app instalado tomaria 404 em silêncio |
+| `released` | pré-release | não builda, sai verde. **Ramo defensivo:** pela doc este caso não ocorre, e ele existe para que uma semântica não documentada não dispare um **segundo build na mesma tag** |
+| `released` | não-pré, **com** `latest.yml` | promoção legítima: não builda, sai verde |
+| `released` | não-pré, **sem** `latest.yml` | **falha**, com a instrução de recuperação: `gh release edit <tag> --prerelease`, que devolve a `Latest` para a anterior em segundos |
+| qualquer | payload de assets ilegível | **falha**, com mensagem própria (não mande apagar release por erro de leitura) |
+
+**No `released` o gate falha, não conserta:** buildar e anexar ali publicaria asset numa release que **já é a `Latest`**, a janela que ele existe para fechar. Um job vermelho não desfaz a promoção; é o único aviso de que o parque entrou em 404. O `concurrency` é por tag com `cancel-in-progress: false` de propósito: promover logo depois de criar **enfileira** atrás do build em andamento, e `true` faria a promoção cancelá-lo.
+
+**O que o gate não pega, e nenhum `on: release` pegaria:** apagar o asset `latest.yml` da release que é a `Latest` **não dispara webhook nenhum** — o evento `release` tem sete activity types e **não existe** evento de asset de release (conferido em 2026-11-10). É o único caminho restante para o pior estado do repositório, e só um job agendado conferindo `/releases/latest` o acharia. Saiba que ele existe antes de redescobri-lo como surpresa.
+
+Segunda folga conhecida: o predicado do gate é **só** o `latest.yml`. Uma release com `latest.yml` e **sem** o `.exe` sai verde, e o fim é o mesmo — o updater acha a atualização e toma 404 no download. O checklist exige três arquivos; o portão afirma um.
+
+**Quando um gatilho do GitHub tiver semântica incerta, copie esta abordagem** — olhe o estado — **e meça qual evento dispara de fato**, porque o portão só vale se for chamado.
 
 ### O que o cliente faz
 
