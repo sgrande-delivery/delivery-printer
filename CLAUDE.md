@@ -179,7 +179,7 @@ Onde escrever o quê:
 
 Feature que atravessa repos tem **spec nos dois lados**, e cada uma carrega o contrato: a daqui diz o que este app escuta e qual rota consome; a da `delivery-api` (ou do `delivery-socket-api`) diz o que publica. Esse par **é** o contrato — não há etapa de aprovação depois dele, e não há nada a esperar.
 
-- **Implementar contra o contrato da spec, sem esperar a outra ponta entregar.** Task daqui não fica bloqueada porque a rota nova ainda não subiu, nem porque o evento ainda não é emitido.
+- **Implementar contra o contrato da spec, sem esperar a outra ponta entregar**, e sem trocar implementação por mock, stub ou TODO. Task daqui não fica bloqueada porque a rota nova ainda não subiu, nem porque o evento ainda não é emitido.
 - **Não parar para perguntar se pode seguir.** Quem escreveu a spec já decidiu o que é para fazer; perguntar o que a task já responde é retrabalho para o dev, não cuidado.
 - **O aviso vai no relatório:** que a feature só funciona ponta a ponta quando a outra ponta subir, e a ordem de deploy quando ela importa — aqui ela quase sempre importa, porque a atualização chega quando o operador fecha o app pela bandeja (ver "Condições de release").
 - **Motivo real para parar:** as duas specs divergirem no contrato (nome de evento, chave do payload, forma da resposta). Aí o contrato não existe de fato, e quem decide qual lado muda é o dev. Ausência de implementação do outro lado **não** é divergência.
