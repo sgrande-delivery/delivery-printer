@@ -1,0 +1,33 @@
+/* Inside the sidebar, on its right edge, over the whole height. The no-drag is not optional (RN-05): the
+   top of the sidebar is a window drag region, and an element inside one receives no mouse. */
+.handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  -webkit-app-region: no-drag;
+}
+
+/* The 2px line shows on hover and while dragging; --side-muted over --side is 4,82:1 (light) and 4,59:1 (dark). */
+.handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+}
+
+.handle:hover::after {
+  background: var(--side-muted);
+}
+
+/* Inset: the outline outside the edge would be cut by the window, and the next element paints over it. */
+.handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

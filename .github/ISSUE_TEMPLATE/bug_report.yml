@@ -1,0 +1,122 @@
+name: Bug
+description: Relatar um bug encontrado no app de impressão (delivery-printer)
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Descreva o bug com o máximo de contexto possível. Este app roda **na máquina do restaurante**, então o que reproduz lá raramente reproduz aqui: versão instalada, Windows e impressora são parte do bug.
+
+        **A versão é quase sempre a informação decisiva.** Ela aparece no canto da tela de status, no formato `v2.7.0 - x64`. O app só atualiza quando o operador **fecha** o programa, então máquinas diferentes rodam versões diferentes ao mesmo tempo.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: O que aconteceu
+      description: Descrição clara do bug (observado)
+      placeholder: |
+        O comprovante do pedido 1042 saiu duas vezes na impressora da cozinha.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que deveria acontecer
+      placeholder: |
+        Sair uma vez por impressora configurada.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      description: Liste cada passo em ordem. Inclua o que foi feito no painel e o que apareceu no app.
+      placeholder: |
+        1. Abrir o printer no PDV e esperar aparecer "conectado"
+        2. No painel, aceitar o pedido 1042
+        3. Observar a impressora da cozinha
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severidade
+      options:
+        - blocker (restaurante não consegue imprimir)
+        - high (imprime errado, duplicado ou perde pedido)
+        - medium (incômodo, há workaround)
+        - low (cosmético — texto, alinhamento, mensagem pouco clara)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Onde aparece
+      options:
+        - Impressão (não sai, sai em branco, sai duplicado, impressora errada)
+        - Tela do app (login, status, layout)
+        - Conexão com o socket (aparece offline no painel)
+        - Atualização automática (pediu pra fechar e não atualizou)
+        - Instalação
+        - Outro / não tenho certeza
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versão do app e arquitetura
+      description: "O que está escrito no canto da tela de status, por exemplo `v2.6.0 - ia32`. Se o app não abre, pegue em Configurações > Aplicativos do Windows."
+      placeholder: v2.6.0 - ia32
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Windows do PDV
+      description: Versão do Windows e se é 32 ou 64 bits.
+      placeholder: Windows 10 Pro 22H2, 64 bits
+    validations:
+      required: true
+
+  - type: input
+    id: restaurant
+    attributes:
+      label: Restaurante (opcional)
+      description: Nome ou uuid, quando o bug é de um restaurante só.
+      placeholder: Pizzaria do Centro / 01HX-...
+
+  - type: input
+    id: printer
+    attributes:
+      label: Impressora (opcional)
+      description: Modelo e se é USB ou rede. Quando o bug é "imprimiu na impressora errada", informe também o nome que aparece no Windows.
+      placeholder: Elgin i9 — USB — nome no Windows "ELGIN I9 (COZINHA)"
+
+  - type: input
+    id: related_task
+    attributes:
+      label: Task relacionada (opcional)
+      description: Arquivo em .claude/sdd/<feature>/tasks/ ou task legada PRINTER-XXX.
+      placeholder: PRINTER-001
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (opcional)
+      description: |
+        O `electron-log` grava em `<userData>/logs/main.log` — no Windows, `%APPDATA%\<nome do app>\logs\`.
+        Se houver cookie de sessão, header `Authorization` ou JWT, **redija antes de colar**.
+      render: shell
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Observações adicionais (opcional)
+      description: Foto do comprovante, print da tela, horário aproximado, se acontece sempre ou só às vezes.

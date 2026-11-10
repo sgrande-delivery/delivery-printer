@@ -1,20 +1,30 @@
 {
   "compilerOptions": {
-    "incremental": true,
-    "target": "es2021",
-    "module": "commonjs",
-    "lib": ["dom", "es2021"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
     "jsx": "react-jsx",
     "strict": true,
-    "sourceMap": true,
-    "baseUrl": "./src",
-    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "allowJs": true,
-    "outDir": ".erb/dll",
-    "noImplicitAny": false
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "renderer/*": ["src/renderer/*"],
+      "constants/*": ["src/constants/*"],
+      "main/*": ["src/main/*"],
+      "shared/*": ["src/shared/*"]
+    }
   },
-  "exclude": ["test", "release/build", "release/app/dist", ".erb/dll"]
+  "include": ["src", "electron.vite.config.ts", "vitest.config.ts", "build-config.ts", "env.d.ts"]
 }

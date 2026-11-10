@@ -1,16 +1,9 @@
 {
   "files.associations": {
-    ".eslintrc": "jsonc",
-    ".prettierrc": "jsonc",
-    ".eslintignore": "ignore"
+    ".prettierrc": "jsonc"
   },
-  
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "html",
-    "typescriptreact"
-  ],
+
+  "eslint.validate": ["javascript", "typescript", "typescriptreact"],
 
   "javascript.validate.enable": false,
   "javascript.format.enable": false,
@@ -19,12 +12,9 @@
   "search.exclude": {
     ".git": true,
     ".eslintcache": true,
-    ".erb/dll": true,
-    "release/{build,app/dist}": true,
+    "out": true,
+    "release": true,
     "node_modules": true,
-    "npm-debug.log.*": true,
-    "test/**/__snapshots__": true,
-    "package-lock.json": true,
-    "*.{css,sass,scss}.d.ts": true
+    "package-lock.json": true
   }
 }

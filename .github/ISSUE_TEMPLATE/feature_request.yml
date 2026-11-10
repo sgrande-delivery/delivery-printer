@@ -1,0 +1,77 @@
+name: Feature
+description: Pedir uma feature nova ou melhoria no app de impressão (delivery-printer)
+title: "[feature] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Descreva o que você quer que o app passe a fazer. Foque no **problema** que a feature resolve, não só na solução proposta.
+
+        Dois lembretes que mudam o escopo com frequência: **o layout do comprovante é renderizado pela `delivery-api`**, não aqui; e **nada chega ao PDV na hora** — a atualização é aplicada quando o operador fecha o app, depois de o release ser publicado.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema / motivação
+      description: Que dor essa feature resolve? Para quem — operador no PDV, gestor no painel, suporte?
+      placeholder: |
+        Hoje, para trocar a impressora de um setor, o suporte precisa acessar a máquina remotamente. O operador não tem onde escolher.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+      description: O que você imagina como solução. Se for tela, descreva o que ela mostra e o que o operador faz nela.
+      placeholder: |
+        Uma tela de configuração de impressão, alcançável pela tela de status, listando as impressoras do Windows e permitindo escolher qual atende cada setor. A escolha fica salva na máquina.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Escopo principal
+      options:
+        - Tela / interface
+        - Impressão (como, quando e em qual impressora)
+        - Socket (eventos trocados com o painel)
+        - Configuração por instalação (escolha do operador, salva na máquina)
+        - Atualização automática / empacotamento
+        - Outro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade percebida
+      options:
+        - high (restaurante travado ou suporte sem alternativa)
+        - medium (melhoria importante, há workaround)
+        - low (nice-to-have)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas (opcional)
+      description: O que você pensou em fazer e descartou, e por quê.
+
+  - type: input
+    id: related_task
+    attributes:
+      label: Feature ou task relacionada (opcional)
+      description: Pasta em .claude/sdd/ ou task legada PRINTER-XXX.
+      placeholder: PRINTER-001
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Observações adicionais (opcional)
+      description: |
+        Dependências em outros repos (delivery-api, delivery-socket-api, delivery-admin), endpoints ou eventos que ainda não existem, riscos.
+        Se a feature precisa de contrato novo em outro repo, a issue de lá vem antes desta.

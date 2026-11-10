@@ -1,0 +1,47 @@
+/* printer-v2.dc.html:518-522 */
+.snackbar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1400;
+  display: flex;
+  justify-content: center;
+}
+
+/*
+ * Literal colors in BOTH themes, on purpose (RN-11 exception): the design's toast does not follow the
+ * theme, it is the light theme's --side. #FF9A73 on #2B2725 is 7.1:1 and the text #FAF7F5 is 13.9:1 (WCAG AA asks 4.5:1).
+ */
+.content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  max-width: 560px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 8px;
+  background-color: #2b2725;
+  color: #faf7f5;
+  font-size: 13px;
+  line-height: 1.43;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.message {
+  flex: 1;
+}
+
+.content .actionText {
+  height: 30px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: #ff9a73;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.content .actionText:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.08);
+}

@@ -6,7 +6,10 @@ export let isQuiting = false;
 export class TrayBuilder {
   private tray: Tray;
 
-  constructor(private readonly app: App, private readonly window: BrowserWindow) {
+  constructor(
+    private readonly app: App,
+    private readonly window: BrowserWindow
+  ) {
     this.tray = new Tray(getAssetPath(this.app, 'icon.png'));
   }
 

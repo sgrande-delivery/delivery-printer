@@ -1,0 +1,16 @@
+.container {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,38 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 12px;
+  border: 0;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.root:hover {
+  background-color: var(--surface-2);
+}
+
+.small {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.small:hover {
+  background-color: var(--surface-2);
+}
+
+.root:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.root:disabled:hover {
+  background-color: transparent;
+}

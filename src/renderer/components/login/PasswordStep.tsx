@@ -1,21 +1,10 @@
 import React, { ChangeEvent } from 'react';
-import { TextField, Typography, IconButton, InputAdornment } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
-import { MdArrowBack, MdVisibility, MdVisibilityOff } from 'react-icons/md';
-
-const useStyles = makeStyles({
-  action: {
-    //
-  },
-  arrowBackIcon: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-  },
-  inputContainer: {
-    margin: '30px 0 60px',
-  },
-});
+import TextField from 'renderer/base/TextField';
+import IconButton from 'renderer/base/IconButton';
+import Icon from 'renderer/base/Icon';
+import Chip from 'renderer/base/Chip';
+import StepHeader from './StepHeader';
+import styles from './PasswordStep.module.css';
 
 interface PasswordStepProps {
   login: {
@@ -38,40 +27,42 @@ const PasswordStep: React.FC<PasswordStepProps> = ({
   handlePasswordVisibility,
   loading,
 }) => {
-  const classes = useStyles();
+  const name = login.name.trim();
 
   return (
     <>
-      <IconButton color="primary" className={classes.arrowBackIcon} onClick={handleStepBack}>
-        <MdArrowBack />
-      </IconButton>
-      <Typography align="center" color="primary">
-        Seja bem-vindo {login.name}.
-      </Typography>
-      <div className={classes.inputContainer}>
-        <TextField
-          margin="normal"
-          label="Senha"
-          placeholder="Informe sua senha"
-          fullWidth
-          value={login.password}
-          onChange={loading ? undefined : handleChange}
-          name="password"
-          type={shownPassword ? 'text' : 'password'}
-          required
-          autoComplete="current-password"
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton onClick={handlePasswordVisibility}>
-                  {shownPassword ? <MdVisibilityOff size={20} color="#666" /> : <MdVisibility size={20} color="#666" />}
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-          autoFocus
-        />
-      </div>
+      <Chip size="medium" tone="muted" iconFirst className={styles.back} onClick={handleStepBack}>
+        <Icon name="arrow_back" size={18} />
+        {login.email}
+      </Chip>
+      {/* Neutral on purpose (RN-12): the app knows the name, not who the person is. */}
+      <StepHeader
+        label="Passo 2 de 2"
+        title={name ? `Olá, ${name}` : 'Olá'}
+        subtitle="Digite sua senha para começar a imprimir."
+      />
+      <TextField
+        variant="boxed"
+        label="Senha"
+        placeholder="Informe sua senha"
+        fullWidth
+        value={login.password}
+        onChange={loading ? undefined : handleChange}
+        name="password"
+        type={shownPassword ? 'text' : 'password'}
+        required
+        autoComplete="current-password"
+        autoFocus
+        endAdornment={
+          <IconButton
+            size="small"
+            aria-label={shownPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            onClick={handlePasswordVisibility}
+          >
+            <Icon name={shownPassword ? 'visibility_off' : 'visibility'} />
+          </IconButton>
+        }
+      />
       <input type="hidden" autoComplete="email username" name="username" value={login.email} />
     </>
   );

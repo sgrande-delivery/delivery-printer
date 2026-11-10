@@ -1,9 +1,14 @@
 import { IpcMainInvokeEvent, Notification } from 'electron';
 
-export function onNotification(event: IpcMainInvokeEvent, orderSequence: string) {
+type Payload = {
+  title: string;
+  body: string;
+};
+
+export function onNotification(event: IpcMainInvokeEvent, { title, body }: Payload): void {
   new Notification({
-    title: 'Pedido recebido',
-    body: `Pedido ${orderSequence} enviado para impressão`,
+    title,
+    body,
     icon: './assets/icon.ico',
   }).show();
 }

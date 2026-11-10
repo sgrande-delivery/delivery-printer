@@ -1,0 +1,10 @@
+/* The ring of the design (printer-v2.dc.html:478). The rotation is the global `.spin` of app.css. */
+.root {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 3px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+}

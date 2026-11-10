@@ -1,6 +1,6 @@
 import React from 'react';
-import Home from '../components/main/Main';
+import Dashboard from '../components/dashboard/Dashboard';
 
-const MainScreen: React.FC = () => <Home />;
+const MainScreen: React.FC = () => <Dashboard />;
 
 export default MainScreen;

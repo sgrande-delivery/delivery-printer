@@ -1,7 +1,9 @@
 import { AxiosError } from 'axios';
+import { describeError } from 'shared/describeError';
 import { refreshTokenRequest } from './refreshTokenRequest';
 import { api } from './api';
 import { history } from './history';
+import { log } from './log';
 
 type ApiResponseError = {
   code: string;
@@ -28,6 +30,7 @@ export async function apiErrorInterceptor(error: AxiosError<ApiResponseError>) {
   }
 
   if (error.response?.data?.code !== 'access_token.expired') {
+    log.warn('session refused, sending to login', { error: describeError(error) });
     history.push('/login');
     return Promise.reject(error);
   }
@@ -42,6 +45,7 @@ export async function apiErrorInterceptor(error: AxiosError<ApiResponseError>) {
     try {
       await refreshTokenRequest();
     } catch (err) {
+      log.error('token refresh failed, sending to login', err);
       history.push('/login');
       return Promise.reject(err);
     } finally {

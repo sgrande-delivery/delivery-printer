@@ -1,11 +1,9 @@
-export default process.env.NODE_ENV === 'production'
-  ? {
-      BASE_URL: 'https://api.sgrande.delivery/api/admin/',
-      WS_BASE_URL: 'https://socket2.sgrande.delivery',
-      TOKEN: 'KkAUmBJBpKLI6SMjSYSX8vqkwehE6H5a0D6mfnJiIq3UdRvkxwvtsC0cnmZpgG9Y',
-    }
-  : {
-      BASE_URL: 'http://localhost/api/admin/',
-      WS_BASE_URL: 'http://localhost:3002',
-      TOKEN: 'KkAUmBJBpKLI6SMjSYSX8vqkwehE6H5a0D6mfnJiIq3UdRvkxwvtsC0cnmZpgG9Y',
-    };
+/**
+ * Build-time configuration, injected by electron.vite.config.ts from the .env
+ * files. These are compile-time constants rather than runtime lookups, so they
+ * work the same in the main and the renderer process.
+ */
+export default {
+  BASE_URL: __API_BASE_URL__,
+  WS_BASE_URL: __WS_BASE_URL__,
+};

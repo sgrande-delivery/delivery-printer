@@ -1,12 +1,12 @@
 import { autoUpdater } from 'electron-updater';
-import log from 'electron-log';
+import { describeError } from 'shared/describeError';
+import { logger } from './logger';
 import { Notification } from 'electron';
 import path from 'path';
 
 export class AppUpdater {
   constructor() {
-    log.transports.file.level = 'info';
-    autoUpdater.logger = log;
+    autoUpdater.logger = logger;
 
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
@@ -15,8 +15,8 @@ export class AppUpdater {
   }
 
   run() {
-    autoUpdater.checkForUpdates().catch(() => {
-      console.log('Erro ao verificar atualização');
+    autoUpdater.checkForUpdates().catch((err: unknown) => {
+      logger.error('update check failed', describeError(err));
     });
   }
 

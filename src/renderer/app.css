@@ -1,3 +1,133 @@
+/*
+ * Design tokens: the values of the Claude Design, design/printer-v2.dc.html:13-14
+ * (light palette on :root, dark on :root[data-theme='dark']). Same 30 colour tokens in both.
+ * --bg and --text of both themes are ALSO hardcoded in src/main/uiPreferences.ts, for the
+ * window's titleBarOverlay: the main process has no CSS variables, and the color is
+ * needed in the BrowserWindow constructor, before a renderer exists. Change one, change
+ * the other.
+ *
+ * The dark selector is :root[data-theme='dark'], not [data-theme='dark']: the latter
+ * ties with :root on specificity and would only win by source order, so a :root block
+ * added later in this file would silently switch the dark theme off.
+ */
+:root {
+  --bg: #faf7f5;
+  --surface: #ffffff;
+  --surface-2: #f4efeb;
+  --line: #eae2dc;
+  --text: #2b2725;
+  --text-2: #5a524e;
+  /* O desenho traz #857a74, que dá 3,91:1 sobre --bg: abaixo dos 4,5:1 de AA, e este token
+     carrega rótulo e dica em 12-13 px. Escurecido por decisão do dev — linha 15 da tabela de
+     fidelidade. O do tema escuro fica como o desenho, porque lá já dá 5,06:1. */
+  --muted: #756a64;
+  --accent: #f4561c;
+  --accent-hover: #dc4a14;
+  --accent-soft: #ffe4d8;
+  --accent-ink: #b23c0e;
+  --ok: #2e7d32;
+  --ok-dot: #4caf50;
+  --ok-soft: #e5f3e6;
+  --err: #c62828;
+  --err-dot: #f44336;
+  --err-soft: #fde6e4;
+  --warn: #8a5a00;
+  --warn-soft: #fff1cc;
+  --side: #2b2725;
+  --side-2: #3a3431;
+  --side-text: #d9d0ca;
+  --side-muted: #9c918b;
+  --side-badge: #5a524e;
+  --page: #ddd6d1;
+  --scrim: rgba(20, 17, 16, 0.45);
+  --paper: #ffffff;
+  --paper-ink: #2b2725;
+  --paper-rule: #9c918b;
+  --paper-sub: #5a524e;
+
+  --font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+}
+
+:root[data-theme='dark'] {
+  --bg: #2b2725;
+  --surface: #35302d;
+  --surface-2: #3e3835;
+  --line: #4a4340;
+  --text: #faf7f5;
+  --text-2: #cfc6c0;
+  --muted: #a0958f;
+  --accent: #f4561c;
+  --accent-hover: #ff6a33;
+  --accent-soft: #4a2b1f;
+  --accent-ink: #ff9a73;
+  --ok: #7ccb80;
+  --ok-dot: #4caf50;
+  --ok-soft: #263a28;
+  --err: #ff8a80;
+  --err-dot: #f44336;
+  --err-soft: #4a2522;
+  --warn: #ffcb5c;
+  --warn-soft: #45391c;
+  --side: #211d1b;
+  --side-2: #35302d;
+  --side-text: #d9d0ca;
+  --side-muted: #8f847e;
+  /* Same value in both themes, as the design does (:643): the badge sits on --side-2. */
+  --side-badge: #5a524e;
+  --page: #151312;
+  --scrim: rgba(20, 17, 16, 0.45);
+  --paper: #faf7f5;
+  --paper-ink: #2b2725;
+  --paper-rule: #9c918b;
+  --paper-sub: #5a524e;
+}
+
+/* Subset of Material Symbols Outlined, bundled (RN-01). See fonts/README.md. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: block;
+  src: url('./fonts/material-symbols-outlined-subset.woff2') format('woff2');
+}
+
+/* The three families the manager can pick for printing, so the printing screen can write each name
+   in its own face. Same bytes the main sends to the printer (assets/fonts/README.md); only the body
+   weight comes here, the one the label uses (spec 56, RN-07). Bundled, never from the network (RN-08
+   of the same spec; src/main/printFonts.ts cites an RN-07 too, but that one is spec 52's).
+   font-display: swap, not block as in the printed document (src/main/printFonts.ts): on paper there
+   is no "later", but here the content is the font's name, legible in any face, and block would hide
+   it for up to 3 s if the file failed.
+   The family spelling is glue with FONT_OPTIONS[].fontFamily (printDocuments.ts): one letter off
+   leaves the label in the fallback with no error. printFontFaces.test.ts guards it. */
+@font-face {
+  font-family: 'IBM Plex Sans Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../../assets/fonts/ibm-plex-sans-condensed-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../../assets/fonts/atkinson-hyperlegible-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../../assets/fonts/barlow-semi-condensed-500.woff2') format('woff2');
+}
 * {
   box-sizing: border-box;
 }
@@ -13,10 +143,11 @@ body,
 }
 
 body {
-  background-color: #fff;
-  color: #212529;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-regular);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -39,76 +170,40 @@ p {
   margin: 0;
 }
 
-@keyframes zoom {
-  from {
-    transform: scale(1.4);
-    opacity: 0;
-  }
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line);
+}
+
+/*
+ * Shared by the Spinner ring and by any icon that spins (progress_activity). It is a global class, not a
+ * module animation, because a CSS Module renames the keyframes it references and cannot point at this one.
+ */
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
   to {
-    transform: scale(1);
-    opacity: 1;
+    transform: rotate(360deg);
   }
 }
 
-@media print {
-  * {
-    page-break-before: always;
-  }
-}
-
-@page {
-  margin: 0;
-  size: 80mm auto;
-}
-
-.zoom-animation {
-  animation-name: zoom;
-  animation-duration: 0.3s;
-  animation-iteration-count: 1;
-  animation-timing-function: cubic-bezier(0.1, 0.82, 0.25, 1);
-}
-
-@keyframes placeHolderShimmer {
-  0% {
-    background-position: -468px 0;
-  }
-  100% {
-    background-position: 468px 0;
-  }
-}
-
-.animated-background {
-  animation-duration: 1s;
-  animation-fill-mode: forwards;
-  animation-iteration-count: infinite;
-  animation-name: placeHolderShimmer;
-  animation-timing-function: linear;
-  background: #f6f7f8;
-  background: linear-gradient(to right, #eee 8%, #ddd 18%, #eee 33%);
-  background-size: 800px 104px;
-  position: relative;
-}
-
-@media (min-width: 1200px) {
-  /* width */
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  /* Track */
-  ::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 10px;
-  }
-
-  /* Handle */
-  ::-webkit-scrollbar-thumb {
-    background: #c6c6c6;
-    border-radius: 10px;
-  }
-
-  /* Handle on hover */
-  ::-webkit-scrollbar-thumb:hover {
-    background: #c6c6c6;
-  }
+/* Set on the body by the sidebar resize handle while it is dragged: the cursor and the selection of the whole page. */
+body[data-resizing] {
+  cursor: col-resize;
+  user-select: none;
 }

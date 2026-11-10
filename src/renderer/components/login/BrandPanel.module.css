@@ -1,0 +1,45 @@
+/* Measures from the design, printer-v2.dc.html:439-445. Nothing clickable lives here; a button added to this
+   region has to say -webkit-app-region: no-drag (RN-13). */
+.root {
+  width: 400px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 56px 44px 32px;
+  background: var(--side);
+  color: #fff;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.logo {
+  width: 190px;
+  height: auto;
+  align-self: flex-start;
+}
+
+.pitch {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.15;
+}
+
+.text {
+  font-size: 15px;
+  color: var(--side-text);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.version {
+  margin-top: 40px;
+  font-size: 12px;
+  color: var(--side-muted);
+}

@@ -1,11 +1,11 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { useSelector } from 'renderer/store/selector';
-import { SocketStore } from 'renderer/store/socket-store';
+import { useAuth } from 'renderer/providers/auth';
+import { SocketStore } from 'renderer/services/socket-store';
 
 const store = new SocketStore('admin');
 
 export function useAdminSocket() {
-  const restaurant = useSelector(state => state.restaurant);
+  const { restaurant } = useAuth();
 
   useEffect(() => {
     if (restaurant) {

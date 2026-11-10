@@ -12,6 +12,12 @@ export interface PrinterSetting {
   no_margin: boolean;
   max_width: number;
   margin_size: number;
+  // Not editable in this app: the admin panel builds the installer download link from it.
+  delivery_printer_version: string;
+  // Born absent: the delivery-api does no migration or seeder. The value can be any string (the PUT
+  // has no FormRequest); resolveDocumentModel/resolveFontKey are what narrow it.
+  document_model?: string;
+  font_family?: string;
 }
 
 export interface Restaurant {
