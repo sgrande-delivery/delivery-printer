@@ -68,7 +68,13 @@ describe('buildPrintFontFacesCss', () => {
   it('percent-encodes a path with space and accent (RN-06)', () => {
     const css = buildPrintFontFacesCss(() => '/opt/Program Files/SGrande Impressão/x.woff2');
 
-    expect(css).toContain('file:///opt/Program%20Files/SGrande%20Impress%C3%A3o/x.woff2');
+    // Asserted by property, not by literal path: on Windows pathToFileURL resolves a drive-less
+    // path against the current drive, so `/opt/x` comes out as `file:///D:/opt/x`, and the
+    // full-string assertion broke the publish workflow (windows-latest) on v3.0.0. Both halves
+    // of RN-06 stay covered: the percent-encoding, and the `file:///` form that concatenating a
+    // Windows path by hand would not produce (`file://D:/...` is not a valid URL).
+    expect(css).toContain('Program%20Files/SGrande%20Impress%C3%A3o/x.woff2');
+    expect(css).toContain("src: url('file:///");
     expect(css).not.toContain('Impressão');
     expect(css).not.toContain(' Files');
   });
