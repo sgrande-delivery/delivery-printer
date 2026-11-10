@@ -26,7 +26,7 @@ Três mudanças pequenas e independentes, em três arquivos:
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | Asserção da RN-06 sem depender da plataforma | [#73](https://github.com/sgrande-delivery/delivery-printer/issues/73) | [73-platform-agnostic-font-url-assertion.md](./tasks/73-platform-agnostic-font-url-assertion.md) | — | executada |
-| 02 | Rodar a suíte também no `windows-latest` | [#74](https://github.com/sgrande-delivery/delivery-printer/issues/74) | [74-ci-windows-matrix.md](./tasks/74-ci-windows-matrix.md) | 01 | pendente |
+| 02 | Rodar a suíte também no `windows-latest` | [#74](https://github.com/sgrande-delivery/delivery-printer/issues/74) | [74-ci-windows-matrix.md](./tasks/74-ci-windows-matrix.md) | 01 | executada |
 | 03 | Recusar promoção de release sem `latest.yml` | [#75](https://github.com/sgrande-delivery/delivery-printer/issues/75) | [75-guard-release-promotion.md](./tasks/75-guard-release-promotion.md) | — | pendente |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
@@ -46,6 +46,11 @@ Nenhuma. A frente é inteiramente local.
 - **A task 03 não dá para verificar sem release.** O que dá para fazer antes é ler o payload de um evento `released` real — o do incidente de 2026-11-10 está no histórico de runs — e conferir que o `gate` novo teria falhado nele. A verificação de verdade é o próximo release: criar a pré-release, deixar o build terminar, promover, e ver o job sair verde sem buildar.
 
 ## Aprendizados que valem para as próximas tasks
+
+- **`if: runner.os == 'Linux'`, nunca `matrix.os == '<label>'`.** Condicionar step ao valor literal do label faz o `if` deixar de casar no dia em que alguém fixa a versão (`ubuntu-24.04`), e o step some em silêncio — gate que para de checar sem ficar vermelho. `runner.os` é imune.
+- **A matriz renomeia o check:** `check` virou `check (ubuntu-latest)` e `check (windows-latest)`. Hoje é inofensivo porque o ruleset `master-protection` não tem `required_status_checks` (conferido em 2026-11-10); quem for exigir check por nome tem de usar os dois novos.
+- **Repo público: minuto de runner Windows não é faturado.** O multiplicador 2× do Windows só vale em repo privado. O custo da matriz é fila e tempo de parede (~1,5 min → ~3 min, com os legs em paralelo), não dinheiro.
+- **Assimetria que fica, e é consciente:** o `publish.yml` roda `typecheck` no Windows e o gate passa a rodá-lo só no Linux, então erro de typecheck exclusivo do Windows ainda não reprova PR. É a decisão #1 de "Decisões pendentes" da spec. A alternativa de custo zero — tirar o typecheck do `publish.yml`, já que o gate o cobre — é task própria.
 
 - **A RN-06 da spec 52 tem duas pernas, e o `plan.md` parafraseou só uma.** A regra é "a URL é construída com `pathToFileURL()`, **nunca por concatenação de string**" — porque no Windows a concatenação crua produz `file://D:/…`, sem a terceira barra, que não é URL válida e faz a face sumir em silêncio. Medido na task 01: essa forma errada passa no teste vizinho (`declares six faces…`) e nas duas `not.toContain`, e é pega **só** pela asserção `src: url('file:///`. Quem for "limpar" o teste por achá-la redundante remove a única rede dessa perna.
 - **Cuidado ao citar "RN-06" aqui:** existem duas. A da spec 52 é a que o `printFonts.test.ts` protege; a desta spec é o custo da matriz por step. Nomear a spec ao citar RN de outra frente.

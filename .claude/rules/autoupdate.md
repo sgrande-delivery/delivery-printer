@@ -48,7 +48,11 @@ Cada instalador carrega `resources/app-update.yml` com o owner/repo do momento d
 
 ## Como o release sai
 
-Dois workflows. `ci.yml` checa (`pull_request` e `push: master`: `npm ci`, typecheck, lint, test, build) e **não publica**. `publish.yml` publica, no evento **`release: [published]`**, e é onde moram as armadilhas abaixo.
+Dois workflows. `ci.yml` checa (`pull_request` e `push: master`) e **não publica**. `publish.yml` publica, no evento **`release: [published]`**, e é onde moram as armadilhas abaixo.
+
+**O `ci.yml` roda em matriz, `[ubuntu-latest, windows-latest]`, e isso é invariante de release, não preferência:** `npm ci`, `test` e `build` rodam nos **dois**; `typecheck` e `lint` só no Linux, porque o veredito deles não muda com o SO e o único eixo que mudaria (caixa de nome de arquivo) é mais estrito lá. O motivo é paridade com este arquivo: o `publish.yml` empacota em `windows-latest`, então um teste cujo resultado depende da plataforma **não podia falhar no gate de PR nem passar na esteira** — foi exatamente assim que uma asserção de caminho do `printFonts` derrubou o step Test da **v3.0.0**, deixando a pré-release sem assets. Promovida em seguida, ela virou a `Latest` sem `latest.yml`, e todo app instalado tomou 404. Tirar a matriz reabre essa porta.
+
+Consequência operacional: o nome do check deixou de ser `check` e passou a ser **`check (ubuntu-latest)`** e **`check (windows-latest)`**. Hoje é inofensivo, porque o ruleset `master-protection` tem só `deletion`, `non_fast_forward` e `pull_request` — **nenhum `required_status_checks`** (conferido em 2026-11-10). Quem um dia exigir check por nome tem de usar os dois nomes novos, ou o gate passa a ser exigido de um job que não existe.
 
 ### O fluxo
 
