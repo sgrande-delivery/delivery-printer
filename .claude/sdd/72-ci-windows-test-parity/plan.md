@@ -28,6 +28,7 @@ Três mudanças pequenas e independentes, em três arquivos:
 | 01 | Asserção da RN-06 sem depender da plataforma | [#73](https://github.com/sgrande-delivery/delivery-printer/issues/73) | [73-platform-agnostic-font-url-assertion.md](./tasks/73-platform-agnostic-font-url-assertion.md) | — | executada |
 | 02 | Rodar a suíte também no `windows-latest` | [#74](https://github.com/sgrande-delivery/delivery-printer/issues/74) | [74-ci-windows-matrix.md](./tasks/74-ci-windows-matrix.md) | 01 | executada |
 | 03 | Recusar promoção de release sem `latest.yml` | [#75](https://github.com/sgrande-delivery/delivery-printer/issues/75) | [75-guard-release-promotion.md](./tasks/75-guard-release-promotion.md) | — | executada |
+| 04 | Guarda do instalador de teste derivada dos `.env` | [#76](https://github.com/sgrande-delivery/delivery-printer/issues/76) | [76-derive-leak-guard-hosts.md](./tasks/76-derive-leak-guard-hosts.md) | — | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -47,6 +48,7 @@ Nenhuma. A frente é inteiramente local.
 
 ## Aprendizados que valem para as próximas tasks
 
+- **Guarda que repete o valor que protege fica para trás do primeiro PR que mude esse valor.** O `test-installer.yml` procurava `socket2.sgrande.delivery` por semanas depois de o PR #71 o aposentar (issue #76). Derivar do `.env` versionado nunca desatualiza. Mas **derivar move o elo fraco para a derivação**, e o autoteste tem de atacar *ela*, contra a fonte: fixture feito do valor já derivado passa exatamente quando a derivação falhou. Medido nesta spec, com dois cenários em que a primeira versão saía verde com produção no bundle — `wss://` e valor entre aspas no `.env`, duas formas que o `sed` não casava e descartava em silêncio.
 - **Release criada direto como normal dispara `published` E `released`** (fonte: `github/docs`, `src/webhooks/data/fpt/release.json`, conferido em 2026-11-10). São dois runs para a mesma tag, serializados pelo `concurrency`. Quem acrescentar evento ao `on` de qualquer workflow daqui: meça o que ele dispara, não deduza do nome.
 - **O payload do evento é um retrato do instante, não o estado de agora.** Com o `concurrency` enfileirando, um run pode decidir com dados de antes do build que já terminou — foi o que obrigou a mensagem do gate a mandar conferir com `gh release view` antes de concluir que o build falhou. Vale para qualquer job que leia `github.event.*` e espere em fila.
 - **Duas folgas conhecidas do gate, escritas na `autoupdate.md`:** apagar o asset `latest.yml` da `Latest` não dispara webhook nenhum (não existe evento de asset de release), e o predicado do portão é só o `latest.yml` — release com ele e sem o `.exe` passa verde. Nenhuma das duas é escopo desta spec; as duas são candidatas a task própria.
