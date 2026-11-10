@@ -32,34 +32,124 @@ jobs:
 
       - run: npm ci
 
-      # As URLs de dev nao sao segredo: o `.env.development` versionado tem as
-      # mesmas. O `.env.production.local` tem a maior precedencia no loadEnv do
+      # As URLs de dev nao sao segredo: o `.env.development` versionado tem as mesmas,
+      # e e dele que elas saem -- copiadas, nunca repetidas aqui. Repetidas, ficariam
+      # para tras do primeiro PR que mudasse o ambiente de dev, do mesmo jeito que a
+      # guarda abaixo ficou para tras do PR #71. A copia tambem cobre APP_* que ainda
+      # nao existe: variavel nova entra no build de teste sem ninguem precisar lembrar
+      # deste step. O `.env.production.local` tem a maior precedencia no loadEnv do
       # Vite e e gitignorado, entao ele e escrito aqui em vez de commitado.
       - name: Point the production build at the dev environment
         shell: bash
-        run: |
-          cat > .env.production.local <<'EOF'
-          APP_API_BASE_URL=https://api-dev.sgrande.delivery/api/admin/
-          APP_WS_BASE_URL=https://socket-dev.sgrande.delivery
-          EOF
+        run: cp .env.development .env.production.local
 
       - run: npm run build
 
       # Falha o build se uma URL de producao vazou para os bundles: e a unica
       # verificacao que separa "instalador de teste" de "instalador que
       # registra a maquina como impressora em producao".
+      #
+      # Os hosts sao DERIVADOS dos .env versionados, nunca repetidos aqui. Repetidos,
+      # eles ficam para tras do primeiro PR que mude um .env e a guarda passa a nao
+      # poder falhar -- foi o que aconteceu com `socket2.sgrande.delivery`, que o PR #71
+      # aposentou e este grep procurou por semanas (issue #76).
       - name: Refuse to ship a test installer that talks to production
         shell: bash
         run: |
-          if grep -rq "api\.sgrande\.delivery\|socket2\.sgrande\.delivery" out/; then
-            echo "::error::a production URL leaked into the bundles"
-            grep -rn "api\.sgrande\.delivery\|socket2\.sgrande\.delivery" out/ | head
-            exit 1
-          fi
-          if ! grep -rq "api-dev\.sgrande\.delivery" out/; then
-            echo "::error::the dev API URL is not in the bundles"
-            exit 1
-          fi
+          set -euo pipefail
+
+          for env_file in .env.production .env.development; do
+            if [ ! -f "$env_file" ]; then
+              echo "::error::$env_file não existe, e é dos dois .env versionados que esta guarda deriva os hosts. Sem ele, ela não pode afirmar nada."
+              exit 1
+            fi
+          done
+
+          # As linhas de onde um host TEM de sair. Tolera `export`, espaco em volta do `=`,
+          # aspas e qualquer esquema (http, https, ws, wss), porque toda essa forma e valida
+          # no dotenv e host que a extracao perde sai da guarda EM SILENCIO -- a doenca da
+          # #76, nao a cura. O `tr -d '\r'` cobre .env com CRLF: sem ele o host sairia
+          # terminado em \r, nenhum grep o acharia no bundle e a metade dele ficaria cega
+          # (hoje o `.gitattributes` normaliza para LF, mas a guarda nao depende disso).
+          url_lines_of() {
+            tr -d '\r' < "$1" | grep -E "^[[:space:]]*(export[[:space:]]+)?APP_[A-Za-z_]+[[:space:]]*=[[:space:]]*[\"']?[a-zA-Z]+://" || true
+          }
+
+          # O autoteste que vale e este, e ele e sobre a EXTRACAO: toda linha de URL do .env
+          # tem de render um host com cara de host. Linha que nao rende host deixaria essa
+          # metade da guarda cega, exatamente como a #76 ficou; host com lixo (comentario no
+          # fim da linha vira `host # nota`) viraria um grep que acusa qualquer bundle. As
+          # duas param aqui, com a linha problematica na tela. Um fixture escrito a partir do
+          # proprio host extraido nao serve de autoteste: `grep -F` sempre acha a string que
+          # acabou de ser escrita, entao ele passa justamente quando a extracao perdeu um host.
+          # Porque o host e validado, ele nao tem espaco, e os `for` abaixo podem iterar as
+          # listas sem aspas.
+          collect_hosts() {
+            url_lines=$(url_lines_of "$1")
+            if [ -z "$url_lines" ]; then
+              echo "::error::não achei nenhuma linha APP_*=<esquema>://… em $1, então esta guarda não tem de onde derivar host. Confira o formato do arquivo."
+              return 1
+            fi
+            HOSTS=''
+            while IFS= read -r line; do
+              host=$(printf '%s' "$line" | sed -E "s#^[^=]*=[[:space:]]*[\"']?[a-zA-Z]+://##; s#[/\"'[:space:]].*##")
+              case "$host" in
+                '' | *[!A-Za-z0-9.:-]*)
+                  echo "::error::de \"$line\" ($1) saiu \"$host\", que não é um host, então a guarda não pode derivar desta linha. Corrija o .env ou a extração — host que ela não extrai é metade de guarda cega, e foi isso que a issue #76 foi."
+                  return 1
+                  ;;
+              esac
+              HOSTS="$HOSTS $host"
+            done <<< "$url_lines"
+            HOSTS=$(printf '%s\n' $HOSTS | sort -u)
+          }
+
+          collect_hosts .env.production
+          FORBIDDEN=$HOSTS
+          collect_hosts .env.development
+          EXPECTED=$HOSTS
+
+          echo "produção (proibido): $(echo "$FORBIDDEN" | tr '\n' ' ')"
+          echo "dev (esperado):      $(echo "$EXPECTED" | tr '\n' ' ')"
+
+          # Se um host de producao for substring de um de dev, a guarda nao consegue
+          # distinguir os dois e passaria a reprovar todo build de teste. Melhor parar
+          # aqui, dizendo o porque, do que virar um gate que ninguem entende.
+          for f in $FORBIDDEN; do
+            for e in $EXPECTED; do
+              case "$e" in
+                *"$f"*)
+                  echo "::error::o host de produção '$f' está contido no de dev '$e', então procurá-lo no bundle acusaria o build de teste. Mude um dos dois ambientes ou torne esta verificação mais específica."
+                  exit 1
+                  ;;
+              esac
+            done
+          done
+
+          # A busca e por string literal (`-F`): o ponto do padrao antigo era regex e um dia
+          # casaria por acidente. O `|| true` no `head` e por causa do `pipefail` -- com o
+          # pipe fechado antes do fim, o grep sai 141 e levaria o script embora no meio da
+          # acusacao, trocando o exit 1 explicito por um codigo que nao explica nada.
+          LEAKED=0
+          for f in $FORBIDDEN; do
+            if grep -rqF "$f" out/; then
+              echo "::error::a URL de produção '$f' vazou para os bundles"
+              grep -rnF "$f" out/ | head || true
+              LEAKED=1
+            fi
+          done
+          [ "$LEAKED" -eq 0 ] || exit 1
+
+          # A verificacao positiva supoe que todo APP_* de URL do .env.development chega ao
+          # bundle, o que vale enquanto o valor for consumido no codigo: o `define` do Vite
+          # inlina no ponto de uso, entao variavel declarada e ainda nao usada reprova aqui.
+          for e in $EXPECTED; do
+            if ! grep -rqF "$e" out/; then
+              echo "::error::a URL de dev '$e' não está nos bundles, então não dá para afirmar que o instalador aponta para dev"
+              exit 1
+            fi
+          done
+
           echo "ok: bundles point at dev"
 
       - run: npx electron-builder --win --publish never

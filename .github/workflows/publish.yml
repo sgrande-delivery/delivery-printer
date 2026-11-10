@@ -9,16 +9,24 @@ name: Publish
 # release just as happily, so refusing that case is the gate job's job.
 on:
   release:
-    types: [published]
+    # `released` is what promoting a pre-release fires, measured on 2026-11-10: promoting v3.0.0
+    # ran nothing at all and left the repository with a Latest that had no latest.yml. `published`
+    # alone never sees a promotion. Do not add the other types: none of them produces that state,
+    # and `edited` would fire on every save of the release notes.
+    types: [published, released]
 
+# Per tag, and queued rather than cancelled, on purpose: promoting right after creating the
+# pre-release must wait for the build in progress. With cancel-in-progress: true the promotion
+# would cancel that build, which is another way to end with a release that has no assets.
 concurrency:
   group: publish-${{ github.event.release.tag_name }}
   cancel-in-progress: false
 
 jobs:
-  # "published" may fire for a pre-release, for a promotion of one, or for a
-  # release created directly as normal. Only the real state of the release
-  # tells them apart: a promotion already carries latest.yml, a release created
+  # "published" may fire for a pre-release or for a release created directly as normal;
+  # "released" fires for a promotion (and also for a direct normal release, next to
+  # "published"). The event type does not tell these apart, only the real state of the
+  # release does: a promotion already carries latest.yml, a release created
   # directly as normal carries nothing. That last case is the dangerous one,
   # because /releases/latest already points at it while no latest.yml exists,
   # so every installed app would fail to update, silently. It must fail loudly.
@@ -30,10 +38,18 @@ jobs:
       - name: Decide whether to build
         id: decide
         env:
+          EVENT_ACTION: ${{ github.event.action }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           PRERELEASE: ${{ github.event.release.prerelease }}
           ASSETS: ${{ toJSON(github.event.release.assets) }}
         run: |
+          # A promotion must never build: the release is already the Latest, and attaching assets
+          # now would be the very window this gate exists to close. It either is fine or it fails.
+          if [ "$EVENT_ACTION" = "released" ] && [ "$PRERELEASE" = "true" ]; then
+            echo "Evento released em pré-release $RELEASE_TAG: nada a fazer."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$PRERELEASE" = "true" ]; then
             echo "Pre-release $RELEASE_TAG: a esteira vai buildar e publicar."
             echo "build=true" >> "$GITHUB_OUTPUT"
@@ -49,6 +65,10 @@ jobs:
             echo "Promoção detectada ($RELEASE_TAG já tem latest.yml): nada a buildar."
             echo "build=false" >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+          if [ "$EVENT_ACTION" = "released" ]; then
+            echo "::error::A release $RELEASE_TAG foi promovida a release normal sem ter latest.yml, então ela já é a Latest do repositório e todo app instalado está tomando 404 ao buscar atualização, sem aviso. Primeiro ato, agora: marque-a de volta como PRÉ-RELEASE (gh release edit $RELEASE_TAG --prerelease), o que devolve a Latest para a versão anterior em segundos. Depois, antes de concluir que o build falhou: este job leu os assets do payload do evento, isto é, de quando a promoção aconteceu — se você promoveu com a esteira ainda rodando, confira a release agora (gh release view $RELEASE_TAG), porque os arquivos podem ter chegado depois. Só promova de novo com .exe, .blockmap e latest.yml anexados e o instalador conferido."
+            exit 1
           fi
           echo "::error::A release $RELEASE_TAG está publicada como release normal e não tem latest.yml, então ela já é a Latest do repositório e todo app instalado tomaria 404 ao buscar atualização. Marque-a como PRÉ-RELEASE agora, para tirá-la da Latest: se ela foi promovida antes de a esteira terminar, basta esperar o build que está rodando; se ela nasceu como release normal, apague e recrie como pré-release para a esteira rodar. Promova só depois de instalar e conferir o .exe anexado."
           exit 1

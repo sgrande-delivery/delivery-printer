@@ -11,9 +11,19 @@ concurrency:
 
 jobs:
   check:
-    # Checks (tsc, eslint, vitest, electron-vite build) do not depend on Windows;
-    # only the NSIS packaging in publish.yml does.
-    runs-on: ubuntu-latest
+    # The suite and the build run on both systems because publish.yml packages on
+    # Windows: a test whose result depends on the platform could otherwise never fail
+    # the PR gate and never pass the publishing pipeline. That is exactly how the
+    # printFonts path assertion took down the v3.0.0 release. Typecheck and lint stay on
+    # Linux alone: their verdict does not change with the OS, and the one axis that could
+    # (file name casing) is stricter on Linux. A duplicated gate is only a slower gate,
+    # and a slow gate gets switched off.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout git repo
@@ -28,10 +38,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # runner.os, not matrix.os: pinning the matrix to a specific label one day
+      # (ubuntu-24.04, as people do when -latest moves) would stop these two matching
+      # anywhere, and typecheck and lint would quietly run on no platform at all,
+      # with nothing turning red. That is the failure this whole spec exists to stop.
       - name: Typecheck
+        if: runner.os == 'Linux'
         run: npm run typecheck
 
       - name: Lint
+        if: runner.os == 'Linux'
         run: npm run lint
 
       - name: Test
