@@ -10,7 +10,13 @@ export class TrayBuilder {
     private readonly app: App,
     private readonly window: BrowserWindow
   ) {
-    this.tray = new Tray(getAssetPath(this.app, 'icon.png'));
+    // A dedicated tray bitmap: 16px drawn for that size, with the @2x beside it that Electron picks
+    // on its own for high density screens. The installer icon.png is 1024px and would arrive here
+    // downscaled. On macOS the Template suffix is what makes the system repaint the icon for the
+    // menu bar theme.
+    const icon = process.platform === 'darwin' ? 'trayTemplate.png' : 'tray.png';
+
+    this.tray = new Tray(getAssetPath(this.app, 'tray', icon));
   }
 
   build() {
