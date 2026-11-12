@@ -327,17 +327,16 @@ describe('TestPrint', () => {
       expect(previewLines(container)).toEqual(pageLines(buildTestPrintPage(request, packageJson.version, when)));
     });
 
-    it('carries the accents line, the frame and both rulers', async () => {
+    it('carries the accents line, the frame and the column ruler', async () => {
       const { container } = renderScreen();
       await screen.findAllByRole('radio');
 
       const lines = previewLines(container);
 
       expect(lines).toContain('Acentos: ÁÉÍÓÚ ÂÊÔ ÃÕ Ç');
-      expect(lines).toContain('|<-- 80 mm -->|');
       expect(lines).toContain('1234567890123456789012345678901234567890');
       expect(container.querySelector(`.${styles.frame}`)).not.toBeNull();
-      expect(container.querySelectorAll(`.${styles.ruler}`)).toHaveLength(2);
+      expect(container.querySelectorAll(`.${styles.ruler}`)).toHaveLength(1);
       expect(container.querySelector(`.${styles.paperTitle}`)).toHaveTextContent('TESTE DE IMPRESSÃO');
       expect(container.querySelectorAll(`.${styles.paperLine}`)).toHaveLength(8);
     });

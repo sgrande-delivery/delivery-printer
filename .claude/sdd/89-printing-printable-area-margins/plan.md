@@ -30,7 +30,7 @@ A frente inteira cabe no **processo main**, e nos dois arquivos que decidem geom
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | Imprimir na área imprimível do driver | [#90](https://github.com/sgrande-delivery/delivery-printer/issues/90) | `tasks/90-print-inside-printable-area.md` | — | executada |
-| 02 | Página de teste com a geometria do comprovante | [#91](https://github.com/sgrande-delivery/delivery-printer/issues/91) | `tasks/91-test-page-relative-geometry.md` | 01 | pendente |
+| 02 | Página de teste com a geometria do comprovante | [#91](https://github.com/sgrande-delivery/delivery-printer/issues/91) | `tasks/91-test-page-relative-geometry.md` | 01 | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -57,6 +57,12 @@ O que prova é impressão real, numa bobina de 80 mm, e **não dá para fazer da
 3. imprimir a página de teste na mesma impressora: a moldura tem de fechar nos quatro lados;
 4. **ler a largura na escala em milímetros** da própria página de teste (task 02): o ponto em que ela some do papel é a largura imprimível real. É esse número que diz se o driver declarou a área imprimível (RN-03) e é ele que decide se a decisão pendente 1 vira spec nova.
 
+Três coisas a observar nesse passo, levantadas no review da task 02:
+
+- **O número lido é piso em 5 mm.** A marca fica à esquerda do seu traço, então uma área de 72 mm mostra "70" e esconde "75". Registre o intervalo (`≥ 70 e < 75`), não o ponto — a decisão pendente 1 vai ser escrita em cima desse número.
+- **A escala é a última coisa da página**, logo a mais perto do serrote e a que mais fica dentro do mecanismo até o próximo avanço de papel. Se a cauda vier rasgada ou engolida, mover a escala para antes da moldura é conserto de uma linha.
+- **Área imprimível maior que 80 mm não é revelável** pela escala (o `body` tem teto de 80 mm, 16 células). Irrelevante em térmica; só não use esta página como medidor em impressora de folha.
+
 Se o passo 2 não mudar nada em relação a hoje, a entrega **não é um fracasso**: é a medição que faltava para escrever o plano B. O que não pode acontecer é sair recuo grande nas quatro bordas — aí o driver declarou margens generosas demais, e a conversa é outra.
 
 ## Aprendizados que valem para as próximas tasks
@@ -64,4 +70,8 @@ Se o passo 2 não mudar nada em relação a hoje, a entrega **não é um fracass
 - **A suíte completa estoura timeout nesta máquina com o padrão de workers.** São 6 CPUs e o Vitest sobe um worker por arquivo (73); dez testes de fila que escrevem arquivo de verdade dão "Test timed out in 5000ms" por contenção de I/O, e isso **não é regressão**. Rodados isolados, os mesmos 53 testes passam em 3 s. Use `npx vitest run --maxWorkers=4` para qualquer comparação com baseline — foi assim que o baseline desta spec foi medido (73 arquivos / 812 testes, tudo verde).
 - **Afirmação sobre comportamento de terceiro em comentário precisa de origem.** A task 01 escreveu, seca, que o Chromium ignora o `@page margin` para qualquer `marginType` que não seja `default`. É verdade conhecida, mas **não é verificável neste repo**: a tipagem do Electron documenta só os valores aceitos. Passou a citar a RN da spec e a dizer que não é medível daqui. O critério: se a próxima pessoa não tem como conferir a frase, ela precisa saber de onde a frase veio.
 - **Invariante escrita em regra tem de nomear o valor em vigor, não só o que mudou.** A primeira redação de `.claude/rules/printing.md:20` explicava o que `none` fazia e por que cortava, sem dizer que hoje se manda `printableArea` — e como o passo 4 cita a chamada abreviada, não havia onde descobrir. Regra que registra só a mudança envelhece em uma task.
+- **Teste que lê HTML por texto precisa de âncora que não sobreviva ao erro.** A task 02 extraía a moldura com `slice(indexOf(a), indexOf(b))`; quando `b` não existe, `slice(start, -1)` devolve quase o documento inteiro e o teste passa a falhar por tabela em vez de medir o que diz medir — havia uma mutação real (escala dentro da moldura, sem indentação) que ele não pegava. A âncora passou a ser `match(/<div class="frame">[\s\S]*?\n<\/div>/)`, que depende da indentação do template e não de um índice que pode faltar.
+- **`DOMParser` não existe no lado node.** `tsconfig.node.json` é `lib: ["ES2022"]` + `types: ["node"]`, e `new DOMParser()` dá `TS2304` ali. Teste de `src/main/**` que precisa olhar HTML usa regex; dar DOM ao tsconfig node destruiria o único guard de fronteira que o `CLAUDE.md` diz que funciona.
+- **Texto visível que aparece em dois lugares da mesma página vira constante, não cópia.** A nota da página de teste citava a escala por um nome ("escala em milímetros") diferente do rótulo impresso ("Largura impressa (mm)"). O título virou `TEST_PRINT_SCALE_TITLE` e os dois derivam dele — é a mesma razão de `src/shared/testPrintContent.ts` existir, aplicada dentro do próprio arquivo.
+- **A fonte única de texto faz a tela herdar instrução sobre markup que só o papel tem.** A nota compartilhada agora ensina a ler a escala em milímetros, e a tela `/print-test` — que afirma "é isto que vai sair" — não a desenha, de propósito (a pré-visualização é ilustração de geometria, spec 38 RN-09). É consequência aceita, mas é o tipo de divergência que cresce: texto novo que fale de um elemento do papel precisa de uma olhada na tela antes de entrar.
 - **`onRawPrint.ts` agora tem teste** (`src/main/__tests__/onRawPrint.test.ts`), com `electron` mockado e `fs`/`os`/`printFonts`/`printerMatch` reais. Quem precisar exercitar o caminho de impressão no main já tem o molde pronto — inclusive o `vi.mock('../logger')`, que não é peso morto: sem ele o `electron-log/main` é carregado de verdade contra o stub de `electron` e o tempo de import do arquivo salta de ~2% para 77% do run.
