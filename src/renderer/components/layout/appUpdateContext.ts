@@ -7,6 +7,8 @@ export interface AppUpdateContextValue {
   check(): Promise<void>;
   download(): Promise<void>;
   setAutoDownload(value: boolean): Promise<void>;
+  restart(): Promise<void>;
+  cancelRestart(): Promise<void>;
 }
 
 const noop = (): Promise<void> => Promise.resolve();
@@ -20,6 +22,8 @@ export const AppUpdateContext = createContext<AppUpdateContextValue>({
   check: noop,
   download: noop,
   setAutoDownload: noop,
+  restart: noop,
+  cancelRestart: noop,
 });
 
 export function useAppUpdateContext(): AppUpdateContextValue {

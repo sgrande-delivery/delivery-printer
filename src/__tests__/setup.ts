@@ -62,6 +62,8 @@ Object.defineProperty(window, 'electron', {
     setAutoDownloadUpdates: vi
       .fn()
       .mockImplementation((value: boolean) => Promise.resolve({ ...idleUpdateState(), autoDownload: value })),
+    restartToUpdate: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),
+    cancelRestart: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),
     onUpdateChanged: vi.fn().mockReturnValue(() => undefined),
   },
 });

@@ -24,6 +24,8 @@ export const INVOKE_CHANNELS = {
   checkForUpdate: 'update:check',
   downloadUpdate: 'update:download',
   setAutoDownloadUpdates: 'update:set-auto-download',
+  restartToUpdate: 'update:restart',
+  cancelRestart: 'update:cancel-restart',
 } as const;
 
 // renderer -> main, fire-and-forget (ipcMain.on / ipcRenderer.send)

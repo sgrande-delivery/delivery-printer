@@ -40,6 +40,12 @@ describe('useAppUpdate', () => {
     vi.mocked(window.electron.setAutoDownloadUpdates)
       .mockReset()
       .mockResolvedValue(state({ autoDownload: false }));
+    vi.mocked(window.electron.restartToUpdate)
+      .mockReset()
+      .mockResolvedValue(state({ status: 'restarting' }));
+    vi.mocked(window.electron.cancelRestart)
+      .mockReset()
+      .mockResolvedValue(state({ status: 'ready', restartScheduled: false }));
     vi.mocked(window.electron.onUpdateChanged)
       .mockReset()
       .mockReturnValue(() => undefined);
@@ -122,6 +128,37 @@ describe('useAppUpdate', () => {
     await act(() => result.current.setAutoDownload(false));
     expect(window.electron.setAutoDownloadUpdates).toHaveBeenCalledWith(false);
     expect(result.current.state?.autoDownload).toBe(false);
+  });
+
+  // Each action is one line, and a swapped channel would be silent: restart is the most dangerous thing
+  // the operator can ask for, and cancelRestart is the only way back out of it.
+  it('restart and cancelRestart call their own channel and adopt the resolved state', async () => {
+    const { result } = renderHook(() => useAppUpdate());
+    await waitFor(() => expect(result.current.state).not.toBeNull());
+
+    await act(() => result.current.restart());
+    expect(window.electron.restartToUpdate).toHaveBeenCalledTimes(1);
+    expect(window.electron.cancelRestart).not.toHaveBeenCalled();
+    expect(result.current.state?.status).toBe('restarting');
+
+    await act(() => result.current.cancelRestart());
+    expect(window.electron.cancelRestart).toHaveBeenCalledTimes(1);
+    expect(result.current.state).toMatchObject({ status: 'ready', restartScheduled: false });
+  });
+
+  it('a restart the main process refuses keeps the state and warns the operator', async () => {
+    vi.mocked(window.electron.restartToUpdate).mockRejectedValue(new Error('boom'));
+    vi.mocked(window.electron.cancelRestart).mockRejectedValue(new Error('boom'));
+
+    const { result } = renderHook(() => useAppUpdate());
+    await waitFor(() => expect(result.current.state).not.toBeNull());
+    const before = result.current.state;
+
+    await act(() => result.current.restart());
+    await act(() => result.current.cancelRestart());
+
+    expect(result.current.state).toBe(before);
+    expect(mocks.handleOpen).toHaveBeenCalledTimes(2);
   });
 
   it('a rejecting channel keeps the previous state and warns the operator', async () => {

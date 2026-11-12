@@ -9,7 +9,7 @@ import { onRetryFailed } from './ipc-events/onRetryFailed';
 import { onDiscardJob } from './ipc-events/onDiscardJob';
 import { onReprintJob } from './ipc-events/onReprintJob';
 import { onNotifyConnection } from './ipc-events/onNotifyConnection';
-import { bootPrintQueue } from './queue/print-queue';
+import { bootPrintQueue, onQueueChanged } from './queue/print-queue';
 import { onNotification } from './ipc-events/onNotification';
 import { onLog } from './ipc-events/onLog';
 import { onRevealLogs } from './ipc-events/onRevealLogs';
@@ -21,6 +21,8 @@ import { onUpdateState } from './ipc-events/onUpdateState';
 import { onCheckForUpdate } from './ipc-events/onCheckForUpdate';
 import { onDownloadUpdate } from './ipc-events/onDownloadUpdate';
 import { onSetAutoDownloadUpdates } from './ipc-events/onSetAutoDownloadUpdates';
+import { onRestartToUpdate } from './ipc-events/onRestartToUpdate';
+import { onCancelRestart } from './ipc-events/onCancelRestart';
 import { onResolvedChange, titleBarOverlayFor } from './uiPreferences';
 import { describeError } from 'shared/describeError';
 import { EVENT_CHANNELS, INVOKE_CHANNELS, SEND_CHANNELS } from 'shared/ipcChannels';
@@ -32,6 +34,7 @@ import { TrayBuilder } from './tray';
 import { MainWindowBuilder } from './window';
 import { registerAutostart } from './autostart';
 import { appUpdater } from './updater';
+import { printQueueStore } from './queue/print-queue-store';
 
 ipcMain.handle(INVOKE_CHANNELS.rawPrint, onRawPrint);
 ipcMain.handle(INVOKE_CHANNELS.listPrinters, onListPrinters);
@@ -53,6 +56,8 @@ ipcMain.handle(INVOKE_CHANNELS.updateState, onUpdateState);
 ipcMain.handle(INVOKE_CHANNELS.checkForUpdate, onCheckForUpdate);
 ipcMain.handle(INVOKE_CHANNELS.downloadUpdate, onDownloadUpdate);
 ipcMain.handle(INVOKE_CHANNELS.setAutoDownloadUpdates, onSetAutoDownloadUpdates);
+ipcMain.handle(INVOKE_CHANNELS.restartToUpdate, onRestartToUpdate);
+ipcMain.handle(INVOKE_CHANNELS.cancelRestart, onCancelRestart);
 
 app.on('window-all-closed', () => onWindowAllClosed(app));
 
@@ -88,7 +93,11 @@ function boot(): void {
 
         window.webContents.send(EVENT_CHANNELS.updateChanged, state);
       });
-      appUpdater().start();
+      appUpdater().start({
+        // Only 'pending': a 'failed' job already gave up (RN-07) and waiting for it would be forever.
+        pendingCount: () => printQueueStore.list('pending').length,
+        onQueueChanged,
+      });
 
       app.on('before-quit', event => onBeforeQuit(event, window));
       app.on('second-instance', () => onSecondInstance(window));

@@ -15,12 +15,37 @@ function send(channel: string, job?: PrintJobSummary): void {
   }
 }
 
+const changedListeners = new Set<() => void>();
+
+// Listeners in the main process, told on every announcement the window also gets.
+export function onQueueChanged(listener: () => void): () => void {
+  changedListeners.add(listener);
+
+  return () => {
+    changedListeners.delete(listener);
+  };
+}
+
+function notifyChanged(): void {
+  for (const listener of [...changedListeners]) {
+    try {
+      listener();
+    } catch (err: unknown) {
+      logger.error('print-queue: a change listener failed', describeError(err));
+    }
+  }
+}
+
 // The one worker of the process: the single-instance lock makes it the only one.
 export const printQueueWorker = createPrintQueueWorker({
   print: printReceipt,
   onPrinted: job => send(EVENT_CHANNELS.jobPrinted, job),
   onFailed: job => send(EVENT_CHANNELS.jobFailed, job),
-  onChanged: () => send(EVENT_CHANNELS.queueChanged),
+  onChanged: () => {
+    // The window goes first: nothing a listener does may delay or prevent it.
+    send(EVENT_CHANNELS.queueChanged);
+    notifyChanged();
+  },
 });
 
 // Boot is where the queue file is cured and trimmed (compact and prune are the

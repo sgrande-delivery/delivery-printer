@@ -2,7 +2,7 @@ import { App, BrowserWindow, Menu, shell } from 'electron';
 import path from 'node:path';
 import { getAssetPath } from './asset';
 import { loadRenderer } from './util';
-import { isQuiting } from './tray';
+import { isQuiting } from './quitState';
 import { registerDevtools } from './devtools';
 import { START_MINIMIZED_ARG } from './autostart';
 import { themeArgument } from 'shared/uiTheme';
@@ -69,7 +69,7 @@ export class MainWindowBuilder {
     });
 
     this.window.on('close', event => {
-      if (isQuiting) {
+      if (isQuiting()) {
         return;
       }
 

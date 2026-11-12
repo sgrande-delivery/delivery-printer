@@ -6,9 +6,19 @@ import { UPDATE_CHECK_INTERVAL_MS } from 'shared/appUpdate';
 import type { UpdateState, UpdateStatus } from 'shared/appUpdate';
 import { releaseNotesToLines } from 'shared/releaseNotes';
 import { logger } from './logger';
+import { markQuiting } from './quitState';
 import { readAutoDownloadUpdates, writeAutoDownloadUpdates } from './uiPreferences';
 
 type Listener = (state: UpdateState) => void;
+
+// What the updater needs from the print queue, injected by main.ts so that the arrow stays visible where
+// it is wired (RN-17: the queue never learns the updater exists) and the updater tests need no queue file.
+export interface QueueLink {
+  /** Jobs still going out. A 'failed' job is not one of them: it gave up, and waiting for it never ends. */
+  pendingCount(): number;
+  /** Calls the listener on every announcement of the queue; returns the unsubscribe. */
+  onQueueChanged(listener: () => void): () => void;
+}
 
 // A check in the middle of a download is a request to confuse the electron-updater.
 const BUSY: ReadonlySet<UpdateStatus> = new Set<UpdateStatus>(['downloading', 'ready', 'restarting']);
@@ -25,6 +35,8 @@ export class AppUpdater {
   private readonly listeners = new Set<Listener>();
   private timer: NodeJS.Timeout | null = null;
   private started = false;
+  private queue: QueueLink | null = null;
+  private unsubscribeQueue: (() => void) | null = null;
 
   constructor() {
     this.current = {
@@ -97,7 +109,55 @@ export class AppUpdater {
     }
   }
 
-  start(): void {
+  requestRestart(): UpdateState {
+    if (this.current.status !== 'ready') {
+      logger.warn(`update: restart requested while ${this.current.status}; ignored`);
+
+      return this.state();
+    }
+
+    // Asked twice (a double click): one subscription and one wait.
+    if (this.current.restartScheduled) {
+      return this.state();
+    }
+
+    if (!this.queue) {
+      logger.warn('update: restart requested before the queue was linked; ignored');
+
+      return this.state();
+    }
+
+    const pending = this.countPending();
+
+    if (pending === 0) {
+      this.install();
+
+      return this.state();
+    }
+
+    // No deadline, on purpose (RN-08): cancelRestart() is the way out.
+    this.unsubscribeQueue = this.queue.onQueueChanged(() => this.onQueueChanged());
+    this.set({ restartScheduled: true, pendingJobs: pending });
+
+    return this.state();
+  }
+
+  cancelRestart(): UpdateState {
+    if (this.current.status !== 'ready' || !this.current.restartScheduled) {
+      return this.state();
+    }
+
+    this.dropQueueSubscription();
+    this.set({ restartScheduled: false, pendingJobs: 0 });
+
+    return this.state();
+  }
+
+  start(queue?: QueueLink): void {
+    if (queue) {
+      this.queue = queue;
+    }
+
     if (this.started) {
       return;
     }
@@ -121,6 +181,63 @@ export class AppUpdater {
       clearInterval(this.timer);
       this.timer = null;
     }
+
+    this.dropQueueSubscription();
+  }
+
+  // The only way out of 'ready' towards the installer. 'restarting' is announced BEFORE the install so
+  // the overlay gets painted; and the quit mark goes BEFORE quitAndInstall (RN-05): without it the window's
+  // 'close' handler vetoes, app.quit() aborts, and an installer is left waiting for a process that stays.
+  private install(): void {
+    this.dropQueueSubscription();
+    this.set({ status: 'restarting', restartScheduled: false, pendingJobs: 0, error: null });
+
+    try {
+      // One-way on purpose: clearing the mark would reopen RN-05's window, with an installer already spawned.
+      // quitAndInstall fails by throwing or by returning without quitting (it dispatches 'error'); either
+      // way the mark stays, the state goes to 'error' and the window's X now closes the app.
+      markQuiting();
+      // Silent (RN-06: the assisted NSIS would open its wizard on the PDV screen) and reopening afterwards.
+      autoUpdater.quitAndInstall(true, true);
+    } catch (err: unknown) {
+      this.fail('update install failed', err);
+    }
+  }
+
+  private onQueueChanged(): void {
+    if (this.current.status !== 'ready' || !this.current.restartScheduled) {
+      this.dropQueueSubscription();
+
+      return;
+    }
+
+    const pending = this.countPending();
+
+    if (pending === 0) {
+      this.install();
+
+      return;
+    }
+
+    if (pending !== this.current.pendingJobs) {
+      this.set({ pendingJobs: pending });
+    }
+  }
+
+  // A queue that cannot be read counts as one job: not knowing is no reason to cut a print short.
+  private countPending(): number {
+    try {
+      return this.queue?.pendingCount() ?? 1;
+    } catch (err: unknown) {
+      logger.error('update: could not count the pending jobs', describeError(err));
+
+      return 1;
+    }
+  }
+
+  private dropQueueSubscription(): void {
+    this.unsubscribeQueue?.();
+    this.unsubscribeQueue = null;
   }
 
   private events(): void {
@@ -176,6 +293,19 @@ export class AppUpdater {
   }
 
   private set(patch: Partial<UpdateState>): void {
+    // Leaving 'ready' for anything but the install ends a scheduled restart: a stale flag would make the
+    // next 'ready' skip the install through the idempotency guard in requestRestart().
+    const leavesReady =
+      patch.status !== undefined &&
+      this.current.status === 'ready' &&
+      patch.status !== 'ready' &&
+      patch.status !== 'restarting';
+
+    if (leavesReady) {
+      this.dropQueueSubscription();
+      patch = { ...patch, restartScheduled: false, pendingJobs: 0 };
+    }
+
     this.current = { ...this.current, ...patch };
 
     // A listener that throws must not undo the change nor reach whoever emitted the event.

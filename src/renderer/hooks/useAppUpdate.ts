@@ -70,8 +70,26 @@ export function useAppUpdate(): AppUpdateContextValue {
     [run]
   );
 
+  const restart = useCallback(
+    () =>
+      run(
+        () => window.electron.restartToUpdate(),
+        'restart to update failed',
+        'Não foi possível reiniciar para atualizar.'
+      ),
+    [run]
+  );
+
+  const cancelRestart = useCallback(
+    () => run(() => window.electron.cancelRestart(), 'cancel restart failed', 'Não foi possível cancelar o reinício.'),
+    [run]
+  );
+
   // The AppShell re-renders on every navigation, and this value is the context every consumer reads:
   // without the memo they would all re-render when nothing about the update changed. The state itself
   // changes often enough on its own -- 'download-progress' fires dozens of times per download.
-  return useMemo(() => ({ state, check, download, setAutoDownload }), [state, check, download, setAutoDownload]);
+  return useMemo(
+    () => ({ state, check, download, setAutoDownload, restart, cancelRestart }),
+    [state, check, download, setAutoDownload, restart, cancelRestart]
+  );
 }

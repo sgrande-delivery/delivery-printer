@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { UPDATE_CHECK_INTERVAL_MS } from 'shared/appUpdate';
 
 const fake = vi.hoisted(() => {
@@ -15,7 +18,11 @@ const fake = vi.hoisted(() => {
       }),
       checkForUpdates: vi.fn(() => Promise.resolve(null)),
       downloadUpdate: vi.fn(() => Promise.resolve([])),
+      quitAndInstall: vi.fn(),
     },
+    // Every call that matters for ordering, in the order it happened.
+    calls: [] as string[],
+    markQuiting: vi.fn(),
     preference: true,
     savePreference: vi.fn(),
   };
@@ -24,12 +31,15 @@ const fake = vi.hoisted(() => {
 vi.mock('electron', () => ({ app: { getVersion: () => '3.0.2' } }));
 vi.mock('electron-updater', () => ({ autoUpdater: fake.autoUpdater }));
 vi.mock('../logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
+vi.mock('../quitState', () => ({ markQuiting: fake.markQuiting }));
 vi.mock('../uiPreferences', () => ({
   readAutoDownloadUpdates: () => fake.preference,
   writeAutoDownloadUpdates: fake.savePreference,
 }));
 
 import { AppUpdater } from '../updater';
+import type { QueueLink } from '../updater';
+import { logger } from '../logger';
 
 function emit(event: string, ...args: unknown[]): void {
   fake.handlers.get(event)?.(...args);
@@ -62,6 +72,11 @@ describe('AppUpdater', () => {
     fake.autoUpdater.checkForUpdates.mockClear();
     fake.autoUpdater.downloadUpdate.mockClear();
     fake.savePreference.mockClear();
+    fake.autoUpdater.quitAndInstall.mockReset();
+    fake.markQuiting.mockReset();
+    fake.calls.length = 0;
+    fake.markQuiting.mockImplementation(() => fake.calls.push('markQuiting'));
+    fake.autoUpdater.quitAndInstall.mockImplementation(() => fake.calls.push('quitAndInstall'));
   });
 
   afterEach(() => {
@@ -171,7 +186,7 @@ describe('AppUpdater', () => {
     expect(state.lastCheckedAt).toBe(NOW + 5000);
   });
 
-  it('never produces restarting nor a scheduled restart', () => {
+  it('never restarts nor schedules a restart on its own', () => {
     boot();
     emit('update-available', { version: '3.1.0', releaseNotes: '' });
     emit('update-downloaded', {});
@@ -306,5 +321,279 @@ describe('AppUpdater', () => {
 
     vi.advanceTimersByTime(UPDATE_CHECK_INTERVAL_MS * 2);
     expect(fake.autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+  });
+  describe('restart', () => {
+    let pending: number;
+    let queueListeners: Set<() => void>;
+    let unsubscribe: Mock<() => void>;
+    let queue: QueueLink;
+
+    // The queue the test controls: a count it sets and an announcement it fires.
+    function announce(count: number): void {
+      pending = count;
+      for (const listener of [...queueListeners]) {
+        listener();
+      }
+    }
+
+    function ready(count: number): AppUpdater {
+      pending = count;
+      queueListeners = new Set();
+      unsubscribe = vi.fn<() => void>();
+      queue = {
+        pendingCount: () => pending,
+        onQueueChanged: listener => {
+          queueListeners.add(listener);
+
+          return () => {
+            unsubscribe();
+            queueListeners.delete(listener);
+          };
+        },
+      };
+      boot();
+      updater.start(queue);
+      emit('update-available', { version: '3.1.0', releaseNotes: '' });
+      emit('update-downloaded', {});
+
+      return updater;
+    }
+
+    it('with an empty queue marks the quit BEFORE quitAndInstall, silent and reopening (RN-05, RN-06)', () => {
+      ready(0);
+      updater.requestRestart();
+
+      expect(fake.calls).toEqual(['markQuiting', 'quitAndInstall']);
+      expect(fake.autoUpdater.quitAndInstall).toHaveBeenCalledWith(true, true);
+    });
+
+    it('announces restarting BEFORE quitAndInstall, so the overlay is painted', () => {
+      ready(0);
+      updater.onChange(state => fake.calls.push(`announce:${state.status}`));
+      updater.requestRestart();
+
+      expect(fake.calls).toEqual(['announce:restarting', 'markQuiting', 'quitAndInstall']);
+      expect(updater.state()).toMatchObject({ status: 'restarting', restartScheduled: false });
+    });
+
+    it('with two pending jobs schedules, announces and does not install', () => {
+      ready(2);
+      const listener = vi.fn();
+      updater.onChange(listener);
+
+      const state = updater.requestRestart();
+
+      expect(state).toMatchObject({ status: 'ready', restartScheduled: true, pendingJobs: 2 });
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({ restartScheduled: true, pendingJobs: 2 }));
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+      expect(fake.markQuiting).not.toHaveBeenCalled();
+    });
+
+    it('recounts on every queue announcement and installs once, at zero', () => {
+      ready(2);
+      updater.requestRestart();
+
+      announce(1);
+      expect(updater.state()).toMatchObject({ restartScheduled: true, pendingJobs: 1 });
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+
+      announce(0);
+      announce(0);
+
+      expect(fake.autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1);
+      expect(fake.calls).toEqual(['markQuiting', 'quitAndInstall']);
+      expect(updater.state().status).toBe('restarting');
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not announce the same count again', () => {
+      ready(3);
+      updater.requestRestart();
+      const listener = vi.fn();
+      updater.onChange(listener);
+
+      announce(3);
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('cancelRestart goes back to ready, unsubscribes, and a later empty queue installs nothing', () => {
+      ready(2);
+      updater.requestRestart();
+
+      const state = updater.cancelRestart();
+
+      expect(state).toMatchObject({ status: 'ready', restartScheduled: false, pendingJobs: 0 });
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(queueListeners.size).toBe(0);
+
+      announce(0);
+
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+      expect(fake.markQuiting).not.toHaveBeenCalled();
+      expect(updater.state().status).toBe('ready');
+    });
+
+    it('cancelRestart with nothing scheduled is a no-op', () => {
+      ready(0);
+      const listener = vi.fn();
+      updater.onChange(listener);
+
+      expect(updater.cancelRestart().status).toBe('ready');
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('a second request while scheduled does not subscribe twice', () => {
+      ready(2);
+      updater.requestRestart();
+      updater.requestRestart();
+
+      expect(queueListeners.size).toBe(1);
+    });
+
+    it.each(['idle', 'checking', 'available', 'downloading', 'error'] as const)(
+      'requestRestart while %s is a no-op with a warning',
+      status => {
+        ready(0);
+        // Reaches the status through the real events, not by writing the state.
+        if (status === 'idle') {
+          emit('update-not-available', {});
+        } else if (status === 'checking') {
+          emit('checking-for-update');
+        } else if (status === 'available') {
+          emit('update-available', { version: '3.2.0', releaseNotes: '' });
+        } else if (status === 'downloading') {
+          emit('download-progress', { percent: 10, transferred: 1, total: 10, bytesPerSecond: 1 });
+        } else {
+          emit('error', new Error('boom'));
+        }
+        const before = updater.state();
+        vi.mocked(logger.warn).mockClear();
+
+        const state = updater.requestRestart();
+
+        expect(state).toEqual(before);
+        expect(logger.warn).toHaveBeenCalledTimes(1);
+        expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+        expect(fake.markQuiting).not.toHaveBeenCalled();
+        expect(queueListeners.size).toBe(0);
+      }
+    );
+
+    it('requestRestart while restarting does not install twice', () => {
+      ready(0);
+      updater.requestRestart();
+      updater.requestRestart();
+
+      expect(fake.autoUpdater.quitAndInstall).toHaveBeenCalledTimes(1);
+    });
+
+    // RN-07 lives in the link main.ts builds, and no test can import main.ts (nothing does): read it as
+    // text, like the ipcChannels gate does. A list() without the filter would count printed and failed
+    // jobs too, and a scheduled restart would then wait forever. That list('pending') leaves a failed job
+    // out is proved by print-queue-store.test.ts.
+    it('RN-07: the count main.ts injects asks the store for pending jobs only', () => {
+      const source = readFileSync(resolve(__dirname, '../main.ts'), 'utf8');
+
+      expect(source).toMatch(/pendingCount:[\s\S]{0,80}list\('pending'\)/);
+    });
+
+    // The queue hands its listeners a copy of the set, so a listener removed during an announcement still
+    // runs in that round. Only the state guard keeps that stale call from installing after the operator
+    // cancelled -- the unsubscribe alone would not.
+    it('a listener still called after cancelRestart installs nothing', () => {
+      ready(2);
+      updater.requestRestart();
+      const stale = [...queueListeners][0];
+
+      updater.cancelRestart();
+      pending = 0;
+      stale();
+
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+      expect(fake.markQuiting).not.toHaveBeenCalled();
+    });
+
+    it('a queue that cannot be counted waits instead of installing blind', () => {
+      ready(0);
+      queue.pendingCount = () => {
+        throw new Error('disk');
+      };
+      updater.requestRestart();
+
+      expect(updater.state()).toMatchObject({ restartScheduled: true, pendingJobs: 1 });
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+    });
+
+    it('refuses before the queue is linked', () => {
+      boot();
+      emit('update-available', { version: '3.1.0', releaseNotes: '' });
+      emit('update-downloaded', {});
+
+      expect(updater.requestRestart().status).toBe('ready');
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+    });
+
+    it('a quitAndInstall that throws becomes the error state, once', () => {
+      ready(0);
+      fake.autoUpdater.quitAndInstall.mockImplementation(() => {
+        throw new Error('spawn failed');
+      });
+
+      updater.requestRestart();
+
+      expect(updater.state().status).toBe('error');
+    });
+
+    it('an error while scheduled drops the wait: no stale schedule, and a later empty queue installs nothing', () => {
+      ready(2);
+      updater.requestRestart();
+
+      emit('error', new Error('network'));
+
+      expect(updater.state()).toMatchObject({ status: 'error', restartScheduled: false, pendingJobs: 0 });
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(queueListeners.size).toBe(0);
+
+      announce(0);
+
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+      expect(fake.markQuiting).not.toHaveBeenCalled();
+    });
+
+    it('a new cycle reaching ready after an error can be scheduled again', () => {
+      ready(2);
+      updater.requestRestart();
+      emit('error', new Error('network'));
+      emit('update-downloaded', {});
+
+      expect(updater.state()).toMatchObject({ status: 'ready', restartScheduled: false });
+
+      updater.requestRestart();
+
+      expect(updater.state()).toMatchObject({ restartScheduled: true, pendingJobs: 2 });
+    });
+
+    it('ready -> ready with a recount keeps the schedule', () => {
+      ready(3);
+      updater.requestRestart();
+
+      emit('update-downloaded', {});
+      announce(1);
+
+      expect(updater.state()).toMatchObject({ status: 'ready', restartScheduled: true, pendingJobs: 1 });
+      expect(queueListeners.size).toBe(1);
+    });
+
+    it('stop() unsubscribes from the queue: a later announcement installs nothing', () => {
+      ready(2);
+      updater.requestRestart();
+
+      updater.stop();
+      announce(0);
+
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
+      expect(fake.autoUpdater.quitAndInstall).not.toHaveBeenCalled();
+    });
   });
 });
