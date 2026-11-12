@@ -138,4 +138,26 @@ describe('Button', () => {
 
     expectNoUndefinedClasses(container);
   });
+
+  it('draws outlinedOnDark as the outlined button plus the dark delta, and 100 lighter', () => {
+    render(
+      <>
+        <Button variant="outlinedOnDark" size={34}>
+          Escuro
+        </Button>
+        <Button variant="outlined" size={34}>
+          Comum
+        </Button>
+      </>
+    );
+
+    expect(styles.onDark).toBeTruthy();
+    expect(screen.getByText('Escuro')).toHaveClass(styles.onDark);
+    expect(screen.getByText('Escuro')).toHaveClass(styles.outlined);
+    expect(screen.getByText('Escuro')).toHaveClass(styles.clearOutline);
+    // :63 draws the sidebar's secondary button in 500, where the outlined one on a card is 600 (:270).
+    expect(screen.getByText('Escuro')).toHaveStyle({ padding: '0 14px', fontWeight: '500' });
+    expect(screen.getByText('Comum')).not.toHaveClass(styles.onDark);
+    expect(screen.getByText('Comum')).toHaveStyle({ fontWeight: '600' });
+  });
 });

@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** renderer
 **Depende de:** 81, 83, 84
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -72,14 +72,47 @@ export function buildSidebarUpdate(state: UpdateState): SidebarUpdateView
 
 ## Critérios de aceitação
 
-- [ ] O cartão aparece em `available`, `downloading`, `ready`, `ready` + agendado e `error`, e **não** aparece em `idle`, `checking` e `restarting`
-- [ ] Ele fica acima do bloco de conexão, no pé da sidebar
-- [ ] Título, subtítulo, ícone, cor e botão batem com o `sidebarCard` do desenho nos cinco estados
-- [ ] Clicar no cartão e clicar na linha da versão levam a `/updates`; "abrir logs" continua funcionando
-- [ ] Na largura mínima da sidebar nada estoura: os textos truncam
-- [ ] Nenhum hex solto nos módulos novos; token novo, se houver, está nos **dois** temas
-- [ ] Confere com o desenho nos dois temas
-- [ ] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+- [x] O cartão aparece em `available`, `downloading`, `ready`, `ready` + agendado e `error`, e **não** aparece em `idle`, `checking` e `restarting`
+- [x] Ele fica acima do bloco de conexão, no pé da sidebar
+- [x] Título, subtítulo, ícone, cor e botão batem com o `sidebarCard` do desenho nos cinco estados
+- [x] Clicar no cartão e clicar na linha da versão levam a `/updates`; "abrir logs" continua funcionando
+- [x] Os textos truncam, e a largura mínima **subiu para 200 px** porque em 180 o rótulo do botão não cabia dentro do cartão (decisão do dev; a conta está na `## Implementação`). Mais `overflow: hidden` no cartão como rede. **O olho em 200 px fica para a verificação manual** — jsdom não tem layout
+- [x] Nenhum hex solto além do `#fff` sobre `--side-2`/`--side` (exceção legítima), e o token novo `--side-warn` está nos **dois** temas, com o contraste medido e a regra atualizada
+- [x] Geometria e tokens conferidos linha por linha contra o `sidebarCard`. **Os dois temas no olho ficam para a verificação manual**
+- [x] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+
+## Implementação
+
+Executada em 2026-11-12, um commit. A tela `/updates` deixou de ser alcançável só pela URL: agora tem **dois** caminhos, o cartão e a linha da versão, os dois com teste de navegação.
+
+**`buildSidebarUpdate(state)`** entrou no **mesmo** `updateView.ts` da #84, e o `percentOf` passou a ser **exportado** e reusado — a sidebar mostra `v<x> · <pct>%` e a tela mostra `<pct>%`, e dois arredondamentos divergiriam por 1 em algum tique. Há teste do invariante (`percent: 99.5` nos dois builders). Devolve `null` em `idle`, `checking` e `restarting`, e o `default` do `switch` também devolve `null`: status futuro sem linha na tabela **não mostra cartão** em vez de mostrar um errado — o oposto do `buildUpdateCard`, cujo `default` afirma "você está na versão mais recente" (é por isso que a #84 precisou da linha `restarting`).
+
+**`SidebarUpdateCard.tsx` + módulo**, componente próprio, no `.footer` depois do nome do restaurante e antes do bloco de conexão. Lê o contexto, não monta o hook. **A linha da versão virou botão** para `/updates`, mantendo o texto `v<versão> · <arch>`, e o **"abrir logs" ao lado continua chamando `revealLogs` e não navega** — tem teste provando que o botão novo não o engoliu.
+
+### O que o review mudou
+
+1. **A variante nova do `Button` estava na forma errada.** O diagnóstico do implementador era certo (o `outlined` usa `--text`, escuro no tema claro, então o botão secundário sairia ilegível sobre a barra escura), mas ele criou uma **prop booleana `onDark`**. A regra diz "uma classe no `.module.css` **e um valor na união**", e esta base não tem nenhum booleano de aparência em primitivo — aparência é sempre união fechada, e os booleanos que existem são estruturais (`fullWidth`, `dot`, `pressed`). Pior: `<Button variant="contained" onDark>` **compilava e não fazia nada**, e o teste afirmava esse silêncio como comportamento. Virou o valor **`outlinedOnDark`** na união; de quebra, caberia na tabela o que não tinha onde morar: o desenho dá ao secundário da sidebar **peso 500** (`:63`), contra os 600 do `outlined` de 34 px.
+2. **Colisão de nome acessível:** o cartão da tela já era `<section aria-label="Atualização do aplicativo">`, e em `/updates` com atualização pendente os dois ficam visíveis ao mesmo tempo — duas regiões com o mesmo nome. O da sidebar virou **"Resumo da atualização"**.
+3. **Quatro chaves de CSS escapavam** (`summary`, `texts`, `action` e `versionLink`), medidas por mutação contra a suíte inteira. Fechadas, uma asserção por chave.
+4. O nome acessível do título virou asserção **ancorada** (`/^Atualização pronta\s?v2\.8\.0$/`), que prova os dois textos **e** que o glifo do `Icon` não entra no nome.
+
+### As duas decisões do dev
+
+5. **A largura mínima da sidebar subiu de 180 para 200 px.** Medido: em 180 sobram ~136 px dentro do cartão, e o rótulo "Reiniciar e atualizar" em 13 px/600 (~122 px, calculado em Arial Bold, a fonte mais larga da pilha) mais `padding 0 14px` e borda dá 152 px, mais 24 do cartão e 20 do `.footer` = **196**; arredondado para o próximo múltiplo de 4, **200**, com a conta escrita ao lado da constante. Continua **abaixo** dos 216 do desenho. Encurtar o rótulo foi recusado pelo dev. Entrou também `overflow: hidden` no `.root` do cartão, como rede: jsdom não tem layout, então a conta não é mensurável aqui.
+   **Consequência em máquina de cliente:** instalação com largura salva abaixo de 200 tem a barra **pulando para 200** na primeira abertura, e o `readSidebarWidth` loga o valor fora de faixa a cada leitura até o operador arrastar de novo (o arquivo não é reescrito na leitura, por desenho).
+6. **Token `--side-warn`, nos dois temas.** O ícone do reinício agendado era `--warn`, que no tema claro dá **2,07:1** sobre `--side-2` — abaixo dos 3:1 de AA para objeto gráfico. O token novo (`#ffcb5c`) dá **8,13:1** sobre `--side-2` e **9,83:1** sobre `--side` no claro; 8,65:1 e 11,10:1 no escuro. É o mesmo precedente do `--muted` da spec 38: contraste medido ganha do mock. A regra `.claude/rules/renderer-ui.md` foi atualizada (31 tokens, e o grupo "Barra lateral" ganhou o nome novo).
+
+### Testes
+
+- `updateView.test.ts` — uma asserção por linha da tabela do `sidebarCard`, `null` nos três estados que não mostram cartão, o invariante do `percentOf`, e o erro sem versão (sem `vnull`, e o `state.error` nunca vazando para o view).
+- `Sidebar.test.tsx` — o cartão em `ready` com o botão certo chamando a ação do contexto; **a ausência afirmada** em `idle`, `checking`, `restarting` e `state === null`, mais um teste de que **sem o Provider nada aparece**; o título navegando; a linha da versão navegando **e** o "abrir logs" continuando a revelar os logs; `aria-valuenow` igual ao percentual em `downloading`; e uma asserção por chave de CSS, tons incluídos.
+- `sidebarWidth.test.ts` — o mínimo novo, mais os casos `[199, MIN]` e `[180, MIN]` (o segundo é exatamente a largura antiga salva).
+
+### Verificação
+
+- `npm run typecheck` 0 · `npm run lint` 0 erros e 1 aviso (o da base) · `npm test` **81 arquivos / 992 testes**, de 81/963.
+- **Mutação:** 12/12 chaves do módulo novo, mais `versionLink` e as três do `Button` — todas pegas depois do conserto (antes, quatro escapavam).
+- **Não verificado, e precisa do olho:** a largura do rótulo foi **estimada** por métrica de Arial Bold, não medida em Segoe UI; o contraste foi **calculado** pela fórmula WCAG a partir dos hex, não visto na tela. Vale abrir em 200 px nos dois temas e conferir o botão dentro do cartão e o ícone do reinício agendado.
 
 ## Fora de escopo
 

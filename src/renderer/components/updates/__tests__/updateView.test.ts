@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { UpdateState } from 'shared/appUpdate';
-import { autoDownloadHint, buildUpdateCard, releaseNotesTitle } from '../updateView';
+import { autoDownloadHint, buildSidebarUpdate, buildUpdateCard, percentOf, releaseNotesTitle } from '../updateView';
 
 function state(overrides: Partial<UpdateState> = {}): UpdateState {
   return {
@@ -210,5 +210,99 @@ describe('the small texts', () => {
   it('has a hint for each side of the preference', () => {
     expect(autoDownloadHint(true)).toContain('sem você precisar clicar');
     expect(autoDownloadHint(false)).toContain('você clica em Baixar');
+  });
+});
+
+describe('buildSidebarUpdate, the sidebar column of the table', () => {
+  it.each(['idle', 'checking', 'restarting'] as const)('%s: the card is not shown', status => {
+    expect(buildSidebarUpdate(state({ status, targetVersion: '2.8.0' }))).toBeNull();
+  });
+
+  it('available: new_releases, accent, v<x>, Baixar', () => {
+    expect(buildSidebarUpdate(state({ status: 'available', targetVersion: '2.8.0' }))).toEqual({
+      icon: 'new_releases',
+      tone: 'accent',
+      title: 'Nova versão disponível',
+      subtitle: 'v2.8.0',
+      bar: false,
+      percent: 0,
+      button: { label: 'Baixar', action: 'download', variant: 'outlinedOnDark' },
+    });
+  });
+
+  it('downloading: downloading, v<x> · <pct>%, the bar and no button', () => {
+    expect(buildSidebarUpdate(state({ status: 'downloading', targetVersion: '2.8.0', percent: 42.4 }))).toEqual({
+      icon: 'downloading',
+      tone: 'accent',
+      title: 'Baixando atualização',
+      subtitle: 'v2.8.0 · 42%',
+      bar: true,
+      percent: 42,
+      button: null,
+    });
+  });
+
+  it('downloading: the percent is the one of the main card', () => {
+    const downloading = state({ status: 'downloading', targetVersion: '2.8.0', percent: 99.5 });
+
+    expect(buildSidebarUpdate(downloading)?.percent).toBe(percentOf(downloading));
+    expect(buildUpdateCard(downloading, NOW).progress?.percent).toBe(percentOf(downloading));
+  });
+
+  it('downloading without a target omits the version', () => {
+    expect(buildSidebarUpdate(state({ status: 'downloading', percent: 10 }))?.subtitle).toBe('10%');
+  });
+
+  it('ready: restart_alt, accent, v<x>, contained Reiniciar e atualizar', () => {
+    expect(buildSidebarUpdate(state({ status: 'ready', targetVersion: '2.8.0' }))).toEqual({
+      icon: 'restart_alt',
+      tone: 'accent',
+      title: 'Atualização pronta',
+      subtitle: 'v2.8.0',
+      bar: false,
+      percent: 0,
+      button: { label: 'Reiniciar e atualizar', action: 'restart', variant: 'contained' },
+    });
+  });
+
+  it('ready and scheduled: hourglass_top in warn, the queue, Cancelar', () => {
+    expect(
+      buildSidebarUpdate(state({ status: 'ready', targetVersion: '2.8.0', restartScheduled: true, pendingJobs: 3 }))
+    ).toEqual({
+      icon: 'hourglass_top',
+      tone: 'warn',
+      title: 'Reinício agendado',
+      subtitle: 'Aguardando 3 na fila',
+      bar: false,
+      percent: 0,
+      button: { label: 'Cancelar', action: 'cancel-restart', variant: 'outlinedOnDark' },
+    });
+  });
+
+  it('error with a version: error in err, v<x>, downloads again', () => {
+    expect(buildSidebarUpdate(state({ status: 'error', targetVersion: '2.8.0', error: 'net' }))).toEqual({
+      icon: 'error',
+      tone: 'err',
+      title: 'Falha no download',
+      subtitle: 'v2.8.0',
+      bar: false,
+      percent: 0,
+      button: { label: 'Tentar novamente', action: 'download', variant: 'outlinedOnDark' },
+    });
+  });
+
+  it('error without a version: no vnull, does not claim a download, and the button checks', () => {
+    const view = buildSidebarUpdate(state({ status: 'error', targetVersion: null, error: 'net' }));
+
+    expect(view?.title).toBe('Falha na verificação');
+    expect(view?.subtitle).toBe('');
+    expect(view?.button?.action).toBe('check');
+    expect(JSON.stringify(view)).not.toContain('null');
+  });
+
+  it('never writes the diagnostic error text', () => {
+    const view = buildSidebarUpdate(state({ status: 'error', targetVersion: '2.8.0', error: 'ECONNRESET secret' }));
+
+    expect(JSON.stringify(view)).not.toContain('ECONNRESET');
   });
 });

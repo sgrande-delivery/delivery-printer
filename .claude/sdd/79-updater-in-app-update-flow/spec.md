@@ -98,6 +98,9 @@ Do `mainCard(S)` e do `sidebarCard(S)` do desenho (`design/atualizacoes.dc.html:
 | 11 | `eta` sempre em segundos (`'cerca de ' + remainingSec + ' s'`, `:388`) | Segundos abaixo de 60 s e **"cerca de `<n>` min"** a partir daí: com a taxa real, "cerca de 2700 s" é um número que ninguém lê |
 | 12 | `TOTAL_MB = 43.7` sem declarar a base | MB = **1024²** (MiB), sobre o `total` em bytes do `download-progress`. É a base com que o GitHub mostra o tamanho do asset, então a tela e a release dizem o mesmo número |
 | 13 | A preferência tem só rótulo e dica (`:176`) | Mais a linha **"Vale só neste computador. Aplica na hora."**, como o `AppearanceSection` faz: a preferência é por instalação e mora em `userData` (RN-10), e isso precisa estar escrito na tela |
+| 14 | O `sidebarCard` escreve "Falha no download" para todo `erro`, com `sub: v<x>` (`:359`) | **Dois** títulos: "Falha no download" quando há versão oferecida, e **"Falha na verificação"** quando `targetVersion` é `null` — erro de verificação não baixou nada. Nesse caso o subtítulo **não é renderizado** (em vez de `vnull`) e o botão chama `check()`, porque o `download()` é no-op sem alvo |
+| 15 | O ícone do reinício agendado é `var(--warn)` no cartão da sidebar (`:349`) | Token novo **`--side-warn`**, nos dois temas: o `--warn` do tema claro dá **2,07:1** sobre `--side-2`, abaixo dos 3:1 de AA para objeto gráfico. O token novo dá **8,13:1**. É a mesma razão pela qual o `--muted` divergiu do desenho na spec 38 — contraste medido ganha do mock |
+| 16 | A sidebar do desenho tem 216 px, e o botão do cartão caba nela | A largura **mínima** da sidebar subiu de 180 para **200 px**, porque em 180 o rótulo "Reiniciar e atualizar" não cabe dentro do cartão e o botão pinta por cima da borda (o `Button` tem `nowrap` e `flex-shrink: 0`). Encurtar o rótulo foi recusado: 200 é a conta do rótulo + padding, e continua abaixo dos 216 do desenho |
 
 ## Critérios de aceitação
 

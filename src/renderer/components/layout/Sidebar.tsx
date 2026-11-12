@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import Icon from 'renderer/base/Icon';
 import { cx } from 'renderer/base/cx';
 import symbol from 'renderer/images/brand/simbolo-negativo.svg';
@@ -12,6 +12,7 @@ import { log } from 'renderer/services/log';
 import packageJson from '../../../../package.json';
 import { SIDEBAR_DEFAULT_WIDTH, clampSidebarWidth } from 'shared/sidebarWidth';
 import { NAV_ITEMS } from './navigation';
+import SidebarUpdateCard from './SidebarUpdateCard';
 import SidebarResizeHandle, { applySidebarWidth } from './SidebarResizeHandle';
 import styles from './Sidebar.module.css';
 
@@ -30,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
   const { pending, failed } = usePrintQueue();
   const { printers, devicesRead } = usePrinters();
   const logout = useLogout();
+  const navigate = useNavigate();
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const committedRef = useRef(false);
 
@@ -132,6 +134,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
             {restaurant.name}
           </div>
         )}
+        <SidebarUpdateCard />
         <div className={styles.status}>
           <div className={styles.statusLine}>
             <span className={cx(styles.dot, isConnected ? styles.dotOk : styles.dotErr)} />
@@ -165,9 +168,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isConnected }) => {
           </div>
         )}
         <div className={styles.version}>
-          <span>
+          <button type="button" className={styles.versionLink} onClick={() => navigate('/updates')}>
             v{packageJson.version} · {window.electron.arch}
-          </span>
+          </button>
           <span>·</span>
           <button type="button" className={styles.logs} onClick={handleRevealLogs}>
             abrir logs

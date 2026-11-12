@@ -246,3 +246,20 @@
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
+
+/* The way to /updates when the card is not shown. Looks like the text it replaced; the color shift on hover is
+   the design's (:79). */
+.versionLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--side-muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.versionLink:hover {
+  color: #fff;
+}

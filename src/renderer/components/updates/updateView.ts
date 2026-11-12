@@ -1,4 +1,5 @@
 import type { UpdateState } from 'shared/appUpdate';
+import type { IconName } from 'renderer/base/Icon';
 
 export type UpdateAction = 'check' | 'download' | 'restart' | 'cancel-restart';
 export type UpdateTone = 'ok' | 'accent' | 'warn' | 'err' | 'muted';
@@ -53,7 +54,8 @@ function formatLastCheck(lastCheckedAt: number | null, now: number): string {
     : `Última verificação: ${pad(at.getDate())}/${pad(at.getMonth() + 1)} às ${time}`;
 }
 
-function percentOf(state: UpdateState): number {
+/** Rounded once, here: the screen shows `<pct>%` and the sidebar `v<x> · <pct>%`, and two roundings would differ by 1. */
+export function percentOf(state: UpdateState): number {
   return Math.min(100, Math.max(0, Math.round(state.percent)));
 }
 
@@ -137,6 +139,87 @@ export function buildUpdateCard(state: UpdateState, now: number): UpdateCardView
         text: 'Você está na versão mais recente',
         button: { label: 'Verificar agora', action: 'check', variant: 'outlined', disabled: false },
       };
+  }
+}
+
+export type SidebarUpdateView = {
+  icon: IconName;
+  /** The color of the icon. */
+  tone: UpdateTone;
+  title: string;
+  subtitle: string;
+  /** The 4 px bar, only while downloading. */
+  bar: boolean;
+  percent: number;
+  /** The card sits on --side-2, so the secondary button is the Button's dark variant, never 'outlined'. */
+  button: { label: string; action: UpdateAction; variant: 'contained' | 'outlinedOnDark' } | null;
+} | null;
+
+/**
+ * The sidebar column of the status table (atualizacoes.dc.html:344). null means the card is not shown:
+ * idle, checking (a check is noise, not a task) and restarting (the overlay owns that moment).
+ */
+export function buildSidebarUpdate(state: UpdateState): SidebarUpdateView {
+  const target = state.targetVersion;
+  // A check error has no offered version: "vnull" must never reach the screen.
+  const version = target === null ? '' : `v${target}`;
+  const base = { tone: 'accent' as UpdateTone, bar: false, percent: 0 };
+
+  switch (state.status) {
+    case 'available':
+      return {
+        ...base,
+        icon: 'new_releases',
+        title: 'Nova versão disponível',
+        subtitle: version,
+        button: { label: 'Baixar', action: 'download', variant: 'outlinedOnDark' },
+      };
+    case 'downloading': {
+      const percent = percentOf(state);
+      return {
+        ...base,
+        icon: 'downloading',
+        title: 'Baixando atualização',
+        subtitle: version === '' ? `${percent}%` : `${version} · ${percent}%`,
+        bar: true,
+        percent,
+        button: null,
+      };
+    }
+    case 'ready':
+      if (state.restartScheduled) {
+        return {
+          ...base,
+          icon: 'hourglass_top',
+          tone: 'warn',
+          title: 'Reinício agendado',
+          subtitle: `Aguardando ${state.pendingJobs} na fila`,
+          button: { label: 'Cancelar', action: 'cancel-restart', variant: 'outlinedOnDark' },
+        };
+      }
+      return {
+        ...base,
+        icon: 'restart_alt',
+        title: 'Atualização pronta',
+        subtitle: version,
+        button: { label: 'Reiniciar e atualizar', action: 'restart', variant: 'contained' },
+      };
+    case 'error':
+      // download() is a no-op without a target, so a check error retries by checking.
+      return {
+        ...base,
+        icon: 'error',
+        tone: 'err',
+        title: target === null ? 'Falha na verificação' : 'Falha no download',
+        subtitle: version,
+        button: {
+          label: 'Tentar novamente',
+          action: target === null ? 'check' : 'download',
+          variant: 'outlinedOnDark',
+        },
+      };
+    default:
+      return null;
   }
 }
 

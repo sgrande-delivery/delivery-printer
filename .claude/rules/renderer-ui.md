@@ -38,7 +38,7 @@ Nada de `style={{}}` para layout (só valor calculado em runtime — o `Icon` e 
 
 ## Os tokens
 
-As cores são custom properties em `src/renderer/app.css`, e os valores são os do desenho (`design/printer-v2.dc.html:13-14`): a paleta clara em `:root` e a escura em `:root[data-theme='dark']`. São os mesmos 30 nomes de cor nos dois blocos.
+As cores são custom properties em `src/renderer/app.css`, e os valores são os do desenho (`design/printer-v2.dc.html:13-14`): a paleta clara em `:root` e a escura em `:root[data-theme='dark']`. São os mesmos **31** nomes de cor nos dois blocos. O 31º é o `--side-warn`, acrescentado na spec 79 porque o `--warn` do tema claro dá **2,07:1** sobre `--side-2` — abaixo dos 3:1 de AA para objeto gráfico. É a segunda divergência de contraste desta base, pelo mesmo motivo da primeira (o `--muted`).
 
 | Grupo | Tokens | Para quê |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ As cores são custom properties em `src/renderer/app.css`, e os valores são os 
 | Linha e texto | `--line`, `--text`, `--text-2`, `--muted` | borda e divisor; corpo; secundário; terciário |
 | Marca | `--accent`, `--accent-hover`, `--accent-soft`, `--accent-ink` | ação primária, seu hover, o fundo suave e o texto sobre ele |
 | Estado | `--ok`, `--ok-dot`, `--ok-soft`, `--err`, `--err-dot`, `--err-soft`, `--warn`, `--warn-soft` | texto/ponto/fundo de sucesso, falha e atenção |
-| Barra lateral | `--side`, `--side-2`, `--side-text`, `--side-muted`, `--side-badge` | a sidebar e o painel de marca do login |
+| Barra lateral | `--side`, `--side-2`, `--side-text`, `--side-muted`, `--side-badge`, `--side-warn` | a sidebar e o painel de marca do login; o `--side-warn` é a atenção **sobre fundo escuro**, porque o `--warn` não fecha contraste ali no tema claro |
 | Véu e papel | `--scrim`, `--paper`, `--paper-ink`, `--paper-rule`, `--paper-sub` | o véu da gaveta; o papel das pré-visualizações, que **continua claro no tema escuro** |
 
 Pesos: `--font-weight-regular/medium/semibold/bold` = 400/500/600/700. Corpo em `0.875rem` (14 px) — ver "Acessibilidade" abaixo.

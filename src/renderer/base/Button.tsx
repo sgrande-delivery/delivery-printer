@@ -2,7 +2,11 @@ import React, { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
 import { cx } from './cx';
 import styles from './Button.module.css';
 
-type Variant = 'contained' | 'outlined' | 'text';
+/**
+ * `outlinedOnDark` is the outlined button on the dark sidebar (atualizacoes.dc.html:63): --line and --text
+ * are the light theme's, so the drawn border and the text would be illegible over --side-2.
+ */
+type Variant = 'contained' | 'outlined' | 'text' | 'outlinedOnDark';
 
 /** The heights, in px, that the design draws; each one is a row of METRICS. 32 is the table-row action. */
 export type ButtonHeight = 32 | 34 | 36 | 38 | 42 | 44 | 46 | 48;
@@ -27,8 +31,19 @@ interface Metrics {
   clearOutline?: boolean;
 }
 
-const uniform = (px: number): Record<Variant, number> => ({ contained: px, outlined: px, text: px });
-const weights = (outlined: number = 400): Record<Variant, number> => ({ contained: 600, outlined, text: 400 });
+const uniform = (px: number): Record<Variant, number> => ({
+  contained: px,
+  outlined: px,
+  text: px,
+  outlinedOnDark: px,
+});
+/** `onDark` follows the outlined weight everywhere but at 34 px, the only height the sidebar draws. */
+const weights = (outlined: number = 400, onDark: number = outlined): Record<Variant, number> => ({
+  contained: 600,
+  outlined,
+  text: 400,
+  outlinedOnDark: onDark,
+});
 
 /*
  * The design draws one button per screen and gives each its own padding and weight, so the size is the
@@ -41,20 +56,26 @@ const METRICS: Record<ButtonHeight, Metrics> = {
   32: {
     radius: 6,
     fontSize: 13,
-    paddingX: { contained: 12, outlined: 12, text: 10 },
+    paddingX: { contained: 12, outlined: 12, text: 10, outlinedOnDark: 12 },
     weight: weights(),
     quietText: true,
   },
-  34: { radius: 6, fontSize: 13, paddingX: uniform(14), weight: weights(600), clearOutline: true },
+  // 500 for outlinedOnDark: the sidebar's secondary button is lighter than the outlined one on a card (:63).
+  34: { radius: 6, fontSize: 13, paddingX: uniform(14), weight: weights(600, 500), clearOutline: true },
   36: { radius: 6, fontSize: 13, paddingX: uniform(16), weight: weights(500) },
   38: {
     radius: 6,
     fontSize: 13,
-    paddingX: { contained: 18, outlined: 16, text: 16 },
+    paddingX: { contained: 18, outlined: 16, text: 16, outlinedOnDark: 16 },
     weight: weights(),
     quietText: true,
   },
-  42: { radius: 8, fontSize: 14, paddingX: { contained: 20, outlined: 18, text: 20 }, weight: weights() },
+  42: {
+    radius: 8,
+    fontSize: 14,
+    paddingX: { contained: 20, outlined: 18, text: 20, outlinedOnDark: 18 },
+    weight: weights(),
+  },
   44: { radius: 8, fontSize: 14, gap: 8, paddingX: uniform(22), weight: weights() },
   46: { radius: 8, fontSize: 15, paddingX: uniform(16), weight: weights() },
   48: { radius: 8, fontSize: 15, paddingX: uniform(28), weight: weights() },
@@ -73,6 +94,7 @@ const Button: React.FC<ButtonProps> = ({
   // The height travels inside the object so the style below needs no assertion: tsc does not carry
   // the ternary's narrowing of `size` into it, and `height` also accepts a string.
   const metrics = typeof size === 'number' ? { ...METRICS[size], height: size } : null;
+  const isOutlined = variant === 'outlined' || variant === 'outlinedOnDark';
   const sizeStyle: CSSProperties | undefined = metrics
     ? {
         height: metrics.height,
@@ -90,12 +112,13 @@ const Button: React.FC<ButtonProps> = ({
       className={cx(
         styles.root,
         variant === 'contained' && styles.containedPrimary,
-        variant === 'outlined' && styles.outlined,
+        isOutlined && styles.outlined,
         variant === 'text' && styles.text,
         size === 'small' && styles.small,
         metrics && styles.design,
         metrics?.quietText && variant === 'text' && styles.quiet,
-        metrics?.clearOutline && variant === 'outlined' && styles.clearOutline,
+        metrics?.clearOutline && isOutlined && styles.clearOutline,
+        variant === 'outlinedOnDark' && styles.onDark,
         fullWidth && styles.fullWidth,
         className
       )}
