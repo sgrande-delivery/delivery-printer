@@ -45,7 +45,7 @@ A feature tem uma espinha só: **o `main` passa a ser dono de um `UpdateState`, 
 | 05 | Tela `/updates` — cartão principal, progresso, preferências e novidades | [#84](https://github.com/sgrande-delivery/delivery-printer/issues/84) | [84-updates-screen.md](./tasks/84-updates-screen.md) | 02, 04 | executada |
 | 06 | Cartão de atualização na barra lateral e navegação pela versão | [#85](https://github.com/sgrande-delivery/delivery-printer/issues/85) | [85-sidebar-update-card.md](./tasks/85-sidebar-update-card.md) | 02, 04, 05 | executada |
 | 07 | Faixa de "pronta", diálogo de reinício, overlay e avisos | [#86](https://github.com/sgrande-delivery/delivery-printer/issues/86) | [86-banner-dialog-and-overlay.md](./tasks/86-banner-dialog-and-overlay.md) | 03, 05 | executada |
-| 08 | Notificação do sistema revista | [#87](https://github.com/sgrande-delivery/delivery-printer/issues/87) | [87-system-notification.md](./tasks/87-system-notification.md) | 01, 03 | pendente |
+| 08 | Notificação do sistema revista | [#87](https://github.com/sgrande-delivery/delivery-printer/issues/87) | [87-system-notification.md](./tasks/87-system-notification.md) | 01, 03 | executada |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 
@@ -147,3 +147,10 @@ Além de `npm run typecheck`, `npm test` e `npm run lint` (baseline: 0 erros, 1 
 - **O primitivo de modal está pago.** A premissa da task ("este é o primeiro modal do app") é **falsa**: o `PrinterDrawer` já é `role="dialog" aria-modal` com véu, painel, trava de `Tab`, `Esc` e devolução de foco — e o `handlePanelKeyDown` do `RestartDialog` saiu **byte-idêntico** ao dele (22 linhas). Pela regra, o primitivo nasce na segunda aparição, e ela chegou: candidato a `base/Modal` ou a um hook `useModalPanel`, em **task própria**.
 - **Dívida latente registrada:** o `dialogOpen` do `AppShell` não é zerado quando o diálogo some pelo estado, então um estado que saísse de `ready` e **voltasse** reabriria o diálogo sem clique. Não há sequência alcançável hoje (em `ready` o `check()` do main é bloqueado pelo `BUSY`, e a saída de `ready` é para `restarting` e dali para `error`). O conserto barato é zerar o `dialogOpen` no mesmo lugar em que o estado deixa de ser `ready`.
 - **O aviso de cancelamento pode sair em duplicata** com duplo clique dentro da ida e volta do IPC, porque o main devolve o estado **inalterado** no no-op e ele satisfaz a condição do aviso. É cosmético (a frase continua verdadeira nos dois casos); o conserto é exigir `wasScheduled` numa ref antes de avisar.
+
+### Da task 08 (#87)
+
+- **O `updateIpc.test.ts` roda o updater REAL e chega ao estado `'ready'`.** Todo caminho novo do main que construa objeto do Electron (`Notification`, `Tray`, `BrowserWindow`) precisa de stub no mock de `electron` **daquele** arquivo — senão a construção estoura e **só um `try/catch` mantém o arquivo verde**, o que esconde o caminho do gate de integração e faz um conserto futuro no `try/catch` quebrar testes por motivo alheio.
+- **O `notifiedVersion` é marcado antes do `try`**, então notificação que falhar na construção **não é retentada** para aquela versão. É defensável (a retentativa bateria no mesmo erro, e o ciclo de 6 h é barrado pelo `BUSY` enquanto `ready`), e a rede são as quatro superfícies da UI.
+- **O último `process.resourcesPath` solto do repo saiu.** Fora do pacote ele aponta para a instalação do Electron, e o sintoma é **asset ausente só em desenvolvimento** — o tipo de defeito que não aparece em teste nem no instalador. O caminho certo é sempre `getAssetPath(app, …)`; conferido no pacote que `resources/assets/icon.ico` existe.
+- **O que o texto da notificação pode prometer:** nunca "atualiza na hora" (a instalação é no `quit`), e o rótulo citado é o do botão que o operador clica **primeiro** — o `confirmLabel` do diálogo muda com a fila, e a notificação não promete nada sobre ele.

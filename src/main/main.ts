@@ -94,9 +94,16 @@ function boot(): void {
         window.webContents.send(EVENT_CHANNELS.updateChanged, state);
       });
       appUpdater().start({
-        // Only 'pending': a 'failed' job already gave up (RN-07) and waiting for it would be forever.
-        pendingCount: () => printQueueStore.list('pending').length,
-        onQueueChanged,
+        queue: {
+          // Only 'pending': a 'failed' job already gave up (RN-07) and waiting for it would be forever.
+          pendingCount: () => printQueueStore.list('pending').length,
+          onQueueChanged,
+        },
+        showWindow: () => {
+          if (!window.isDestroyed()) {
+            window.show();
+          }
+        },
       });
 
       app.on('before-quit', event => onBeforeQuit(event, window));

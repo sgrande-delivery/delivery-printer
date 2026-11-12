@@ -24,11 +24,33 @@ const fake = vi.hoisted(() => {
     calls: [] as string[],
     markQuiting: vi.fn(),
     preference: true,
+    notifications: [] as { options: Record<string, string>; show: Mock; click: () => void }[],
+    Notification: class {
+      show = vi.fn();
+      private onClick: (() => void) | null = null;
+
+      constructor(public options: Record<string, string>) {
+        fake.notifications.push({
+          options,
+          show: this.show,
+          click: () => this.onClick?.(),
+        });
+      }
+
+      on(event: string, handler: () => void): void {
+        if (event === 'click') {
+          this.onClick = handler;
+        }
+      }
+    },
     savePreference: vi.fn(),
   };
 });
 
-vi.mock('electron', () => ({ app: { getVersion: () => '3.0.2' } }));
+vi.mock('electron', () => ({
+  app: { getVersion: () => '3.0.2', isPackaged: false },
+  Notification: fake.Notification,
+}));
 vi.mock('electron-updater', () => ({ autoUpdater: fake.autoUpdater }));
 vi.mock('../logger', () => ({ logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 vi.mock('../quitState', () => ({ markQuiting: fake.markQuiting }));
@@ -37,6 +59,7 @@ vi.mock('../uiPreferences', () => ({
   writeAutoDownloadUpdates: fake.savePreference,
 }));
 
+import { getAssetPath } from '../asset';
 import { AppUpdater } from '../updater';
 import type { QueueLink } from '../updater';
 import { logger } from '../logger';
@@ -75,6 +98,7 @@ describe('AppUpdater', () => {
     fake.autoUpdater.quitAndInstall.mockReset();
     fake.markQuiting.mockReset();
     fake.calls.length = 0;
+    fake.notifications.length = 0;
     fake.markQuiting.mockImplementation(() => fake.calls.push('markQuiting'));
     fake.autoUpdater.quitAndInstall.mockImplementation(() => fake.calls.push('quitAndInstall'));
   });
@@ -286,6 +310,73 @@ describe('AppUpdater', () => {
     expect(other).toHaveBeenCalledTimes(1);
   });
 
+  describe('notification', () => {
+    function download(version: string): void {
+      emit('update-available', { version, releaseNotes: '' });
+      emit('update-downloaded', {});
+    }
+
+    it('fires once on the way to ready, with the version and the exact button label', () => {
+      boot();
+      download('3.1.0');
+
+      expect(fake.notifications).toHaveLength(1);
+      expect(fake.notifications[0].show).toHaveBeenCalledTimes(1);
+      expect(fake.notifications[0].options.title).toBe('Atualização pronta');
+      expect(fake.notifications[0].options.body).toContain('3.1.0');
+      expect(fake.notifications[0].options.body).toContain('"Reiniciar e atualizar"');
+    });
+
+    it('does not repeat for the same version, and fires for a different one', () => {
+      boot();
+      download('3.1.0');
+      emit('update-available', { version: '3.1.0', releaseNotes: '' });
+      emit('update-downloaded', {});
+      expect(fake.notifications).toHaveLength(1);
+
+      download('3.2.0');
+      expect(fake.notifications).toHaveLength(2);
+      expect(fake.notifications[1].options.body).toContain('3.2.0');
+    });
+
+    it('does not notify for an available version nor for an error', () => {
+      boot(false);
+      emit('update-available', { version: '3.1.0', releaseNotes: '' });
+      emit('error', new Error('boom'));
+
+      expect(fake.notifications).toHaveLength(0);
+    });
+
+    it('takes the icon from getAssetPath, not from process.resourcesPath', () => {
+      boot();
+      download('3.1.0');
+
+      const icon = fake.notifications[0].options.icon;
+
+      expect(icon).toBe(getAssetPath({ isPackaged: false } as never, 'icon.ico'));
+      expect(icon.replace(/\\/g, '/')).toMatch(/\/assets\/icon\.ico$/);
+    });
+
+    it('click calls the injected showWindow; a missing or throwing one breaks nothing', () => {
+      const showWindow = vi.fn();
+
+      updater = new AppUpdater();
+      updater.start({ showWindow });
+      download('3.1.0');
+      fake.notifications[0].click();
+      expect(showWindow).toHaveBeenCalledTimes(1);
+
+      showWindow.mockImplementation(() => {
+        throw new Error('window gone');
+      });
+      expect(() => fake.notifications[0].click()).not.toThrow();
+
+      boot();
+      download('3.2.0');
+      expect(() => fake.notifications.at(-1)?.click()).not.toThrow();
+    });
+  });
+
   it('start() checks now and again every interval, except while downloading or ready', () => {
     updater = new AppUpdater();
     updater.start();
@@ -352,7 +443,7 @@ describe('AppUpdater', () => {
         },
       };
       boot();
-      updater.start(queue);
+      updater.start({ queue });
       emit('update-available', { version: '3.1.0', releaseNotes: '' });
       emit('update-downloaded', {});
 

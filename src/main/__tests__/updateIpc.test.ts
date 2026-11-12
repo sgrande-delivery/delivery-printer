@@ -24,8 +24,14 @@ const fake = vi.hoisted(() => {
 });
 
 vi.mock('electron', () => ({
-  app: { getVersion: () => '3.0.2', getPath: () => fake.userData },
+  app: { getVersion: () => '3.0.2', getPath: () => fake.userData, isPackaged: false },
   nativeTheme: { shouldUseDarkColors: false },
+  // The restart tests below do reach 'ready', and the real updater notifies there: without this stub the
+  // construction throws and only the try/catch inside notifyReady() keeps those tests green.
+  Notification: class {
+    show = vi.fn();
+    on = vi.fn();
+  },
 }));
 vi.mock('../quitState', () => ({ markQuiting: vi.fn(), isQuiting: () => false }));
 vi.mock('electron-updater', () => ({ autoUpdater: fake.autoUpdater }));
@@ -82,7 +88,7 @@ describe('update IPC handlers', () => {
       ...(await import('../ipc-events/onCancelRestart')),
       ...(await import('../updater')),
     };
-    h.appUpdater().start(queue);
+    h.appUpdater().start({ queue });
     fake.autoUpdater.checkForUpdates.mockClear();
   });
 

@@ -1,10 +1,11 @@
-import { app } from 'electron';
+import { app, Notification } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import type { ProgressInfo, UpdateInfo } from 'electron-updater';
 import { describeError } from 'shared/describeError';
 import { UPDATE_CHECK_INTERVAL_MS } from 'shared/appUpdate';
 import type { UpdateState, UpdateStatus } from 'shared/appUpdate';
 import { releaseNotesToLines } from 'shared/releaseNotes';
+import { getAssetPath } from './asset';
 import { logger } from './logger';
 import { markQuiting } from './quitState';
 import { readAutoDownloadUpdates, writeAutoDownloadUpdates } from './uiPreferences';
@@ -18,6 +19,12 @@ export interface QueueLink {
   pendingCount(): number;
   /** Calls the listener on every announcement of the queue; returns the unsubscribe. */
   onQueueChanged(listener: () => void): () => void;
+}
+
+export interface StartOptions {
+  queue?: QueueLink;
+  /** Brings the window back from the tray. The updater does not own the window; main.ts does. */
+  showWindow?: () => void;
 }
 
 // A check in the middle of a download is a request to confuse the electron-updater.
@@ -37,6 +44,9 @@ export class AppUpdater {
   private started = false;
   private queue: QueueLink | null = null;
   private unsubscribeQueue: (() => void) | null = null;
+  private showWindow: (() => void) | null = null;
+  // In memory on purpose: after a restart, announcing once more is correct.
+  private notifiedVersion: string | null = null;
 
   constructor() {
     this.current = {
@@ -153,9 +163,14 @@ export class AppUpdater {
     return this.state();
   }
 
-  start(queue?: QueueLink): void {
+  start({ queue, showWindow }: StartOptions = {}): void {
+    // Assigned before the `started` guard: a second call still injects, without resubscribing the events.
     if (queue) {
       this.queue = queue;
+    }
+
+    if (showWindow) {
+      this.showWindow = showWindow;
     }
 
     if (this.started) {
@@ -273,12 +288,44 @@ export class AppUpdater {
 
     autoUpdater.on('update-downloaded', () => {
       this.set({ status: 'ready', percent: 100, bytesPerSecond: 0, error: null });
+      this.notifyReady();
     });
 
     autoUpdater.on('error', (err: unknown) => {
       logger.error('update failed', describeError(err));
       this.set({ status: 'error', error: diagnostic(err), lastCheckedAt: Date.now() });
     });
+  }
+
+  // The only channel that reaches an operator whose window is hidden in the tray (RN-16). Once per version:
+  // the 6 h check finding the same downloaded version would otherwise repeat it until the app is closed.
+  private notifyReady(): void {
+    const version = this.current.targetVersion;
+
+    if (version === null || version === this.notifiedVersion) {
+      return;
+    }
+
+    this.notifiedVersion = version;
+
+    try {
+      const notification = new Notification({
+        title: 'Atualização pronta',
+        body: `A versão ${version} está pronta. Abra o Delivery Printer e clique em "Reiniciar e atualizar" — ou ela é instalada quando o app for fechado.`,
+        icon: getAssetPath(app, 'icon.ico'),
+      });
+
+      notification.on('click', () => {
+        try {
+          this.showWindow?.();
+        } catch (err: unknown) {
+          logger.error('update: could not show the window from the notification', describeError(err));
+        }
+      });
+      notification.show();
+    } catch (err: unknown) {
+      logger.error('update: could not show the notification', describeError(err));
+    }
   }
 
   // The 'error' event usually fires too, and it comes first; do not announce the same failure twice.

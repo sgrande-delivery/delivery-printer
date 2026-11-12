@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** main
 **Depende de:** 80, 82
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -57,12 +57,49 @@ Fora do teste automatizado: `Notification` real sob Windows, com e sem o app em 
 
 ## Critérios de aceitação
 
-- [ ] A notificação é disparada pela transição para `'ready'`, uma vez por versão
-- [ ] O texto cita o botão "Reiniciar e atualizar" e **não** promete atualização imediata
-- [ ] O ícone passa por `getAssetPath`, e `grep -rn "process.resourcesPath" src/` só acha `asset.ts`
-- [ ] Clicar na notificação mostra a janela
+- [x] A notificação é disparada pela transição para `'ready'`, uma vez por versão
+- [x] O texto cita o botão "Reiniciar e atualizar" e **não** promete atualização imediata
+- [x] O ícone passa por `getAssetPath`, e `grep -rn "process.resourcesPath" src/` só acha `asset.ts`
+- [x] Clicar na notificação mostra a janela
 - [ ] Conferido em Windows: a notificação aparece com ícone, e o clique traz a janela da bandeja
-- [ ] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+- [x] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+
+## Implementação
+
+Executada em 2026-11-12, um commit. **Ela fecha a regressão interna da spec:** a notificação saiu do `updater.ts` na #80 e ficou ausente por sete commits — entre eles, o app baixava a atualização sem avisar ninguém, e a notificação é o **único** canal que alcança quem está com a janela escondida na bandeja (RN-16).
+
+**O texto:**
+
+> **Atualização pronta** / *A versão `<x>` está pronta. Abra o Delivery Printer e clique em "Reiniciar e atualizar" — ou ela é instalada quando o app for fechado.*
+
+Ele **não promete** "atualiza na hora" (a atualização só é aplicada no `quit`, e é o que a segunda metade diz) e **cita o rótulo exato** do botão, porque é o que o suporte lê ao telefone. O rótulo bate com o que o cartão da tela e o da sidebar mostram em `'ready'` (`updateView.ts:115` e `:205`) — e o "Reiniciar após a fila" do diálogo é um passo **depois**, sobre o qual a notificação não promete nada.
+
+**O disparo é a transição para `'ready'`**, não um `on('update-downloaded')` solto: o `set({ status: 'ready' })` tem **um** escritor no arquivo, o texto lê o `targetVersion` do **estado** (não o payload do evento), e passa pela dedupe. **Uma notificação por versão**, guardada em memória: sem isso, qualquer reentrada em `'ready'` — o ciclo de 6 h encontrando a mesma versão já baixada — tocaria o mesmo aviso de seis em seis horas até o operador fechar o app.
+
+**O clique mostra a janela** pelo `showWindow` injetado no `start()`, montado no `boot()` com a guarda `isDestroyed()`. **Não navega**: custaria um canal novo nos quatro lugares da RN-02 para levar a um lugar onde a faixa da #86 já leva, e recarregar o renderer com `#/updates` derrubaria os três sockets e a varredura de reconexão. `showWindow` **ausente** ou que **lança** não derruba nada.
+
+**O `start()` virou objeto de opções** (`start({ queue, showWindow })`), que é o que o aprendizado da #82 pediu e ninguém havia gastado. Os dois campos são atribuídos **antes** da guarda `started`, então uma segunda chamada injeta dependência sem reassinar os eventos do `autoUpdater` (reassinar duplicaria todos os handlers). O `stop()` continua **não** zerando o `started`.
+
+**O último `process.resourcesPath` solto do repositório saiu.** A linha antiga montava o ícone com `path.join(process.resourcesPath, 'assets', 'icon.ico')`, e fora do pacote o `process.resourcesPath` aponta para a instalação do Electron — **em desenvolvimento essa notificação não tinha ícone**. O commit `0095137` já havia consertado isso no `onNotification.ts` e na bandeja; esta linha ficou para trás. Agora passa por `getAssetPath(app, 'icon.ico')`, e `grep -rn "process.resourcesPath" src/` acha **só** o `asset.ts`. Conferido no pacote: `resources/assets/icon.ico` **vai** no instalador, então o caminho resolve nos dois modos.
+
+### O que o review consertou
+
+**O argumento do implementador era factualmente falso.** Ele não acrescentou a `Notification` ao mock de `electron` do `updateIpc.test.ts` dizendo que aquele arquivo "não chega ao `ready`" — e **chega, em dois testes**. Medido: a construção da notificação estourava, e **só o `catch` do `notifyReady()` mantinha o arquivo verde**. O custo é maior que o normal, porque esse é justamente o arquivo que roda o **updater real**: o gate de integração nunca exercitava o caminho da notificação, e mover ou estreitar o `try/catch` quebraria dois testes por motivo alheio ao que eles afirmam. O stub entrou, e agora o caminho real roda com **zero** `logger.error`.
+
+### Testes
+
+- A transição para `'ready'` dispara **uma** notificação, com a versão e o rótulo do botão no corpo.
+- A **mesma** versão não repete; versão **diferente** dispara.
+- **Não** notifica `available` nem erro — o `notifyReady()` tem um chamador.
+- O ícone vem do `getAssetPath`, com asserção sobre o **caminho resultante**.
+- O clique chama o `showWindow` injetado, e um `showWindow` ausente ou que lança não derruba nada.
+
+### Verificação
+
+- `npm run typecheck` 0 · `npm run lint` 0 erros e 1 aviso (o da base) · `npm test` **85 arquivos / 1042 testes**, de 85/1037.
+- **Mutação, rodada por mim:** tirar a dedupe por versão derruba o teste correspondente. O review rodou outras quatro (ícone literal, `try/catch` do clique, notificar no `update-available`) e **nenhuma sobreviveu**.
+- **Empacotamento, rodado no review** (é a "Verificação da entrega" do plan): `app.asar` de 5,5 MB, **24 pacotes**, `electron-updater` e `electron-log` presentes, **nenhuma devDependency**, `app-update.yml` **ao lado** do asar e inalterado (`owner: raphaelcarreiro`, `repo: delivery-printer-2`, `releaseType: prerelease`). `package.json` e `package-lock.json` **fora** do diff da branch inteira.
+- **Em aberto, e é o único critério que falta:** conferir em Windows que a notificação aparece com ícone e que o clique traz a janela da bandeja. Nem jsdom nem mock provam que ela **aparece**.
 
 ## Fora de escopo
 
