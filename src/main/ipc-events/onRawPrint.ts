@@ -29,8 +29,14 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
           color: false,
           collate: false,
           copies,
+          // 'none' lays the page out over the whole sheet, including the strip the printer
+          // cannot reach: on an 80 mm roll the head covers ~72 mm and the receipt was cut on
+          // the right. 'printableArea' makes the content box the area the driver declares, and
+          // the API's relative container (max-width: Xmm; width: 100%) shrinks into it, so the
+          // document it renders needs no change — Chromium ignores the HTML's @page margin for
+          // any type but 'default' (spec 89, RN-02; not measurable from this repo).
           margins: {
-            marginType: 'none',
+            marginType: 'printableArea',
           },
         },
         (success, reason) => {
