@@ -1,6 +1,6 @@
 # Spec — Processo de atualização da aplicação visível e acionável no PDV
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-11-11
 **Escopo:** main+renderer
 **Issue:** [#79](https://github.com/sgrande-delivery/delivery-printer/issues/79)

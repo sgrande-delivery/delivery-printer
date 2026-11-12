@@ -38,14 +38,14 @@ A feature tem uma espinha só: **o `main` passa a ser dono de um `UpdateState`, 
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | `UpdateState`, preferência de download automático e o `AppUpdater` como máquina de estado | [#80](https://github.com/sgrande-delivery/delivery-printer/issues/80) | [80-update-state-machine.md](./tasks/80-update-state-machine.md) | — | executada |
-| 02 | Par IPC do autoupdate e o hook `useAppUpdate` | [#81](https://github.com/sgrande-delivery/delivery-printer/issues/81) | [81-update-ipc-and-hook.md](./tasks/81-update-ipc-and-hook.md) | 01 | executada |
-| 03 | Reinício controlado: marca de encerramento, espera da fila e `quitAndInstall` | [#82](https://github.com/sgrande-delivery/delivery-printer/issues/82) | [82-controlled-restart.md](./tasks/82-controlled-restart.md) | 01 | executada |
-| 04 | Três ícones novos no recorte da fonte | [#83](https://github.com/sgrande-delivery/delivery-printer/issues/83) | [83-icon-font-subset.md](./tasks/83-icon-font-subset.md) | — | executada |
-| 05 | Tela `/updates` — cartão principal, progresso, preferências e novidades | [#84](https://github.com/sgrande-delivery/delivery-printer/issues/84) | [84-updates-screen.md](./tasks/84-updates-screen.md) | 02, 04 | executada |
-| 06 | Cartão de atualização na barra lateral e navegação pela versão | [#85](https://github.com/sgrande-delivery/delivery-printer/issues/85) | [85-sidebar-update-card.md](./tasks/85-sidebar-update-card.md) | 02, 04, 05 | executada |
-| 07 | Faixa de "pronta", diálogo de reinício, overlay e avisos | [#86](https://github.com/sgrande-delivery/delivery-printer/issues/86) | [86-banner-dialog-and-overlay.md](./tasks/86-banner-dialog-and-overlay.md) | 03, 05 | executada |
-| 08 | Notificação do sistema revista | [#87](https://github.com/sgrande-delivery/delivery-printer/issues/87) | [87-system-notification.md](./tasks/87-system-notification.md) | 01, 03 | executada |
+| 01 | `UpdateState`, preferência de download automático e o `AppUpdater` como máquina de estado | [#80](https://github.com/sgrande-delivery/delivery-printer/issues/80) | [80-update-state-machine.md](./tasks/80-update-state-machine.md) | — | shipped |
+| 02 | Par IPC do autoupdate e o hook `useAppUpdate` | [#81](https://github.com/sgrande-delivery/delivery-printer/issues/81) | [81-update-ipc-and-hook.md](./tasks/81-update-ipc-and-hook.md) | 01 | shipped |
+| 03 | Reinício controlado: marca de encerramento, espera da fila e `quitAndInstall` | [#82](https://github.com/sgrande-delivery/delivery-printer/issues/82) | [82-controlled-restart.md](./tasks/82-controlled-restart.md) | 01 | shipped |
+| 04 | Três ícones novos no recorte da fonte | [#83](https://github.com/sgrande-delivery/delivery-printer/issues/83) | [83-icon-font-subset.md](./tasks/83-icon-font-subset.md) | — | shipped |
+| 05 | Tela `/updates` — cartão principal, progresso, preferências e novidades | [#84](https://github.com/sgrande-delivery/delivery-printer/issues/84) | [84-updates-screen.md](./tasks/84-updates-screen.md) | 02, 04 | shipped |
+| 06 | Cartão de atualização na barra lateral e navegação pela versão | [#85](https://github.com/sgrande-delivery/delivery-printer/issues/85) | [85-sidebar-update-card.md](./tasks/85-sidebar-update-card.md) | 02, 04, 05 | shipped |
+| 07 | Faixa de "pronta", diálogo de reinício, overlay e avisos | [#86](https://github.com/sgrande-delivery/delivery-printer/issues/86) | [86-banner-dialog-and-overlay.md](./tasks/86-banner-dialog-and-overlay.md) | 03, 05 | shipped |
+| 08 | Notificação do sistema revista | [#87](https://github.com/sgrande-delivery/delivery-printer/issues/87) | [87-system-notification.md](./tasks/87-system-notification.md) | 01, 03 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** main
 **Depende de:** 80
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

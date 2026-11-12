@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** renderer
 **Depende de:** 81, 83
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 
