@@ -1,0 +1,31 @@
+/* atualizacoes.dc.html:93. Not a drag region: it lives inside the content, below the header. */
+.root {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  /* The design's 16 px gap between the banner and the screen; the content column has no gap of its own. */
+  margin-bottom: 16px;
+}
+
+.icon {
+  color: var(--accent-ink);
+}
+
+.texts {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.title {
+  font-weight: var(--font-weight-semibold);
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--text-2);
+}

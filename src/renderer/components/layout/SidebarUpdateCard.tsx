@@ -5,6 +5,7 @@ import Icon from 'renderer/base/Icon';
 import { cx } from 'renderer/base/cx';
 import { buildSidebarUpdate, type UpdateAction, type UpdateTone } from 'renderer/components/updates/updateView';
 import { useAppUpdateContext } from './appUpdateContext';
+import { useRestartDialog } from './restartDialogContext';
 import styles from './SidebarUpdateCard.module.css';
 
 const TONE: Record<UpdateTone, string | undefined> = {
@@ -18,6 +19,7 @@ const TONE: Record<UpdateTone, string | undefined> = {
 // atualizacoes.dc.html:45-66, with the sidebar column of buildSidebarUpdate.
 const SidebarUpdateCard: React.FC = () => {
   const context = useAppUpdateContext();
+  const { openRestartDialog } = useRestartDialog();
   const navigate = useNavigate();
   const view = context.state === null ? null : buildSidebarUpdate(context.state);
 
@@ -29,7 +31,7 @@ const SidebarUpdateCard: React.FC = () => {
   const actions: Record<UpdateAction, () => Promise<void>> = {
     check: context.check,
     download: context.download,
-    restart: context.restart,
+    restart: () => Promise.resolve(openRestartDialog()),
     'cancel-restart': context.cancelRestart,
   };
 

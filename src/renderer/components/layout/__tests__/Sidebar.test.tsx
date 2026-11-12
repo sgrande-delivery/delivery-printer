@@ -6,6 +6,7 @@ import { shell } from './shellMocks';
 import { expectNoUndefinedClasses } from 'renderer/__tests__/cssModules';
 import { fetchPrinters } from 'renderer/services/printers';
 import { AppUpdateContext, type AppUpdateContextValue } from '../appUpdateContext';
+import { RestartDialogContext } from '../restartDialogContext';
 import type { UpdateState } from 'shared/appUpdate';
 import Sidebar from '../Sidebar';
 import cardStyles from '../SidebarUpdateCard.module.css';
@@ -213,11 +214,15 @@ describe('the update card and the version line', () => {
 
   const Where: React.FC = () => <div data-testid="where">{useLocation().pathname}</div>;
 
+  const openRestartDialog = vi.fn();
+
   async function renderWith(ctx: AppUpdateContextValue): Promise<HTMLElement> {
     const { container } = render(
       <MemoryRouter initialEntries={['/queue']}>
         <AppUpdateContext.Provider value={ctx}>
-          <Sidebar isConnected />
+          <RestartDialogContext.Provider value={{ openRestartDialog }}>
+            <Sidebar isConnected />
+          </RestartDialogContext.Provider>
         </AppUpdateContext.Provider>
         <Where />
       </MemoryRouter>
@@ -229,6 +234,7 @@ describe('the update card and the version line', () => {
 
   beforeEach(() => {
     setRestaurant('Bella Massa');
+    openRestartDialog.mockReset();
     vi.mocked(window.electron.revealLogs).mockReset().mockResolvedValue(true);
   });
 
@@ -253,8 +259,10 @@ describe('the update card and the version line', () => {
     expect(card.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expectNoUndefinedClasses(container);
 
+    // Asks for the confirmation; it never restarts by itself (RF-05).
     fireEvent.click(screen.getByRole('button', { name: 'Reiniciar e atualizar' }));
-    expect(ctx.restart).toHaveBeenCalledTimes(1);
+    expect(openRestartDialog).toHaveBeenCalledTimes(1);
+    expect(ctx.restart).not.toHaveBeenCalled();
     expect(ctx.download).not.toHaveBeenCalled();
   });
 

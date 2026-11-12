@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { UpdateState } from 'shared/appUpdate';
 import { AppUpdateContext, type AppUpdateContextValue } from 'renderer/components/layout/appUpdateContext';
 import { useAppUpdate } from 'renderer/hooks/useAppUpdate';
@@ -11,6 +11,7 @@ import spinnerStyles from 'renderer/base/Spinner.module.css';
 import switchStyles from 'renderer/base/Switch.module.css';
 import symbol from 'renderer/images/brand/simbolo.svg';
 import symbolNegative from 'renderer/images/brand/simbolo-negativo.svg';
+import { RestartDialogContext } from 'renderer/components/layout/restartDialogContext';
 import Updates from '../Updates';
 import styles from '../Updates.module.css';
 import cardStyles from '../UpdateCard.module.css';
@@ -52,10 +53,14 @@ function value(current: UpdateState | null): AppUpdateContextValue {
   };
 }
 
+const openRestartDialog = vi.fn();
+
 function renderUpdates(ctx: AppUpdateContextValue) {
   return render(
     <AppUpdateContext.Provider value={ctx}>
-      <Updates />
+      <RestartDialogContext.Provider value={{ openRestartDialog }}>
+        <Updates />
+      </RestartDialogContext.Provider>
     </AppUpdateContext.Provider>
   );
 }
@@ -63,13 +68,13 @@ function renderUpdates(ctx: AppUpdateContextValue) {
 describe('Updates', () => {
   beforeEach(() => {
     mocks.handleOpen.mockReset();
+    openRestartDialog.mockReset();
     mocks.theme = 'light';
   });
 
   it.each<[string, Partial<UpdateState>, string, keyof AppUpdateContextValue]>([
     ['idle', {}, 'Verificar agora', 'check'],
     ['available', { status: 'available', targetVersion: '2.8.0' }, 'Baixar agora', 'download'],
-    ['ready', { status: 'ready', targetVersion: '2.8.0' }, 'Reiniciar e atualizar', 'restart'],
     [
       'scheduled',
       { status: 'ready', targetVersion: '2.8.0', restartScheduled: true, pendingJobs: 2 },
@@ -90,6 +95,16 @@ describe('Updates', () => {
         expect(ctx[other]).not.toHaveBeenCalled();
       }
     }
+  });
+
+  it('ready: the button opens the confirmation and restarts nothing (RF-05)', () => {
+    const ctx = value(state({ status: 'ready', targetVersion: '2.8.0' }));
+    renderUpdates(ctx);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reiniciar e atualizar' }));
+
+    expect(openRestartDialog).toHaveBeenCalledTimes(1);
+    expect(ctx.restart).not.toHaveBeenCalled();
   });
 
   it('checking: the button is disabled and shows the ring', () => {
@@ -211,6 +226,71 @@ describe('Updates', () => {
 
       await waitFor(() =>
         expect(mocks.handleOpen).toHaveBeenCalledWith('Não foi possível salvar a preferência de atualização.')
+      );
+    });
+  });
+
+  describe('the notices (through the real hook)', () => {
+    const Harness: React.FC = () => {
+      const update = useAppUpdate();
+      return (
+        <AppUpdateContext.Provider value={update}>
+          <Updates />
+        </AppUpdateContext.Provider>
+      );
+    };
+
+    async function mountedIdle() {
+      vi.mocked(window.electron.onUpdateChanged)
+        .mockReset()
+        .mockReturnValue(() => undefined);
+      vi.mocked(window.electron.updateState).mockResolvedValue(state({ lastCheckedAt: 1000 }));
+      vi.mocked(window.electron.checkForUpdate).mockResolvedValue(state({ status: 'checking', lastCheckedAt: 1000 }));
+      render(<Harness />);
+      const check = await screen.findByRole('button', { name: 'Verificar agora' });
+
+      return { check, emit: vi.mocked(window.electron.onUpdateChanged).mock.calls[0][0] };
+    }
+
+    it('Verificar agora that ends with no news says so', async () => {
+      const { check, emit } = await mountedIdle();
+
+      fireEvent.click(check);
+      await waitFor(() => expect(window.electron.checkForUpdate).toHaveBeenCalledTimes(1));
+      await screen.findByRole('button', { name: 'Verificando…' });
+      act(() => emit(state({ status: 'idle', lastCheckedAt: 2000 })));
+
+      expect(mocks.handleOpen).toHaveBeenCalledWith('Você já está na versão mais recente.');
+    });
+
+    it('a check nobody asked for, ending the same way, says nothing', async () => {
+      const { emit } = await mountedIdle();
+
+      act(() => emit(state({ status: 'checking', lastCheckedAt: 1000 })));
+      act(() => emit(state({ status: 'idle', lastCheckedAt: 2000 })));
+
+      expect(mocks.handleOpen).not.toHaveBeenCalled();
+    });
+
+    it('Cancelar on a scheduled restart says it was cancelled', async () => {
+      const scheduled = state({ status: 'ready', targetVersion: '2.8.0', restartScheduled: true, pendingJobs: 2 });
+      vi.mocked(window.electron.onUpdateChanged)
+        .mockReset()
+        .mockReturnValue(() => undefined);
+      vi.mocked(window.electron.updateState).mockResolvedValue(scheduled);
+      vi.mocked(window.electron.cancelRestart).mockResolvedValue({
+        ...scheduled,
+        restartScheduled: false,
+        pendingJobs: 0,
+      });
+      render(<Harness />);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Cancelar' }));
+
+      await waitFor(() =>
+        expect(mocks.handleOpen).toHaveBeenCalledWith(
+          'Reinício cancelado. A atualização será instalada ao fechar o app.'
+        )
       );
     });
   });

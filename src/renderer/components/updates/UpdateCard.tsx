@@ -4,6 +4,7 @@ import Icon from 'renderer/base/Icon';
 import Spinner from 'renderer/base/Spinner';
 import { cx } from 'renderer/base/cx';
 import { useAppUpdateContext } from 'renderer/components/layout/appUpdateContext';
+import { useRestartDialog } from 'renderer/components/layout/restartDialogContext';
 import symbol from 'renderer/images/brand/simbolo.svg';
 import symbolNegative from 'renderer/images/brand/simbolo-negativo.svg';
 import { useNow } from 'renderer/hooks/useNow';
@@ -28,6 +29,7 @@ const DOT: Record<UpdateTone, string> = {
 const UpdateCard: React.FC<UpdateCardProps> = ({ state }) => {
   const { resolved } = useTheme();
   const context = useAppUpdateContext();
+  const { openRestartDialog } = useRestartDialog();
   // Only "hoje" in the last-check line reads the clock, so a minute is plenty.
   const now = useNow(() => true, 60_000);
   const view = buildUpdateCard(state, now);
@@ -36,7 +38,7 @@ const UpdateCard: React.FC<UpdateCardProps> = ({ state }) => {
   const actions: Record<UpdateAction, () => Promise<void>> = {
     check: context.check,
     download: context.download,
-    restart: context.restart,
+    restart: () => Promise.resolve(openRestartDialog()),
     'cancel-restart': context.cancelRestart,
   };
 

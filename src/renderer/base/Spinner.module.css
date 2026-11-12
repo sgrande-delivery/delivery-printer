@@ -17,3 +17,9 @@
   border-color: var(--line);
   border-top-color: var(--accent);
 }
+
+/* The ring of the restart overlay (atualizacoes.dc.html:226): 28 px, same 3 px border and track as the 40 px one. */
+.overlay {
+  width: 28px;
+  height: 28px;
+}
