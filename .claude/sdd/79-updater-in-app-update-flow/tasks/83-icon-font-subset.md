@@ -5,7 +5,7 @@
 **Tipo:** chore
 **Processo:** renderer
 **Depende de:** —
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -57,13 +57,49 @@ O que verifica:
 
 ## Critérios de aceitação
 
-- [ ] `IconName` tem 37 nomes, em ordem alfabética, incluindo `downloading`, `new_releases` e `restart_alt`
-- [ ] A lista `icon_names` do `fonts/README.md` é **idêntica** à união
-- [ ] O `.woff2` foi regerado, é woff2 válido, e o tamanho continua na ordem de 20 kB
-- [ ] O `sha256` e as medições do `README.md` são os do arquivo novo, e os antigos não ficaram ao lado
-- [ ] Os três ícones aparecem como glifo, não como texto, no app rodando
-- [ ] O `ms.css` não foi commitado
-- [ ] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+- [x] `IconName` tem 37 nomes, em ordem alfabética, incluindo `downloading`, `new_releases` e `restart_alt`
+- [x] A lista `icon_names` do `fonts/README.md` é **idêntica** à união
+- [x] O `.woff2` foi regerado, é woff2 válido, e o tamanho continua na ordem de 20 kB
+- [x] O `sha256` e as medições do `README.md` são os do arquivo novo, e os antigos não ficaram ao lado
+- [x] Os três ícones têm **ligadura medida** na fonte (`GSUB` decodificado: 37/37, com controle negativo na fonte anterior reprovando exatamente os três). O olho no Electron não foi usado, e o `rlig` é *required ligature*, aplicada por padrão pelo Chromium
+- [x] O `ms.css` não foi commitado
+- [x] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+
+## Implementação
+
+Executada em 2026-11-12, um commit. `src/renderer/base/Icon.tsx` (união 34 → **37**), `src/renderer/fonts/material-symbols-outlined-subset.woff2` (20 860 → **23 036** bytes) e `src/renderer/fonts/README.md`.
+
+### A receita do README estava quebrada, e isso é metade do valor desta task
+
+Medido antes de delegar: a receita baixa com `curl` **sem User-Agent de navegador**, e nesse caso o Google devolve **três** blocos `@font-face`, todos `format('truetype')`. Seguir o README ao pé da letra salvaria um **TTF com o nome `.woff2`**. Com UA de Chrome vem **um** bloco, `format('woff2')`.
+
+A receita foi consertada: os dois `curl` levam `-A "$UA"`, com o sintoma, a consequência e a conferência (`file` tem de dizer Web Open Font Format Version 2; tamanho na faixa de 20–25 kB) escritos ao lado. **Conferido pelo review:** rodar a receita como ela está escrita hoje produz o arquivo commitado com `sha256` **idêntico byte a byte**.
+
+### O critério visual virou medição
+
+A task dizia que não há teste automatizado possível para "o glifo existe na fonte", e que a prova é o olho no app rodando. O review decodificou o `GSUB` em Node puro (`node:zlib` brotli, sem dependência nova) e mediu: **37 de 37 nomes têm ligadura**, todas no lookup tipo 7 → tipo 4, alcançável pela feature `rlig`. `restart_alt` → gid 20 (U+F053), `downloading` → gid 19 (U+F001), `new_releases` → gid 47 (U+EF76).
+
+**Com controle negativo, que é o que dá valor ao "OK":** o mesmo script contra a fonte **anterior**, com a lista nova, dá **34 OK e 3 falhas — exatamente os três nomes novos**. O script sabe falhar, e falha no lugar certo. Ele também reproduziu todos os números antigos do README (78 glifos, `sha256 7a13d4b3…`, `totalSfntSize` 43 052, 80 codepoints, 56 PUA, `GSUB` 1 776).
+
+### O `+4` glifos, explicado
+
+A fonte nova tem **82** glifos para **3** ícones acrescentados, e 60 PUA contra 56. A hipótese de deriva do Google foi **descartada remedindo**: pedir hoje a lista antiga de 34, com o mesmo UA, dá 78 glifos e 56 PUA — iguais aos commitados. O `+4` vem todo da lista nova, e os três acréscimos são sempre acompanhados de um quarto item que é **apelido do `new_releases`**: a ligadura legada `verified` apontando para o mesmo gid, um segundo codepoint (U+E031) do mesmo glifo, e uma forma alternativa (gid 48) fora do `cmap`. Não há glifo órfão: 60 codepoints PUA mapeiam 37 gids distintos, um por ícone.
+
+### Dois acertos do review no README
+
+- O bullet dizia que as ligaduras estão nas features `rlig` **e `rclt`**. Medido no byte: a `rclt` está declarada mas sua featureTable tem `lookupIndexCount` **0** — quem alcança o lookup é só a `rlig`.
+- "as **24 letras** (`_abcdefghiklmnoprstuvwy`)": a string tem 23 caracteres; o 24º codepoint não-PUA é o **espaço**.
+
+E a seção medida ganhou os dois fatos acima (37/37 ligaduras e a explicação do `+4`), porque `82`/`60`/`56` soltos ao lado de "+3 ícones" convidam a próxima pessoa à conclusão errada — foi a dúvida que o implementador não conseguiu fechar sozinho.
+
+### Verificação
+
+- `npm run typecheck` 0 · `npm run lint` 0 erros e 1 aviso (o da base) · `npm test` **79 arquivos / 907 testes** (esta task não acrescenta teste; ver abaixo).
+- União × lista do README **por comando**: 37 e 37, `diff` das duas ordenadas vazio, sem duplicata, e idêntica a `sort`.
+- `file`: `Web Open Font Format (Version 2), TrueType, length 23036`. `sha256` novo: `22c9e92ef978a45e2e0040501ad8017cc0ec07cab4e664dcecdf60b643028a76`; os valores antigos **saíram** do README.
+- `npm run build`: a fonte entra em `out/renderer/assets/` com o **mesmo** `sha256`.
+- **O critério 5 da task** ("aparecem como glifo no app rodando") não foi conferido no Electron, e na prática foi substituído por algo mais forte: o `rlig` é *required ligature*, que o Chromium aplica por padrão, e o `GSUB` diz que os três estão lá.
+- **Em aberto, para decisão própria:** o review mostrou que "todo nome da união tem ligadura" é automatizável (~120–150 linhas de helper, zero dependência nova, 1–5 ms) e que seria a **única** rede da RN-13. Ele recomendou não fixar contagem exata de glifos, porque a receita não fixa versão upstream e deriva do Google quebraria o teste sem nada de errado ter acontecido.
 
 ## Fora de escopo
 
