@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** main
 **Depende de:** —
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -150,15 +150,50 @@ stop(): void           // limpa o timer (usado no teste e no quit)
 
 ## Critérios de aceitação
 
-- [ ] `src/shared/appUpdate.ts` existe e compila nos **dois** tsconfigs (`npm run typecheck`)
-- [ ] O `AppUpdater` guarda o `UpdateState` e o publica a cada uma das seis transições
-- [ ] `autoUpdater.autoDownload` reflete a preferência gravada; `autoInstallOnAppQuit` continua `true` em todos os caminhos
-- [ ] A preferência sobrevive a reabrir o app e não apaga `theme` nem `sidebarWidth`
-- [ ] A verificação roda no boot e a cada 6 h, e **não** roda enquanto está baixando
-- [ ] As notas da versão chegam ao estado como `string[]` sem nenhuma tag HTML
-- [ ] O updater é instanciado no `main.ts`, e o `window.ts` não o conhece mais
-- [ ] Nenhum arquivo de `src/main/queue/` foi tocado
-- [ ] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+- [x] `src/shared/appUpdate.ts` existe e compila nos **dois** tsconfigs (`npm run typecheck`)
+- [x] O `AppUpdater` guarda o `UpdateState` e o publica a cada uma das seis transições
+- [x] `autoUpdater.autoDownload` reflete a preferência gravada; `autoInstallOnAppQuit` continua `true` em todos os caminhos
+- [x] A preferência sobrevive a reabrir o app e não apaga `theme` nem `sidebarWidth`
+- [x] A verificação roda no boot e a cada 6 h, e **não** roda enquanto está baixando
+- [x] As notas da versão chegam ao estado como `string[]` sem nenhuma tag HTML
+- [x] O updater é instanciado no `main.ts`, e o `window.ts` não o conhece mais
+- [x] Nenhum arquivo de `src/main/queue/` foi tocado
+- [x] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+
+## Implementação
+
+Executada em 2026-11-12, um commit. Nada de `src/main/queue/` foi tocado, nenhum canal de IPC foi criado (é a task #81) e nenhuma invariante de autoupdate mudou — conferido por `git diff` vazio em `package.json`, `package-lock.json`, `.github/**`, `electron.vite.config.ts` e `build-config.ts`.
+
+**`src/shared/appUpdate.ts`** (novo) — `UpdateStatus`, `UpdateState`, `UPDATE_CHECK_INTERVAL_MS` e `MAX_RELEASE_NOTE_LINES`. Em `src/shared/` porque está no `include` dos dois tsconfigs, e sem import nenhum: não arrasta Node para o bundle do renderer.
+
+**`src/shared/releaseNotes.ts`** (novo) — `releaseNotesToLines(notes: unknown, max)`. Divide em linhas **antes** de remover as tags e decodifica as cinco entidades **depois** (`&amp;` por último, para `&amp;lt;` virar `&lt;` e não `<`). Aceita `string`, `''`, `null`, `undefined`, `ReleaseNoteInfo[]` e qualquer outro tipo; nunca lança.
+
+**`src/main/uiPreferences.ts`** — `readAutoDownloadUpdates()` (default `true`; valor não-booleano loga `warn` e cai no default) e `writeAutoDownloadUpdates()` pelo `writeFields` read-modify-write que já existia.
+
+**`src/main/updater.ts`** (reescrito, 36 → ~185 linhas) — o `AppUpdater` guarda o `UpdateState`, assina os seis eventos e publica a cada mudança por um `Set` de listeners, com o `notify` em `try/catch`. `autoUpdater.autoDownload` é a preferência lida; `autoInstallOnAppQuit` é `true` fixo (RN-09). `check()` e o timer de 6 h não rodam em `downloading`, `ready` nem `restarting` — `'error'` fica **fora** da guarda, para "Tentar novamente" e o ciclo funcionarem. A notificação do Windows saiu daqui e volta na #87.
+
+**`src/main/main.ts` / `src/main/window.ts`** — o updater é instanciado no `boot()`, depois do `bootPrintQueue(window)`; o `window.ts` perdeu o método `updater()` e o import.
+
+### O que o review mudou
+
+1. **`state.error` é diagnóstico, não texto de produto.** A implementação gravava uma frase fixa em pt-BR, o que criava **duas frases para a mesma condição**: o desenho já põe o texto do cartão na view (`design/atualizacoes.dc.html:375`) e a tabela de estados da spec manda a tela seguí-la. O campo voltou a `describeError` (como a task pedia) e o doc do tipo agora diz que ele é diagnóstico — é o que impede a #84 de renderizá-lo achando que é a frase do desenho.
+2. **`fail()` loga antes de deduplicar.** A guarda de "já está em `'error'`" ficava acima do `logger.error`, então uma falha de origem diferente da biblioteca — o `quitAndInstall` da #82 é o candidato real — não deixaria nem linha de log.
+3. **`error` é limpo em `download-progress` e `update-downloaded`**, e `download()` zera `transferredBytes`/`totalBytes` junto com `percent`: sem isso a tela podia mostrar `0% · 1,9 de 2,0 MB` da tentativa anterior.
+4. **Um item malformado não apaga os seguintes.** `'<li>primeiro</li><li>quebrado <img src=x</li><li>terceiro</li>'` devolvia duas notas — a terceira desaparecia calada, porque o `<` aberto engolia até o fim da string em vez do fim do item.
+5. Dois testes que faltavam: assinatura dupla no `start()` (o mock guardava handlers num `Map` por nome, o que **mascarava** duplicata) e a gravação da preferência falhando. E um teste que dependia da ordem de execução (estado de módulo do mock não reiniciado no `beforeEach`).
+
+### Testes
+
+- `src/main/__tests__/updater.test.ts` (novo, 20 casos) — as seis transições com o estado inteiro conferido; `update-available` com e sem download automático; `setAutoDownload` nos dois sentidos; `error` atualizando `lastCheckedAt`; listener que lança não impedindo a mudança; o timer de 6 h; `stop()`; `start()` duas vezes assinando uma.
+- `src/shared/__tests__/releaseNotes.test.ts` (novo, 13 casos) — corpo real do GitHub, `''`/`null`/`undefined`/`[]`, `<script>`/`<img onerror>`/tag não fechada saindo sem tag, entidade dupla, `max` cortando, `ReleaseNoteInfo[]`.
+- `src/main/__tests__/uiPreferences.test.ts` (alterado) — a preferência sobre `{theme, sidebarWidth}` conferindo o objeto inteiro no disco (prova do read-modify-write) e valor não-booleano caindo no default com `warn`.
+
+### Verificação
+
+- `npm run typecheck` 0 · `npm run lint` 0 erros e 1 aviso (o `Login.tsx` da base) · `npm test` **75 arquivos / 851 testes**, de 73/812 no baseline.
+- **Mutação, rodada por mim:** `autoInstallOnAppQuit = false` derruba 2 testes (RN-09); tirar a remoção de tags por linha derruba outros 2 (RN-04). Arquivos restaurados do backup, com `sha256` conferido.
+- **Empacotamento, rodado no review:** `npm run build` + `npx electron-builder --linux dir` → `electron-updater` e `electron-log` no asar, 24 pacotes, nenhuma devDependency, `app.asar` 5,3 MB, `app-update.yml` com `owner: raphaelcarreiro` / `repo: delivery-printer-2` / `releaseType: prerelease` intactos. `release/` apagado.
+- **Não verificado:** o caminho real contra o GitHub Releases e qualquer coisa em Windows empacotado. Em `npm run dev` isso é inverificável por desenho — ver o aprendizado no `plan.md` sobre o `isUpdaterActive()`.
 
 ## Fora de escopo
 

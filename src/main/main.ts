@@ -27,6 +27,7 @@ import { onWindowAllClosed } from './app-events/onWindowAllClosed';
 import { TrayBuilder } from './tray';
 import { MainWindowBuilder } from './window';
 import { registerAutostart } from './autostart';
+import { AppUpdater } from './updater';
 
 ipcMain.handle(INVOKE_CHANNELS.rawPrint, onRawPrint);
 ipcMain.handle(INVOKE_CHANNELS.listPrinters, onListPrinters);
@@ -71,6 +72,8 @@ function boot(): void {
       new TrayBuilder(app, window).build();
 
       bootPrintQueue(window);
+
+      new AppUpdater().start();
 
       app.on('before-quit', event => onBeforeQuit(event, window));
       app.on('second-instance', () => onSecondInstance(window));
