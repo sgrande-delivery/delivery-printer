@@ -5,7 +5,7 @@ import styles from './Button.module.css';
 type Variant = 'contained' | 'outlined' | 'text';
 
 /** The heights, in px, that the design draws; each one is a row of METRICS. 32 is the table-row action. */
-export type ButtonHeight = 32 | 34 | 38 | 42 | 44 | 46 | 48;
+export type ButtonHeight = 32 | 34 | 36 | 38 | 42 | 44 | 46 | 48;
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -46,6 +46,7 @@ const METRICS: Record<ButtonHeight, Metrics> = {
     quietText: true,
   },
   34: { radius: 6, fontSize: 13, paddingX: uniform(14), weight: weights(600), clearOutline: true },
+  36: { radius: 6, fontSize: 13, paddingX: uniform(16), weight: weights(500) },
   38: {
     radius: 6,
     fontSize: 13,

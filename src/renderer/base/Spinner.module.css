@@ -8,3 +8,12 @@
   border-top-color: var(--accent);
   border-radius: 50%;
 }
+
+/* The 12 px ring of the update card, beside the status text (atualizacoes.dc.html:146). */
+.inline {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+  border-color: var(--line);
+  border-top-color: var(--accent);
+}

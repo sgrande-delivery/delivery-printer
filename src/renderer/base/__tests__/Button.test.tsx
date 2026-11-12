@@ -23,6 +23,7 @@ describe('Button', () => {
   it.each<[ButtonHeight, string, string, string]>([
     [32, '6px', '13px', '0 12px'],
     [34, '6px', '13px', '0 14px'],
+    [36, '6px', '13px', '0 16px'],
     [38, '6px', '13px', '0 18px'],
     [42, '8px', '14px', '0 20px'],
     [44, '8px', '14px', '0 22px'],
@@ -52,6 +53,9 @@ describe('Button', () => {
         <Button size={34} variant="outlined">
           Editar
         </Button>
+        <Button size={36} variant="outlined">
+          Verificar agora
+        </Button>
         <Button size={32} variant="text">
           Descartar
         </Button>
@@ -61,6 +65,7 @@ describe('Button', () => {
     expect(screen.getByText('Abrir registros')).toHaveStyle({ padding: '0 18px', fontWeight: '400' });
     expect(screen.getByText('Cancelar')).toHaveStyle({ padding: '0 16px', fontWeight: '400' });
     expect(screen.getByText('Editar')).toHaveStyle({ padding: '0 14px', fontWeight: '600' });
+    expect(screen.getByText('Verificar agora')).toHaveStyle({ padding: '0 16px', fontWeight: '500' });
     expect(screen.getByText('Descartar')).toHaveStyle({ padding: '0 10px' });
   });
 

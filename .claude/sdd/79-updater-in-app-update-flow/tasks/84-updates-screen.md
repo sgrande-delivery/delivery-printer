@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** renderer
 **Depende de:** 81, 83
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -98,14 +98,51 @@ Tudo lê o contexto da task #81 (`useAppUpdateContext()`), nunca monta o hook de
 
 ## Critérios de aceitação
 
-- [ ] `/updates` renderiza dentro do `AppShell`, com o cabeçalho dizendo "Atualizações"
-- [ ] A rota **não** aparece na barra lateral (o menu continua com seis itens)
-- [ ] Os sete estados batem com a tabela da spec, em texto, cor e botão
-- [ ] O progresso mostra percentual, MB feito/total com vírgula, e **omite** a estimativa quando não há como calculá-la
-- [ ] A preferência liga e desliga o download automático e sobrevive a reabrir o app
-- [ ] As novidades saem como texto, e o cartão desaparece quando não há nenhuma
-- [ ] Confere com o desenho nos **dois temas**, sem hex solto em nenhum módulo
-- [ ] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+- [x] `/updates` renderiza dentro do `AppShell`, com o cabeçalho dizendo "Atualizações"
+- [x] A rota **não** aparece na barra lateral (o menu continua com seis itens)
+- [x] Os sete estados batem com a tabela da spec, em texto, cor e botão
+- [x] O progresso mostra percentual, MB feito/total com vírgula, e **omite** a estimativa quando não há como calculá-la
+- [x] A preferência liga e desliga o download automático (o `Switch` chama o canal nos dois sentidos, com teste); que ela **sobrevive a reabrir o app** é o round trip em `userData` provado na #80
+- [x] As novidades saem como texto, e o cartão desaparece quando não há nenhuma
+- [x] Sem hex solto em nenhum módulo, e todo token usado existe nos dois temas (conferido token a token contra o `app.css`). **Os dois temas no olho ficam para a verificação manual** — jsdom não pinta, e "cor errada no escuro" não é coberto por teste neste repo
+- [x] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+
+## Implementação
+
+Executada em 2026-11-12, um commit. A rota `/updates` existe, é **oculta** (o menu continua com seis itens) e hoje só se alcança pela URL hash: os dois caminhos até ela são as tasks #85 (cartão da sidebar e linha da versão) e #86 (faixa).
+
+**`src/renderer/components/updates/updateView.ts`** — a **função pura** `buildUpdateCard(state, now)`, mais `releaseNotesTitle` e `autoDownloadHint`. Sem relógio próprio (o `now` é parâmetro) e **sem nenhuma decisão de texto sobrando no JSX**: o cartão só consome `view.dot/text/button/progress/waiting/lastCheck` e um `Record<UpdateAction, () => Promise<void>>` que mapeia ação → função do contexto. É o desenho de `buildDashboard`/`testPrintView` que a regra prescreve.
+
+**A tela** — `Updates.tsx`, `UpdateCard.tsx`, `ReleaseNotesCard.tsx` (cada um com seu módulo) e `screens/UpdatesScreen.tsx`. A rota entra como **irmã** das seis dentro do **único** `ProtectedRoute`, e o `titleFor` passa a olhar `[...NAV_ITEMS, ...HIDDEN_ROUTES]` — `NAV_ITEMS` não cresceu. Conferido token a token contra o desenho: raio 10, padding 18, gap 14/16, símbolo 48, nome 16/600, ponto 8 px, barra 6 px raio 3, tarja `--warn-soft`/`--warn`, `lastCheck` 12 px `--muted`. **Zero hex solto**, e todos os `var(--…)` usados existem nos **dois** temas.
+
+**Dois casos que o desenho não tinha, e a spec agora tem:**
+
+- **`'restarting'`** ganhou linha na tabela de estados: sem ela o estado cai no `default` e o cartão afirma "Você está na versão mais recente" **enquanto instala**.
+- **`'error'` sem `targetVersion`** (erro de verificação, não de download): texto próprio e o botão chamando **`check()`**, porque o `download()` é no-op sem alvo. O `state.error` **nunca** vira texto do cartão — tem teste afirmando que nem `null` nem `ECONNRESET` aparecem na tela.
+
+**Estado `null`** (o main ainda não respondeu): a tela mostra só "Lendo o estado da atualização…" em `role="status"`, **sem Spinner e sem botão**, e sem os cartões de preferência e novidades. O `null` não carrega a versão instalada, e um anel giraria para sempre se o main nunca respondesse — é o aprendizado da #81 implementado. Há teste afirmando a **ausência** de `progressbar` e de `button`.
+
+**`Button` ganhou a altura 36** — união + linha na `METRICS` + linha no `it.each`, que é o jeito que a regra prescreve. Valores do desenho: raio 6, fonte 13, `padding 0 16px`, peso 600 no contained e 500 no outlined.
+
+### O que o review mudou
+
+1. **Violação de regra: o anel de 12 px era um override na tela.** O `UpdateCard.module.css` redimensionava o `Spinner` por seletor descendente (`.status .ring`), e a regra diz que variante de primitivo entra **no primitivo**. Pior: o efeito inteiro era **invisível para a suíte** — trocar o seletor por um que não casa deixava tudo verde e o anel voltava calado para 40 px. Agora o `Spinner` tem `size`, união fechada `12 | 40`, com a classe no próprio primitivo (a espessura da borda e a cor da trilha mudam com o tamanho, então número livre não carregaria isso).
+2. **`toHaveClass(styles.dot, styles.dotWarn)` passava com uma das duas `undefined`** — o matcher só falha com a lista vazia. Virou uma asserção por chave.
+3. **A altura 36 e o peso 500 não estavam fixados em teste**: `weights(500)` podia virar 400 e o cartão podia virar `size={34}` sem nada cair.
+4. **Um `!` gratuito** no `UpdateCard` (o TS perde o narrowing de `view.button` dentro da closure) virou desestruturação.
+
+### Testes
+
+- `updateView.test.ts` — **uma asserção por linha** da tabela de estados, nos sete casos, com `toEqual` no objeto inteiro do botão; `eta` nulo nos três casos (`bytesPerSecond` 0, ausente e `totalBytes` 0); MB com vírgula; `lastCheckedAt` nulo e com valor, nos dois ramos do "hoje".
+- `Updates.test.tsx` — cada estado com o botão certo e o clique chamando a ação certa **do contexto provido**; o `Switch` nos dois sentidos; falha no canal mostrando o aviso (esse caso usa o hook real); `releaseNotes: []` sem cartão; e `'<b>x</b> e <img src=x onerror=alert(1)>'` saindo como **texto**, com `querySelector('b')` e `('img')` nulos.
+- `AppShell.test.tsx` — `/updates` põe "Atualizações" no cabeçalho, o menu continua com 6 links e nenhum deles se chama "Atualizações".
+- **Rede fechada depois do review:** 8 chaves de CSS que escapavam (`head`, `identity`, `progress`, `waitingText`, `pending`, `dotOk`, `dotAccent`, `dotErr`) passaram a ter asserção, cada uma medida por mutação.
+
+### Verificação
+
+- `npm run typecheck` 0 · `npm run lint` 0 erros e 1 aviso (o da base) · `npm test` **81 arquivos / 963 testes**, de 79/907.
+- **Mutação:** o review varreu as **27 chaves** dos três módulos renomeando uma por vez (13 escapavam; as 8 que carregam layout ou estado foram fechadas), mais o seletor do anel, o `weights(500)`, o `size={36}` e textos do view — 33 mutações.
+- **Não verificado:** os dois temas no olho e a tela em Electron real. jsdom não pinta, e "cor errada no escuro" não é coberto por teste nenhum neste repo. Os caminhos `'checking'` e `'error'` também não aparecem em dev (aprendizado da #80).
 
 ## Fora de escopo
 

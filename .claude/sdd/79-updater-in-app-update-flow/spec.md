@@ -45,6 +45,9 @@ Do `mainCard(S)` e do `sidebarCard(S)` do desenho (`design/atualizacoes.dc.html:
 | `ready` | `--ok-dot` · "A versão `<x>` está pronta para instalar" · `Reiniciar e atualizar` (contained) | `restart_alt` · "Atualização pronta" · `v<x>` · `Reiniciar e atualizar` |
 | `ready` + agendado | `--warn` · "A versão `<x>` será instalada em seguida" · `Cancelar` (outlined) | `hourglass_top` (warn) · "Reinício agendado" · "Aguardando `<n>` na fila" · `Cancelar` |
 | `error` | `--err-dot` · "Não foi possível baixar. Verifique a internet." · `Tentar novamente` (outlined) | `error` (err) · "Falha no download" · `v<x>` · `Tentar novamente` |
+| `restarting` | anel girando · "Instalando a versão `<x>`…" · sem botão | **não aparece** |
+
+**Duas notas da tabela, medidas na execução.** O `restarting` não estava na tabela e precisa estar: sem ele o estado cai no default e o cartão afirma "Você está na versão mais recente" **enquanto instala**. E o `error` tem **dois** casos, porque o estado pode chegar com `targetVersion: null` — erro de **verificação** não tem versão oferecida. Com versão, o texto é o do desenho e o botão baixa de novo; sem versão, o texto é "Não foi possível verificar atualizações. Verifique a internet." e o botão **verifica** (o `download()` é no-op sem alvo). O campo `error` do estado é diagnóstico e nunca vira texto de cartão.
 
 ## Regras de negócio
 
@@ -84,13 +87,17 @@ Do `mainCard(S)` e do `sidebarCard(S)` do desenho (`design/atualizacoes.dc.html:
 | --- | --- | --- |
 | 1 | `restart()` troca a versão em memória e mostra o toast "Delivery Printer atualizado para a versão 2.8.0" (`:336`) | **Não atravessa.** No app o processo morre e o instalador assume; para mostrar esse toast seria preciso guardar a última versão vista e comparar no boot seguinte (decisão 1) |
 | 2 | `assets/app-icon/opcao-b-cupom-s.svg` no cartão e no overlay | `images/brand/simbolo.svg` / `simbolo-negativo.svg`, escolhido pelo tema, como o `StateLayout` já faz (`StateLayout.tsx:19`) |
-| 3 | `@keyframes spin` inline e um `<span>` com borda girando | O primitivo `Spinner`, que já tem `role="progressbar"` e `aria-label`. CSS Module não aponta para keyframe global (`.claude/rules/renderer-ui.md`) |
+| 3 | `@keyframes spin` inline e um `<span>` com borda girando | O primitivo `Spinner`, que já tem `role="progressbar"` e `aria-label`. CSS Module não aponta para keyframe global (`.claude/rules/renderer-ui.md`). O anel de 12 px do cartão é `<Spinner size={12} />` — união fechada `12 | 40` e classe **no primitivo**, nunca override por seletor na tela |
 | 4 | `<button role="switch">` escrito à mão (`:176`) | O primitivo `Switch`, com o rótulo visível ao lado, na tela |
 | 5 | `eta` derivado de uma constante inventada: `(100 - progress) * 0.07` | Derivado do `bytesPerSecond` do `download-progress`, que **pode ser 0 ou faltar** — nesse caso a estimativa é **omitida** em vez de mostrar "cerca de 1 s" |
 | 6 | `TOTAL_MB = 43.7` fixo | O `total` do `download-progress`, formatado com uma decimal e vírgula |
 | 7 | `lastCheck: '10:42'` e o texto "Última verificação: hoje às 10:42" | Hora local do instante real da última verificação **concluída**; antes da primeira, a linha diz que ainda não houve verificação em vez de inventar hora |
 | 8 | Corpo em 16 px | 14 px, como todo o app desde a spec 38 (divergência de base, `.claude/rules/renderer-ui.md`) |
 | 9 | O menu tem seis itens e "Atualizações" não está entre eles | Mantido: a rota é oculta (RN-14) |
+| 10 | `lastCheck: '10:42'` sempre com "hoje às" (`:170`) | "hoje às `<hora>`" **só no mesmo dia**; em outro dia, `Última verificação: 10/11 às 09:05`. O app fica aberto por dias, e "hoje" numa verificação de ontem mentiria |
+| 11 | `eta` sempre em segundos (`'cerca de ' + remainingSec + ' s'`, `:388`) | Segundos abaixo de 60 s e **"cerca de `<n>` min"** a partir daí: com a taxa real, "cerca de 2700 s" é um número que ninguém lê |
+| 12 | `TOTAL_MB = 43.7` sem declarar a base | MB = **1024²** (MiB), sobre o `total` em bytes do `download-progress`. É a base com que o GitHub mostra o tamanho do asset, então a tela e a release dizem o mesmo número |
+| 13 | A preferência tem só rótulo e dica (`:176`) | Mais a linha **"Vale só neste computador. Aplica na hora."**, como o `AppearanceSection` faz: a preferência é por instalação e mora em `userData` (RN-10), e isso precisa estar escrito na tela |
 
 ## Critérios de aceitação
 

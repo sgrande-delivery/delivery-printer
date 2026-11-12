@@ -1,0 +1,113 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.symbol {
+  width: 48px;
+  height: 48px;
+}
+
+.identity {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.dotOk {
+  background: var(--ok-dot);
+}
+
+.dotAccent {
+  background: var(--accent);
+}
+
+.dotWarn {
+  background: var(--warn);
+}
+
+.dotErr {
+  background: var(--err-dot);
+}
+
+.dotMuted {
+  background: var(--muted);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 250ms linear;
+}
+
+.progressText {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 13px;
+}
+
+.waitingText {
+  flex: 1;
+}
+
+.lastCheck {
+  font-size: 12px;
+  color: var(--muted);
+}
