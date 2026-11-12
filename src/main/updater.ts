@@ -188,3 +188,18 @@ export class AppUpdater {
     }
   }
 }
+
+// A module-level instance, like the renderer's SocketStore singletons: the IPC handlers have no other way
+// to reach the updater, and a reference threaded through boot() would have to be passed into every handler
+// that ipcMain.handle registers at import time, before boot() runs. Lazy so that importing this module
+// reads no preference file. The electron-updater's autoUpdater is itself a module singleton, so a second
+// AppUpdater would subscribe every handler twice.
+let instance: AppUpdater | null = null;
+
+export function appUpdater(): AppUpdater {
+  if (!instance) {
+    instance = new AppUpdater();
+  }
+
+  return instance;
+}

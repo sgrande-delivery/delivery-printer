@@ -4,10 +4,12 @@ import { useAdminSocketEvents } from 'renderer/hooks/useAdminSocketEvents';
 import { useAdminSocket } from 'renderer/hooks/useAdminSocket';
 import { usePrintingOrder } from 'renderer/hooks/usePrintingOrder';
 import { usePrintingBoard } from 'renderer/hooks/usePrintingBoard';
+import { useAppUpdate } from 'renderer/hooks/useAppUpdate';
 import Chip from 'renderer/base/Chip';
 import Sidebar from './Sidebar';
 import { titleFor } from './navigation';
 import { ShellConnectionContext } from './shellConnection';
+import { AppUpdateContext } from './appUpdateContext';
 import styles from './AppShell.module.css';
 
 interface AppShellProps {
@@ -21,25 +23,28 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const { isConnected } = useAdminSocket();
   usePrintingOrder();
   usePrintingBoard();
+  const appUpdate = useAppUpdate();
 
   const { pathname } = useLocation();
 
   return (
     <ShellConnectionContext.Provider value={isConnected}>
-      <div className={styles.root}>
-        <Sidebar isConnected={isConnected} />
-        <main className={styles.main}>
-          <header className={styles.header}>
-            <h1 className={styles.title}>{titleFor(pathname)}</h1>
-            <Chip size="small" tone={isConnected ? 'ok' : 'err'} dot={isConnected ? 'ok' : 'err'}>
-              {isConnected ? 'Online' : 'Sem conexão'}
-            </Chip>
-          </header>
-          <div id="app-content" className={styles.content}>
-            {children}
-          </div>
-        </main>
-      </div>
+      <AppUpdateContext.Provider value={appUpdate}>
+        <div className={styles.root}>
+          <Sidebar isConnected={isConnected} />
+          <main className={styles.main}>
+            <header className={styles.header}>
+              <h1 className={styles.title}>{titleFor(pathname)}</h1>
+              <Chip size="small" tone={isConnected ? 'ok' : 'err'} dot={isConnected ? 'ok' : 'err'}>
+                {isConnected ? 'Online' : 'Sem conexão'}
+              </Chip>
+            </header>
+            <div id="app-content" className={styles.content}>
+              {children}
+            </div>
+          </main>
+        </div>
+      </AppUpdateContext.Provider>
     </ShellConnectionContext.Provider>
   );
 };

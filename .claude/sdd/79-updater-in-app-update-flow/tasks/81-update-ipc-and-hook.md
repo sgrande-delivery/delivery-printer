@@ -5,7 +5,7 @@
 **Tipo:** feat
 **Processo:** main+renderer
 **Depende de:** 80
-**Status:** pendente
+**Status:** executada
 
 ## Objetivo
 
@@ -87,12 +87,59 @@ Os cinco stubs. O `updateState` resolve um `UpdateState` **coerente** (status `'
 
 ## Critérios de aceitação
 
-- [ ] Os cinco canais existem nos **quatro** lugares, e `src/shared/__tests__/ipcChannels.test.ts` passa
-- [ ] `grep -rn "update:" src/` mostra cada nome só nas constantes, nunca como literal em `ipcRenderer.*`/`ipcMain.*`
-- [ ] O renderer recebe o estado no payload do `update:changed`, sem precisar reler nada
-- [ ] O hook remove o listener no cleanup, provado por montar/desmontar/remontar
-- [ ] Nenhum arquivo de `src/renderer/` importa `electron` ou `electron-updater`
-- [ ] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+- [x] Os cinco canais existem nos **quatro** lugares, e `src/shared/__tests__/ipcChannels.test.ts` passa
+- [x] `grep -rn "update:" src/` mostra cada nome só nas constantes, nunca como literal em `ipcRenderer.*`/`ipcMain.*`
+- [x] O renderer recebe o estado no payload do `update:changed`, sem precisar reler nada
+- [x] O hook remove o listener no cleanup, provado por montar/desmontar/remontar
+- [x] Nenhum arquivo de `src/renderer/` importa `electron` ou `electron-updater`
+- [x] `npm run typecheck`, `npm test` e `npm run lint` sem erro novo
+
+## Implementação
+
+Executada em 2026-11-12, um commit. Nenhum arquivo de `src/main/queue/` tocado, nenhuma invariante de autoupdate mexida, e **nenhum** canal de reinício declarado (são da #82: constante usada em um lado só derruba o gate do `ipcChannels.test.ts`).
+
+**Os cinco canais, nos quatro lugares da RN-02** — `update:state`, `update:check`, `update:download`, `update:set-auto-download` (invoke) e `update:changed` (evento):
+
+| Lugar | Onde |
+| --- | --- |
+| constante | `src/shared/ipcChannels.ts:23-26` e `:48` |
+| preload | `src/main/preload.ts:129-147` |
+| main | `src/main/main.ts:52-55` (`ipcMain.handle`) e `:89` (`webContents.send`) |
+| stub de teste | `src/__tests__/setup.ts:59-65` |
+
+Conferido por `grep -rn "update:" src/` (os nomes aparecem **só** nas constantes; os outros dois hits são texto de log da #80) e por `grep -rnE "(ipcRenderer|ipcMain)\.[a-zA-Z]+\(['\"]" src/`, que sai vazio. O review mediu também nos bundles: os cinco nomes estão em `out/preload` e `out/main`, e **zero** vezes em `out/renderer`.
+
+**O comentário da RN-03 mora no canal** (`ipcChannels.ts:43-47`): diz por que este evento leva o estado inteiro e o `queueChanged` não leva nada, e diz explicitamente que os dois **não** devem ser padronizados num formato só.
+
+**Como o handler alcança o updater:** singleton de módulo **preguiçoso**, `appUpdater()` no fim do `src/main/updater.ts`. É o mesmo tipo de precedente do `printQueueWorker` (`src/main/queue/print-queue.ts:19`), que o `onQueueState` importa do mesmo jeito — o que o `bootPrintQueue(window)` injeta é a janela, não o worker. Preguiçoso porque o construtor lê o `ui-preferences.json`, e um `const` eager rodaria essa leitura **no import** do `main.ts`, antes do `whenReady`.
+
+**Renderer:** `src/renderer/hooks/useAppUpdate.ts` (lê uma vez, assina `onUpdateChanged`, devolve o `off` no cleanup) e `src/renderer/components/layout/appUpdateContext.ts`, ao lado do `shellConnection.ts` e com a mesma forma. Só o `AppShell` monta o hook — conferido por grep.
+
+### Decisões, e o veredito do review
+
+1. **Singleton preguiçoso** — aceito: é o precedente do repo, e o motivo (não ler preferência no import) está escrito no código.
+2. **Estado inicial `null`**, com o contexto em `UpdateState | null` — aceito: não existe `UpdateState` vazio honesto (um fabricado sairia com `currentVersion: ''` e a tela diria "Delivery Printer " sem versão). É o análogo do `loaded` do `usePrintQueue`.
+3. **Assina o evento antes da leitura inicial**, com flag `received` para a resposta atrasada não voltar o estado para trás — aceito, e as duas janelas têm teste.
+4. **`onSetAutoDownloadUpdates` lança** com valor não-booleano. A task dizia "como o `onSetUiSidebarWidth` já faz", e **a task estava imprecisa**: aquele clampa porque largura é valor contínuo com faixa. O precedente de domínio fechado é o `onSetUiTheme`, que lança — e booleano não tem o que clampar (coagir `'false'` para `true` desligaria a preferência do operador por causa de um bug do renderer).
+5. **Teste do main com `uiPreferences` real** sobre `userData` temporário, `vi.resetModules()` por teste — aceito: o `resetModules` é exigido pelo singleton, não curativo, e o teste prova que a preferência aterra no arquivo.
+6. **`import type` do `AppUpdateContextValue`** no hook — aceito: a forma fica num lugar só e a seta é única (o contexto não importa o hook).
+
+### O que eu mudei depois do review
+
+**`useMemo` no valor devolvido pelo hook.** O `AppShell` re-renderiza a cada navegação e a cada mudança de conexão, e o valor era objeto novo a cada render: todo consumidor do contexto re-renderizaria sem nada da atualização ter mudado. O `renderer-ui.md` é explícito sobre isso no `AuthProvider` ("o `value` é `useMemo` — mantenha"), e a #85 põe a sidebar como consumidora.
+
+### Testes
+
+- `src/main/__tests__/updateIpc.test.ts` (novo) — os quatro handlers chamados direto, contra o updater real com o `electron-updater` mockado, sem mock na borda do canal (é o modelo do `queue-ipc.test.ts`).
+- `src/renderer/hooks/__tests__/useAppUpdate.test.ts` (novo) — leitura inicial, evento posterior, **montar/desmontar/remontar com um evento e uma chamada** (o teste de vazamento), as três ações adotando o estado resolvido, e canal que rejeita sem derrubar o hook.
+- `src/shared/__tests__/ipcChannels.test.ts` passou sem alteração e **cresceu sozinho**: ele é `it.each` sobre as chaves, e 5 dos 20 testes novos vieram de lá.
+
+### Verificação
+
+- `npm run typecheck` 0 · `npm run lint` 0 erros e 1 aviso (o `Login.tsx` da base) · `npm test` **77 arquivos / 871 testes**, de 75/851.
+- **Mutação, rodada por mim:** trocar o `return off` do efeito por `void off` derruba o teste de vazamento. O review rodou outras três (flag `received`, validação booleana trocada por `Boolean(value)`, singleton trocado por instância nova) e todas derrubaram teste.
+- **Empacotamento, rodado no review:** asar com 24 pacotes, `electron-updater` e `electron-log` presentes, nenhuma devDependency, `app-update.yml` intacto.
+- **Não verificado:** Electron real (nenhum teste da base importa o `main.ts`) e qualquer coisa visual — esta task não cria UI.
 
 ## Fora de escopo
 

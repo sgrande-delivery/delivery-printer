@@ -1,6 +1,26 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
+import packageJson from '../../package.json';
+import type { UpdateState } from 'shared/appUpdate';
 import { SIDEBAR_DEFAULT_WIDTH, clampSidebarWidth } from 'shared/sidebarWidth';
+
+// A coherent state, not {}: an empty object would let a screen pass under a state that the real channel
+// never resolves to (same reasoning as the sidebar width below).
+const idleUpdateState = (): UpdateState => ({
+  status: 'idle',
+  currentVersion: packageJson.version,
+  targetVersion: null,
+  percent: 0,
+  transferredBytes: 0,
+  totalBytes: 0,
+  bytesPerSecond: 0,
+  lastCheckedAt: null,
+  error: null,
+  autoDownload: true,
+  restartScheduled: false,
+  pendingJobs: 0,
+  releaseNotes: [],
+});
 
 // The renderer talks to the main process through the preload bridge, which does
 // not exist under jsdom.
@@ -36,5 +56,12 @@ Object.defineProperty(window, 'electron', {
     uiSidebarWidth: vi.fn().mockResolvedValue(SIDEBAR_DEFAULT_WIDTH),
     setUiSidebarWidth: vi.fn().mockImplementation((width: number) => Promise.resolve(clampSidebarWidth(width))),
     onUiThemeChanged: vi.fn().mockReturnValue(() => undefined),
+    updateState: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),
+    checkForUpdate: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),
+    downloadUpdate: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),
+    setAutoDownloadUpdates: vi
+      .fn()
+      .mockImplementation((value: boolean) => Promise.resolve({ ...idleUpdateState(), autoDownload: value })),
+    onUpdateChanged: vi.fn().mockReturnValue(() => undefined),
   },
 });

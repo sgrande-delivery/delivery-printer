@@ -17,6 +17,10 @@ import { onUiTheme } from './ipc-events/onUiTheme';
 import { onSetUiTheme } from './ipc-events/onSetUiTheme';
 import { onUiSidebarWidth } from './ipc-events/onUiSidebarWidth';
 import { onSetUiSidebarWidth } from './ipc-events/onSetUiSidebarWidth';
+import { onUpdateState } from './ipc-events/onUpdateState';
+import { onCheckForUpdate } from './ipc-events/onCheckForUpdate';
+import { onDownloadUpdate } from './ipc-events/onDownloadUpdate';
+import { onSetAutoDownloadUpdates } from './ipc-events/onSetAutoDownloadUpdates';
 import { onResolvedChange, titleBarOverlayFor } from './uiPreferences';
 import { describeError } from 'shared/describeError';
 import { EVENT_CHANNELS, INVOKE_CHANNELS, SEND_CHANNELS } from 'shared/ipcChannels';
@@ -27,7 +31,7 @@ import { onWindowAllClosed } from './app-events/onWindowAllClosed';
 import { TrayBuilder } from './tray';
 import { MainWindowBuilder } from './window';
 import { registerAutostart } from './autostart';
-import { AppUpdater } from './updater';
+import { appUpdater } from './updater';
 
 ipcMain.handle(INVOKE_CHANNELS.rawPrint, onRawPrint);
 ipcMain.handle(INVOKE_CHANNELS.listPrinters, onListPrinters);
@@ -45,6 +49,10 @@ ipcMain.handle(INVOKE_CHANNELS.uiTheme, onUiTheme);
 ipcMain.handle(INVOKE_CHANNELS.setUiTheme, onSetUiTheme);
 ipcMain.handle(INVOKE_CHANNELS.uiSidebarWidth, onUiSidebarWidth);
 ipcMain.handle(INVOKE_CHANNELS.setUiSidebarWidth, onSetUiSidebarWidth);
+ipcMain.handle(INVOKE_CHANNELS.updateState, onUpdateState);
+ipcMain.handle(INVOKE_CHANNELS.checkForUpdate, onCheckForUpdate);
+ipcMain.handle(INVOKE_CHANNELS.downloadUpdate, onDownloadUpdate);
+ipcMain.handle(INVOKE_CHANNELS.setAutoDownloadUpdates, onSetAutoDownloadUpdates);
 
 app.on('window-all-closed', () => onWindowAllClosed(app));
 
@@ -73,7 +81,14 @@ function boot(): void {
 
       bootPrintQueue(window);
 
-      new AppUpdater().start();
+      appUpdater().onChange(state => {
+        if (window.isDestroyed()) {
+          return;
+        }
+
+        window.webContents.send(EVENT_CHANNELS.updateChanged, state);
+      });
+      appUpdater().start();
 
       app.on('before-quit', event => onBeforeQuit(event, window));
       app.on('second-instance', () => onSecondInstance(window));
