@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atualizações</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0">
+<style>
+:root{--bg:#FAF7F5;--surface:#FFFFFF;--surface-2:#F4EFEB;--line:#EAE2DC;--text:#2B2725;--text-2:#5A524E;--muted:#857A74;--accent:#F4561C;--accent-hover:#DC4A14;--accent-soft:#FFE4D8;--accent-ink:#B23C0E;--ok:#2E7D32;--ok-dot:#4CAF50;--ok-soft:#E5F3E6;--err:#C62828;--err-dot:#F44336;--err-soft:#FDE6E4;--warn:#8A5A00;--warn-soft:#FFF1CC;--side:#2B2725;--side-2:#3A3431;--side-text:#D9D0CA;--side-muted:#9C918B;--page:#DDD6D1;}
+[data-theme="escuro"]{--bg:#2B2725;--surface:#35302D;--surface-2:#3E3835;--line:#4A4340;--text:#FAF7F5;--text-2:#CFC6C0;--muted:#A0958F;--accent:#F4561C;--accent-hover:#FF6A33;--accent-soft:#4A2B1F;--accent-ink:#FF9A73;--ok:#7CCB80;--ok-dot:#4CAF50;--ok-soft:#263A28;--err:#FF8A80;--err-dot:#F44336;--err-soft:#4A2522;--warn:#FFCB5C;--warn-soft:#45391C;--side:#211D1B;--side-2:#35302D;--side-text:#D9D0CA;--side-muted:#8F847E;--page:#151312;}
+*{box-sizing:border-box;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Fira Sans','Droid Sans','Helvetica Neue',sans-serif;-webkit-font-smoothing:antialiased;}
+a{color:var(--accent-ink);text-decoration:none;}a:hover{color:var(--accent);}
+button{font-family:inherit;}
+.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20;line-height:1;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" style="min-height:100vh;background:var(--page);display:flex;align-items:safe center;justify-content:safe center;padding:32px;min-width:max-content;">
+<div style="width:1024px;height:728px;flex-shrink:0;position:relative;overflow:hidden;background:var(--bg);color:var(--text);font-size:14px;border-radius:8px;box-shadow:0 24px 60px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.08);display:flex;">
+
+  <aside style="width:216px;flex-shrink:0;background:var(--side);color:var(--side-text);display:flex;flex-direction:column;">
+    <div style="height:56px;display:flex;align-items:center;gap:10px;padding:0 18px;">
+      <img src="assets/app-icon/opcao-b-cupom-s.svg" alt="SGrande" style="width:30px;height:30px;">
+      <div style="display:flex;flex-direction:column;line-height:1.15;">
+        <span style="color:#fff;font-weight:600;font-size:13px;">SGrande</span>
+        <span style="color:var(--side-text);font-size:12px;">Delivery Printer</span>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:2px;padding:12px 10px;">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="6">
+        <button type="button" onClick="{{ item.go }}" style="display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border:0;border-radius:6px;background:{{ item.bg }};color:{{ item.fg }};font-size:14px;font-weight:{{ item.weight }};cursor:pointer;text-align:left;" style-hover="background:var(--side-2);">
+          <span class="material-symbols-outlined" style="font-size:20px;color:{{ item.iconColor }};">{{ item.icon }}</span>
+          <span style="flex:1;">{{ item.label }}</span>
+        </button>
+      </sc-for>
+    </nav>
+
+    <div style="margin-top:auto;padding:12px 10px 14px;display:flex;flex-direction:column;gap:10px;">
+      <sc-if value="{{ sb.show }}" hint-placeholder-val="{{ true }}">
+        <div style="background:var(--side-2);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <button type="button" onClick="{{ goUpdates }}" style="display:flex;align-items:flex-start;gap:10px;padding:0;border:0;background:none;color:inherit;text-align:left;cursor:pointer;">
+            <span class="material-symbols-outlined" style="font-size:20px;color:{{ sb.iconColor }};">{{ sb.icon }}</span>
+            <span style="flex:1;display:flex;flex-direction:column;gap:2px;line-height:1.3;">
+              <span style="color:#fff;font-size:13px;font-weight:600;">{{ sb.title }}</span>
+              <span style="color:var(--side-text);font-size:12px;font-variant-numeric:tabular-nums;">{{ sb.sub }}</span>
+            </span>
+          </button>
+          <sc-if value="{{ sb.bar }}" hint-placeholder-val="{{ true }}">
+            <div role="progressbar" aria-label="Download da atualização" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}" style="height:4px;border-radius:2px;background:#5A524E;overflow:hidden;">
+              <div style="height:100%;width:{{ pctWidth }};background:var(--accent);transition:width .25s linear;"></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ sb.primary }}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{ sb.action }}" style="height:34px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--accent-hover);">{{ sb.btn }}</button>
+          </sc-if>
+          <sc-if value="{{ sb.secondary }}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{ sb.action }}" style="height:34px;border:1px solid #5A524E;border-radius:6px;background:transparent;color:#fff;font-size:13px;font-weight:500;cursor:pointer;" style-hover="border-color:var(--side-muted);">{{ sb.btn }}</button>
+          </sc-if>
+        </div>
+      </sc-if>
+      <div style="background:var(--side-2);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--ok-dot);"></span><span>Conectado ao servidor</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--ok-dot);"></span><span>Loja aberta</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:4px 4px 0;">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">M</div>
+        <div style="flex:1;min-width:0;line-height:1.3;">
+          <div style="color:#fff;font-size:13px;">Maria Souza</div>
+          <div style="color:var(--side-muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">maria@bellamassa.com.br</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;padding:0 4px;font-size:11px;color:var(--side-muted);">
+        <button type="button" onClick="{{ goUpdates }}" style="padding:0;border:0;background:none;color:var(--side-muted);font-size:11px;cursor:pointer;" style-hover="color:#fff;">v{{ version }} · x64</button><span>·</span>
+        <span style="text-decoration:underline;">abrir logs</span>
+      </div>
+    </div>
+  </aside>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column;">
+    <header style="height:56px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 152px 0 28px;border-bottom:1px solid var(--line);">
+      <h1 style="margin:0;font-size:18px;font-weight:600;flex:1;">{{ pageTitle }}</h1>
+      <span style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;background:var(--ok-soft);color:var(--ok);font-size:12px;font-weight:500;"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok-dot);"></span>Online</span>
+    </header>
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:16px;">
+
+      <sc-if value="{{ showBanner }}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:10px;background:var(--accent-soft);color:var(--text);">
+          <span class="material-symbols-outlined" style="font-size:24px;color:var(--accent-ink);">restart_alt</span>
+          <div style="flex:1;line-height:1.4;">
+            <div style="font-weight:600;">A versão {{ target }} está pronta para instalar</div>
+            <div style="font-size:13px;color:var(--text-2);">Se você não reiniciar agora, ela é instalada quando o app for fechado.</div>
+          </div>
+          <button type="button" onClick="{{ dismissBanner }}" style="height:34px;padding:0 14px;border:0;border-radius:6px;background:transparent;color:var(--text);font-size:13px;cursor:pointer;">Depois</button>
+          <button type="button" onClick="{{ openDialog }}" style="height:34px;padding:0 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--accent-hover);">Reiniciar agora</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sPainel }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:10px;background:var(--ok-soft);color:var(--ok);">
+            <span class="material-symbols-outlined" style="font-size:28px;">check_circle</span>
+            <div style="flex:1;">
+              <div style="font-size:16px;font-weight:600;">Tudo funcionando</div>
+              <div style="font-size:13px;opacity:.9;margin-top:2px;">Recebendo pedidos e imprimindo normalmente.</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
+            <sc-for list="{{ stats }}" as="st" hint-placeholder-count="3">
+              <div style="padding:16px 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:6px;">
+                <span style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="font-size:16px;color:{{ st.color }};">{{ st.icon }}</span>{{ st.label }}</span>
+                <span style="font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;">{{ st.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--line);font-weight:600;">Últimas impressões</div>
+            <sc-for list="{{ recent }}" as="r" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:44px 64px minmax(0,1fr) 22px;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--line);font-size:13px;">
+                <span style="color:var(--muted);font-variant-numeric:tabular-nums;">{{ r.t }}</span>
+                <span style="font-weight:600;">{{ r.seq }}</span>
+                <span style="color:var(--text-2);">{{ r.type }}</span>
+                <span class="material-symbols-outlined" style="font-size:18px;color:var(--ok);">check_circle</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ sUpd }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:16px;max-width:640px;">
+          <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:18px;display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <img src="assets/app-icon/opcao-b-cupom-s.svg" alt="" style="width:48px;height:48px;">
+              <div style="flex:1;line-height:1.4;">
+                <div style="font-size:16px;font-weight:600;">Delivery Printer {{ version }}</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);">
+                  <sc-if value="{{ checking }}" hint-placeholder-val="{{ false }}"><span style="width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin 800ms linear infinite;"></span></sc-if>
+                  <sc-if value="{{ notChecking }}" hint-placeholder-val="{{ true }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ main.dot }};"></span></sc-if>
+                  <span>{{ main.text }}</span>
+                </div>
+              </div>
+              <sc-if value="{{ main.primary }}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{ main.action }}" style="height:36px;padding:0 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--accent-hover);">{{ main.btn }}</button>
+              </sc-if>
+              <sc-if value="{{ main.secondary }}" hint-placeholder-val="{{ true }}">
+                <button type="button" onClick="{{ main.action }}" disabled="{{ main.disabled }}" style="height:36px;padding:0 16px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;opacity:{{ main.opacity }};" style-hover="border-color:var(--muted);">{{ main.btn }}</button>
+              </sc-if>
+            </div>
+            <sc-if value="{{ downloading }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div role="progressbar" aria-label="Download da atualização" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}" style="height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;">
+                  <div style="height:100%;width:{{ pctWidth }};background:var(--accent);transition:width .25s linear;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;"><span>{{ pct }}% · {{ mbDone }} de {{ mbTotal }} MB</span><span>{{ eta }}</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ waiting }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">hourglass_top</span>
+                <span style="flex:1;">Reinicia sozinho quando a fila esvaziar · {{ queue }} na fila</span>
+              </div>
+            </sc-if>
+            <div style="font-size:12px;color:var(--muted);">Última verificação: hoje às {{ lastCheck }}</div>
+          </div>
+
+          <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--line);font-weight:600;">Preferências</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;">
+              <label for="auto-update" style="flex:1;line-height:1.4;cursor:pointer;"><div>Baixar e atualizar automaticamente</div><div style="font-size:12px;color:var(--muted);">{{ autoHint }}</div></label>
+              <button id="auto-update" type="button" role="switch" aria-checked="{{ auto }}" onClick="{{ toggleAuto }}" style="width:40px;height:22px;border:0;border-radius:11px;background:{{ autoTrack }};position:relative;cursor:pointer;padding:0;flex-shrink:0;"><span style="position:absolute;top:3px;left:{{ autoLeft }};width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s;"></span></button>
+            </div>
+          </div>
+
+          <sc-if value="{{ showNotes }}" hint-placeholder-val="{{ true }}">
+            <div style="border:1px solid var(--line);border-radius:10px;background:var(--surface);">
+              <div style="padding:14px 16px;border-bottom:1px solid var(--line);font-weight:600;">{{ notesTitle }}</div>
+              <ul style="margin:0;padding:12px 16px 14px 34px;display:flex;flex-direction:column;gap:6px;color:var(--text-2);line-height:1.45;">
+                <li>Escolha do modelo de documento: Original, Completo ou Simples</li>
+                <li>Novas fontes para impressão térmica</li>
+                <li>Novo ícone do aplicativo</li>
+              </ul>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+
+  <div style="position:absolute;top:0;right:0;height:56px;width:138px;display:flex;color:var(--text-2);z-index:10;" aria-hidden="true">
+    <div style="width:46px;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-outlined" style="font-size:16px;">remove</span></div>
+    <div style="width:46px;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-outlined" style="font-size:14px;">crop_square</span></div>
+    <div style="width:46px;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-outlined" style="font-size:16px;">close</span></div>
+  </div>
+
+  <sc-if value="{{ dialog }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:30;background:rgba(21,19,18,.55);display:flex;align-items:center;justify-content:center;">
+      <div role="dialog" aria-modal="true" aria-labelledby="dlg-title" style="width:440px;border-radius:12px;background:var(--surface);color:var(--text);box-shadow:0 24px 60px rgba(0,0,0,.35);padding:22px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-outlined" style="font-size:22px;">restart_alt</span></span>
+          <h2 id="dlg-title" style="margin:0;font-size:18px;font-weight:600;">Reiniciar para atualizar?</h2>
+        </div>
+        <p style="margin:0;color:var(--text-2);line-height:1.5;">O Delivery Printer fecha e abre de novo na versão {{ target }}. A impressão fica pausada por alguns segundos.</p>
+        <sc-if value="{{ queueBusy }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--warn);font-size:13px;line-height:1.45;">
+            <span class="material-symbols-outlined" style="font-size:18px;">stacks</span>
+            <span>{{ queueText }}</span>
+          </div>
+        </sc-if>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+          <button type="button" onClick="{{ closeDialog }}" style="height:38px;padding:0 16px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;">Cancelar</button>
+          <button type="button" onClick="{{ confirmRestart }}" style="height:38px;padding:0 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--accent-hover);">{{ confirmLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ restarting }}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:absolute;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;">
+      <img src="assets/app-icon/opcao-b-cupom-s.svg" alt="" style="width:72px;height:72px;">
+      <span style="width:28px;height:28px;border:3px solid var(--accent-soft);border-top-color:var(--accent);border-radius:50%;animation:spin 900ms linear infinite;"></span>
+      <span style="color:var(--text-2);">Instalando a versão {{ target }}…</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position:absolute;bottom:16px;left:calc(50% + 108px);transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:12px;min-width:300px;max-width:560px;padding:10px 10px 10px 16px;border-radius:8px;background:#2B2725;color:#FAF7F5;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:13px;">
+      <span style="flex:1;">{{ toast }}</span>
+      <button type="button" onClick="{{ closeToast }}" style="height:30px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:#FF9A73;font-size:12px;font-weight:600;text-transform:uppercase;cursor:pointer;">Fechar</button>
+    </div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1088,"height":792},"estado":{"editor":"enum","options":["atualizado","verificando","disponivel","baixando","pronta","erro"],"default":"baixando","tsType":"string","section":"Estado"},"fila":{"editor":"int","min":0,"max":5,"default":2,"tsType":"number","section":"Estado"},"tela":{"editor":"enum","options":["painel","atualizacoes"],"default":"painel","tsType":"string","section":"Estado"},"autoDownload":{"editor":"boolean","default":true,"tsType":"boolean","section":"Estado"},"theme":{"editor":"enum","options":["claro","escuro"],"default":"claro","tsType":"string","section":"Visual"}}'>
+const CURRENT = '2.7.0';
+const TARGET = '2.8.0';
+const TOTAL_MB = 43.7;
+
+class Component extends DCLogic {
+  state = this.seed();
+
+  seed() {
+    const p = this.props || {};
+    const estado = p.estado ?? 'baixando';
+    return {
+      status: estado === 'verificando' ? 'atualizado' : estado,
+      progress: estado === 'baixando' ? 42 : estado === 'pronta' ? 100 : 0,
+      auto: p.autoDownload ?? true,
+      version: CURRENT,
+      screen: p.tela ?? 'painel',
+      dialog: false, restarting: false, waiting: false, dismissed: false,
+      queue: p.fila ?? 2, toast: '', lastCheck: '10:42',
+    };
+  }
+
+  componentDidMount() { this.setState(this.seed(), () => this.boot()); }
+  componentDidUpdate(prev) {
+    if (prev.estado !== this.props.estado || prev.fila !== this.props.fila || prev.tela !== this.props.tela || prev.autoDownload !== this.props.autoDownload) {
+      this.stopAll();
+      this.setState(this.seed(), () => this.boot());
+    }
+  }
+  componentWillUnmount() { this.stopAll(); }
+
+  boot() {
+    const estado = this.props.estado ?? 'baixando';
+    if (estado === 'baixando') { this.download(); }
+    if (estado === 'verificando') { this.check(); }
+  }
+
+  stopAll() { clearInterval(this.dl); clearInterval(this.drain); clearTimeout(this.ck); clearTimeout(this.rs); clearTimeout(this.tt); }
+
+  flash(msg) { clearTimeout(this.tt); this.setState({ toast: msg }); this.tt = setTimeout(() => this.setState({ toast: '' }), 4000); }
+
+  download(fromZero) {
+    clearInterval(this.dl);
+    this.setState(s => ({ status: 'baixando', progress: fromZero ? 0 : s.progress }));
+    this.dl = setInterval(() => {
+      this.setState(s => {
+        const progress = Math.min(100, s.progress + 3);
+        if (progress < 100) { return { progress }; }
+        clearInterval(this.dl);
+        return { progress, status: 'pronta', dismissed: false };
+      });
+    }, 220);
+  }
+
+  check() {
+    this.setState({ status: 'verificando' });
+    clearTimeout(this.ck);
+    this.ck = setTimeout(() => {
+      this.setState({ lastCheck: '10:58' });
+      if (this.state.version === TARGET) {
+        this.setState({ status: 'atualizado' });
+        this.flash('Você já está na versão mais recente.');
+        return;
+      }
+      if (this.state.auto) {
+        this.download(true);
+        return;
+      }
+      this.setState({ status: 'disponivel' });
+    }, 1400);
+  }
+
+  confirmRestart() {
+    if (this.state.queue === 0) {
+      this.restart();
+      return;
+    }
+    this.setState({ dialog: false, waiting: true });
+    this.drain = setInterval(() => {
+      if (this.state.queue <= 1) {
+        clearInterval(this.drain);
+        this.setState({ queue: 0 });
+        this.restart();
+        return;
+      }
+      this.setState(s => ({ queue: s.queue - 1 }));
+    }, 1100);
+  }
+
+  cancelWait() {
+    clearInterval(this.drain);
+    this.setState({ waiting: false });
+    this.flash('Reinício cancelado. A atualização será instalada ao fechar o app.');
+  }
+
+  restart() {
+    this.setState({ dialog: false, waiting: false, restarting: true });
+    this.rs = setTimeout(() => {
+      this.setState({ restarting: false, version: TARGET, status: 'atualizado', progress: 0, dismissed: false });
+      this.flash('Delivery Printer atualizado para a versão ' + TARGET + '.');
+    }, 2400);
+  }
+
+  sidebarCard(S) {
+    const openDialog = () => this.setState({ dialog: true });
+    const base = { show: true, bar: false, primary: false, secondary: false, btn: '', action: null, iconColor: 'var(--accent)' };
+    if (S.status === 'baixando') {
+      return { ...base, icon: 'downloading', title: 'Baixando atualização', sub: 'v' + TARGET + ' · ' + S.progress + '%', bar: true };
+    }
+    if (S.status === 'pronta' && S.waiting) {
+      return { ...base, icon: 'hourglass_top', iconColor: 'var(--warn)', title: 'Reinício agendado', sub: 'Aguardando ' + S.queue + ' na fila', secondary: true, btn: 'Cancelar', action: () => this.cancelWait() };
+    }
+    if (S.status === 'pronta') {
+      return { ...base, icon: 'restart_alt', title: 'Atualização pronta', sub: 'v' + TARGET, primary: true, btn: 'Reiniciar e atualizar', action: openDialog };
+    }
+    if (S.status === 'disponivel') {
+      return { ...base, icon: 'new_releases', title: 'Nova versão disponível', sub: 'v' + TARGET, secondary: true, btn: 'Baixar', action: () => this.download(true) };
+    }
+    if (S.status === 'erro') {
+      return { ...base, icon: 'error', iconColor: 'var(--err-dot)', title: 'Falha no download', sub: 'v' + TARGET, secondary: true, btn: 'Tentar novamente', action: () => this.download() };
+    }
+    return { ...base, show: false, icon: '', title: '', sub: '' };
+  }
+
+  mainCard(S) {
+    const base = { primary: false, secondary: false, disabled: false, opacity: 1, btn: '', action: null };
+    const map = {
+      atualizado: { dot: 'var(--ok-dot)', text: 'Você está na versão mais recente', secondary: true, btn: 'Verificar agora', action: () => this.check() },
+      verificando: { dot: 'var(--muted)', text: 'Procurando atualizações…', secondary: true, disabled: true, opacity: 0.6, btn: 'Verificando…' },
+      disponivel: { dot: 'var(--accent)', text: 'A versão ' + TARGET + ' está disponível', primary: true, btn: 'Baixar agora', action: () => this.download(true) },
+      baixando: { dot: 'var(--accent)', text: 'Baixando a versão ' + TARGET },
+      pronta: S.waiting
+        ? { dot: 'var(--warn)', text: 'A versão ' + TARGET + ' será instalada em seguida', secondary: true, btn: 'Cancelar', action: () => this.cancelWait() }
+        : { dot: 'var(--ok-dot)', text: 'A versão ' + TARGET + ' está pronta para instalar', primary: true, btn: 'Reiniciar e atualizar', action: () => this.setState({ dialog: true }) },
+      erro: { dot: 'var(--err-dot)', text: 'Não foi possível baixar. Verifique a internet.', secondary: true, btn: 'Tentar novamente', action: () => this.download() },
+    };
+    return { ...base, ...map[S.status] };
+  }
+
+  renderVals() {
+    const S = this.state;
+    const screen = S.screen;
+    const go = id => () => this.setState({ screen: id });
+    const navDef = [
+      ['painel', 'Painel', 'space_dashboard'], ['fila', 'Fila', 'stacks'], ['historico', 'Histórico', 'history'],
+      ['impressoras', 'Impressoras', 'print'], ['configuracoes', 'Configurações', 'tune'], ['teste', 'Teste de impressão', 'receipt_long'],
+    ];
+    const nav = navDef.map(([id, label, icon]) => {
+      const on = screen === id;
+      return { label, icon, bg: on ? 'var(--side-2)' : 'transparent', fg: on ? '#fff' : 'var(--side-text)', iconColor: on ? 'var(--accent)' : 'var(--side-muted)', weight: on ? 600 : 400, go: id === 'painel' ? go('painel') : () => {} };
+    });
+
+    const remainingSec = Math.max(1, Math.round((100 - S.progress) * 0.07));
+    const pendingRelease = S.version !== TARGET && S.status !== 'atualizado' && S.status !== 'verificando';
+    const queueText = S.queue === 1
+      ? 'Há 1 impressão na fila. O app espera ela terminar e reinicia sozinho.'
+      : 'Há ' + S.queue + ' impressões na fila. O app espera elas terminarem e reinicia sozinho.';
+
+    return {
+      theme: this.props.theme ?? 'claro',
+      nav,
+      pageTitle: screen === 'atualizacoes' ? 'Atualizações' : 'Painel',
+      sPainel: screen === 'painel',
+      sUpd: screen === 'atualizacoes',
+      goUpdates: go('atualizacoes'),
+      version: S.version,
+      target: TARGET,
+      sb: this.sidebarCard(S),
+      main: this.mainCard(S),
+      checking: S.status === 'verificando',
+      notChecking: S.status !== 'verificando',
+      downloading: S.status === 'baixando',
+      waiting: S.status === 'pronta' && S.waiting,
+      pct: S.progress,
+      pctWidth: S.progress + '%',
+      mbDone: (TOTAL_MB * S.progress / 100).toFixed(1).replace('.', ','),
+      mbTotal: String(TOTAL_MB).replace('.', ','),
+      eta: 'cerca de ' + remainingSec + ' s',
+      lastCheck: S.lastCheck,
+      queue: S.queue,
+      auto: S.auto,
+      autoTrack: S.auto ? 'var(--accent)' : 'var(--line)',
+      autoLeft: S.auto ? '21px' : '3px',
+      autoHint: S.auto
+        ? 'Novas versões são baixadas sem você precisar clicar. Depois é só reiniciar, ou ela é instalada quando o app fechar.'
+        : 'O app avisa quando houver versão nova e você clica em Baixar.',
+      toggleAuto: () => {
+        const auto = !S.auto;
+        this.setState({ auto });
+        if (auto && S.status === 'disponivel') { this.download(true); }
+      },
+      showNotes: pendingRelease || S.version === TARGET,
+      notesTitle: S.version === TARGET ? 'Novidades desta versão' : 'Novidades da versão ' + TARGET,
+      showBanner: S.status === 'pronta' && !S.dismissed && !S.waiting && screen !== 'atualizacoes',
+      dismissBanner: () => this.setState({ dismissed: true }),
+      openDialog: () => this.setState({ dialog: true }),
+      closeDialog: () => this.setState({ dialog: false }),
+      dialog: S.dialog,
+      queueBusy: S.queue > 0,
+      queueText,
+      confirmLabel: S.queue > 0 ? 'Reiniciar após a fila' : 'Reiniciar e atualizar',
+      confirmRestart: () => this.confirmRestart(),
+      restarting: S.restarting,
+      stats: [
+        { label: 'Impressos hoje', value: 128, icon: 'check_circle', color: 'var(--ok)' },
+        { label: 'Na fila', value: S.queue, icon: 'stacks', color: 'var(--text-2)' },
+        { label: 'Falhas', value: 0, icon: 'error', color: 'var(--muted)' },
+      ],
+      recent: [
+        { t: '10:41', seq: '#0143', type: 'Produção · EPSON TM-T20X' },
+        { t: '10:40', seq: '#0143', type: 'Expedição · ELGIN i9' },
+        { t: '10:36', seq: 'Mesa 07', type: 'Conta da mesa · ELGIN i9' },
+        { t: '10:31', seq: '#0142', type: 'Produção · EPSON TM-T20X' },
+      ],
+      hasToast: !!S.toast,
+      toast: S.toast,
+      closeToast: () => this.setState({ toast: '' }),
+    };
+  }
+}
+</script>
+</body>
+</html>
