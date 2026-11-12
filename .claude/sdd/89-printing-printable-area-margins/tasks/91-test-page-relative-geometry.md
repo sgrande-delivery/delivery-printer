@@ -5,7 +5,7 @@
 **Tipo:** fix
 **Processo:** main (+ o texto compartilhado que o renderer lê)
 **Depende de:** task #90
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

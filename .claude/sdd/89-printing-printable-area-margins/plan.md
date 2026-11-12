@@ -29,8 +29,8 @@ A frente inteira cabe no **processo main**, e nos dois arquivos que decidem geom
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Imprimir na área imprimível do driver | [#90](https://github.com/sgrande-delivery/delivery-printer/issues/90) | `tasks/90-print-inside-printable-area.md` | — | executada |
-| 02 | Página de teste com a geometria do comprovante | [#91](https://github.com/sgrande-delivery/delivery-printer/issues/91) | `tasks/91-test-page-relative-geometry.md` | 01 | executada |
+| 01 | Imprimir na área imprimível do driver | [#90](https://github.com/sgrande-delivery/delivery-printer/issues/90) | `tasks/90-print-inside-printable-area.md` | — | shipped |
+| 02 | Página de teste com a geometria do comprovante | [#91](https://github.com/sgrande-delivery/delivery-printer/issues/91) | `tasks/91-test-page-relative-geometry.md` | 01 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

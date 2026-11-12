@@ -1,6 +1,6 @@
 # Spec — Imprimir dentro da área imprimível do driver
 
-**Status:** rascunho
+**Status:** entregue
 **Criada em:** 2026-11-12
 **Escopo:** main
 **Issue:** [#89](https://github.com/sgrande-delivery/delivery-printer/issues/89)

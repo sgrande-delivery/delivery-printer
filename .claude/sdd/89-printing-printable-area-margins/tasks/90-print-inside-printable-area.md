@@ -5,7 +5,7 @@
 **Tipo:** fix
 **Processo:** main
 **Depende de:** —
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 
