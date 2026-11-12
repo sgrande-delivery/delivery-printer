@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { EnqueueRequest, EnqueueResult, PrintJobSummary, TestPrintRequest } from 'shared/printQueue';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
 import { EVENT_CHANNELS, INVOKE_CHANNELS, SEND_CHANNELS } from 'shared/ipcChannels';
+import type { UpdateState } from 'shared/appUpdate';
 import { themeFromArgv } from 'shared/uiTheme';
 import type { ResolvedTheme, ThemePreference, UiThemeState } from 'shared/uiTheme';
 
@@ -121,6 +122,34 @@ const electronHandler = {
 
     return () => {
       ipcRenderer.removeListener(EVENT_CHANNELS.uiThemeChanged, handler);
+    };
+  },
+
+  // Each action resolves to the state right after the synchronous change it caused (the button already
+  // flips); the end of a download arrives through onUpdateChanged.
+  updateState: (): Promise<UpdateState> => ipcRenderer.invoke(INVOKE_CHANNELS.updateState),
+
+  checkForUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(INVOKE_CHANNELS.checkForUpdate),
+
+  downloadUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(INVOKE_CHANNELS.downloadUpdate),
+
+  setAutoDownloadUpdates: (value: boolean): Promise<UpdateState> =>
+    ipcRenderer.invoke(INVOKE_CHANNELS.setAutoDownloadUpdates, value),
+
+  // Installs now when nothing is pending, or schedules the restart until the queue empties; either way it
+  // resolves to the state right after ('restarting' or the scheduled 'ready'). Outside 'ready' it is a no-op.
+  restartToUpdate: (): Promise<UpdateState> => ipcRenderer.invoke(INVOKE_CHANNELS.restartToUpdate),
+
+  // Gives a scheduled restart up: back to 'ready', installed on the next quit.
+  cancelRestart: (): Promise<UpdateState> => ipcRenderer.invoke(INVOKE_CHANNELS.cancelRestart),
+
+  // The payload is the whole state: nothing to read again.
+  onUpdateChanged: (listener: (state: UpdateState) => void): (() => void) => {
+    const handler = (_event: unknown, state: UpdateState): void => listener(state);
+    ipcRenderer.on(EVENT_CHANNELS.updateChanged, handler);
+
+    return () => {
+      ipcRenderer.removeListener(EVENT_CHANNELS.updateChanged, handler);
     };
   },
 };

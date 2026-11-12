@@ -2,9 +2,8 @@ import { App, BrowserWindow, Menu, shell } from 'electron';
 import path from 'node:path';
 import { getAssetPath } from './asset';
 import { loadRenderer } from './util';
-import { isQuiting } from './tray';
+import { isQuiting } from './quitState';
 import { registerDevtools } from './devtools';
-import { AppUpdater } from './updater';
 import { START_MINIMIZED_ARG } from './autostart';
 import { themeArgument } from 'shared/uiTheme';
 import { currentTheme, titleBarOverlayFor } from './uiPreferences';
@@ -38,7 +37,6 @@ export class MainWindowBuilder {
 
     this.settings();
     this.events();
-    this.updater();
 
     registerDevtools(this.window);
 
@@ -71,7 +69,7 @@ export class MainWindowBuilder {
     });
 
     this.window.on('close', event => {
-      if (isQuiting) {
+      if (isQuiting()) {
         return;
       }
 
@@ -79,10 +77,5 @@ export class MainWindowBuilder {
 
       this.window.hide();
     });
-  }
-
-  private updater() {
-    const updater = new AppUpdater();
-    updater.run();
   }
 }

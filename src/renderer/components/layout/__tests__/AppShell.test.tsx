@@ -47,6 +47,7 @@ function renderShell(path = '/') {
           {ROUTES.map(([, to, title]) => (
             <Route key={to} path={to} element={<p>conteúdo {title}</p>} />
           ))}
+          <Route path="/updates" element={<p>conteúdo Atualizações</p>} />
         </Route>
       </Routes>
     </MemoryRouter>
@@ -92,6 +93,15 @@ describe('AppShell', () => {
         expect(link(other)).not.toHaveClass(sidebarStyles.itemActive);
       }
     }
+  });
+
+  it('titles the hidden /updates route and keeps it out of the menu (RN-14)', () => {
+    renderShell('/updates');
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Atualizações');
+    expect(screen.getByText('conteúdo Atualizações')).toBeInTheDocument();
+    expect(screen.getAllByRole('link')).toHaveLength(6);
+    expect(screen.queryByRole('link', { name: /Atualizações/ })).not.toBeInTheDocument();
   });
 
   it('navigates by the sidebar', () => {

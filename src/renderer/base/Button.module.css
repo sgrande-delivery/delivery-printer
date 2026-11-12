@@ -70,6 +70,19 @@
   background-color: transparent;
 }
 
+/* The delta of the outlinedOnDark variant over .outlined. The fill is transparent here and not only
+   through .clearOutline, so the variant stays legible at a height that has no clear outline. */
+.onDark {
+  background-color: transparent;
+  border-color: var(--side-badge);
+  color: #fff;
+}
+
+.onDark.outlined:hover:not(:disabled) {
+  background-color: transparent;
+  border-color: var(--side-muted);
+}
+
 .small {
   padding: 4px 5px;
   font-size: 0.8125rem;

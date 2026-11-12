@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 import Icon from '../Icon';
 import styles from '../Icon.module.css';
 import { expectNoUndefinedClasses } from 'renderer/__tests__/cssModules';
+import { readIconFont } from 'renderer/__tests__/iconFont';
 
 describe('Icon', () => {
   it('renders the name as content, hidden from assistive tech', () => {
@@ -46,5 +47,22 @@ describe('Icon', () => {
     const fromUnion = Array.from(union.matchAll(/'([a-z_]+)'/g), group => group[1]);
 
     expect([...fromUnion].sort()).toEqual([...fromReadme].sort());
+  });
+
+  // IconName is a type and does not exist at runtime, so the names come from the source text,
+  // as in the test above. Does not pin glyph count or file size: the recipe does not pin the
+  // upstream version, and only a name without a ligature is a real defect. ICON_FONT_PATH points
+  // the check at another file: it is how the test is proven to fail against an older subset.
+  it('has a ligature in the font subset for every name of the union', () => {
+    const source = readFileSync('src/renderer/base/Icon.tsx', 'utf8');
+    const union = source.slice(source.indexOf('export type IconName'), source.indexOf('interface IconProps'));
+    const names = Array.from(union.matchAll(/'([a-z_]+)'/g), group => group[1]);
+    const font = readIconFont(
+      process.env.ICON_FONT_PATH ?? 'src/renderer/fonts/material-symbols-outlined-subset.woff2'
+    );
+
+    expect(names.length).toBeGreaterThan(0);
+    expect(font.ligatureCount).toBeGreaterThanOrEqual(names.length);
+    expect(names.filter(name => !font.hasLigature(name))).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 /*
  * Design tokens: the values of the Claude Design, design/printer-v2.dc.html:13-14
- * (light palette on :root, dark on :root[data-theme='dark']). Same 30 colour tokens in both.
+ * (light palette on :root, dark on :root[data-theme='dark']). Same 31 colour tokens in both.
  * --bg and --text of both themes are ALSO hardcoded in src/main/uiPreferences.ts, for the
  * window's titleBarOverlay: the main process has no CSS variables, and the color is
  * needed in the BrowserWindow constructor, before a renderer exists. Change one, change
@@ -33,6 +33,10 @@
   --err-soft: #fde6e4;
   --warn: #8a5a00;
   --warn-soft: #fff1cc;
+  /* Attention colour OF THE SIDEBAR. The design's --warn (#8a5a00) gives 2,07:1 on --side-2 and 2,50:1 on
+     --side in this theme: below the 3:1 of AA for a graphic object, and the sidebar is dark in both
+     themes. This one gives 8,13:1 and 9,83:1. Added by the dev's decision, like --muted above. */
+  --side-warn: #ffcb5c;
   --side: #2b2725;
   --side-2: #3a3431;
   --side-text: #d9d0ca;
@@ -75,6 +79,9 @@
   --err-soft: #4a2522;
   --warn: #ffcb5c;
   --warn-soft: #45391c;
+  /* Same value as --warn here (8,65:1 on --side-2, 11,10:1 on --side); kept apart because the light
+     theme needs a different --warn. */
+  --side-warn: #ffcb5c;
   --side: #211d1b;
   --side-2: #35302d;
   --side-text: #d9d0ca;

@@ -7,6 +7,7 @@ import HistoryScreen from 'renderer/screens/HistoryScreen';
 import PrintersScreen from 'renderer/screens/PrintersScreen';
 import PrinterSettingsScreen from 'renderer/screens/PrinterSettingsScreen';
 import PrintTestScreen from 'renderer/screens/PrintTestScreen';
+import UpdatesScreen from 'renderer/screens/UpdatesScreen';
 import PublicRoute from './PublicRoute';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -21,6 +22,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/printers" element={<PrintersScreen />} />
         <Route path="/printer-settings" element={<PrinterSettingsScreen />} />
         <Route path="/print-test" element={<PrintTestScreen />} />
+        <Route path="/updates" element={<UpdatesScreen />} />
       </Route>
     </Routes>
   );

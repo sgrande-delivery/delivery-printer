@@ -1,7 +1,6 @@
 import { Tray, App, BrowserWindow, Menu } from 'electron';
 import { getAssetPath } from './asset';
-
-export let isQuiting = false;
+import { markQuiting } from './quitState';
 
 export class TrayBuilder {
   private tray: Tray;
@@ -49,7 +48,7 @@ export class TrayBuilder {
       {
         label: '    Fechar',
         click: () => {
-          isQuiting = true;
+          markQuiting();
           this.app.quit();
         },
       },
