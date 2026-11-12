@@ -17,6 +17,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Teste de impressão', icon: 'receipt_long', to: '/print-test', title: 'Teste de impressão' },
 ];
 
+/**
+ * A shell route that has no menu item. The first is /updates: the design leaves it out of the sidebar
+ * (atualizacoes.dc.html:384-387), and the ways to it are the update card and the version line. Its title
+ * has to be here, or the header comes out empty (spec 79, RN-14).
+ */
+export const HIDDEN_ROUTES: readonly NavItem[] = [
+  { label: 'Atualizações', icon: 'restart_alt', to: '/updates', title: 'Atualizações' },
+];
+
 export function titleFor(pathname: string): string {
-  return NAV_ITEMS.find(item => item.to === pathname)?.title ?? '';
+  return [...NAV_ITEMS, ...HIDDEN_ROUTES].find(item => item.to === pathname)?.title ?? '';
 }

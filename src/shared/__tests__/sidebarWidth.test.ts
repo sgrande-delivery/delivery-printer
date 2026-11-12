@@ -3,11 +3,13 @@ import { clampSidebarWidth, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MI
 
 describe('sidebar width range', () => {
   it('keeps the agreed range, with the default inside it and distinct from the minimum', () => {
-    expect([SIDEBAR_MIN_WIDTH, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH]).toEqual([180, 216, 360]);
+    expect([SIDEBAR_MIN_WIDTH, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH]).toEqual([200, 216, 360]);
   });
 
   it.each([
-    [180, 180],
+    [200, 200],
+    [199, SIDEBAR_MIN_WIDTH],
+    [180, SIDEBAR_MIN_WIDTH],
     [250, 250],
     [360, 360],
     [4, SIDEBAR_MIN_WIDTH],

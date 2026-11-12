@@ -26,11 +26,13 @@ vi.mock('../logger', () => ({ logger: log }));
 
 import {
   onResolvedChange,
+  readAutoDownloadUpdates,
   readPreference,
   readSidebarWidth,
   resolve,
   setPreference,
   titleBarOverlayFor,
+  writeAutoDownloadUpdates,
   writePreference,
   writeSidebarWidth,
 } from '../uiPreferences';
@@ -235,5 +237,61 @@ describe('sidebar width preference', () => {
 
     expect(writeSidebarWidth(250)).toBe(250);
     expect(stored()).toEqual({ sidebarWidth: 250 });
+  });
+});
+
+describe('auto download updates preference', () => {
+  const file = (): string => path.join(electron.userData, FILE);
+
+  beforeEach(() => {
+    electron.userData = fs.mkdtempSync(path.join(os.tmpdir(), 'autodl-'));
+    log.warn.mockClear();
+  });
+
+  afterEach(() => {
+    fs.rmSync(electron.userData, { recursive: true, force: true });
+  });
+
+  it('defaults to true when the file or the key is absent, without a warning', () => {
+    expect(readAutoDownloadUpdates()).toBe(true);
+
+    fs.writeFileSync(file(), JSON.stringify({ theme: 'dark' }));
+    expect(readAutoDownloadUpdates()).toBe(true);
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it('survives a round trip, false included', () => {
+    writeAutoDownloadUpdates(false);
+    expect(readAutoDownloadUpdates()).toBe(false);
+
+    writeAutoDownloadUpdates(true);
+    expect(readAutoDownloadUpdates()).toBe(true);
+  });
+
+  it('RN-10: survives a theme write and keeps the theme and the width', () => {
+    fs.writeFileSync(file(), JSON.stringify({ theme: 'dark', sidebarWidth: 280 }));
+
+    writeAutoDownloadUpdates(false);
+    expect(JSON.parse(fs.readFileSync(file(), 'utf8'))).toEqual({
+      theme: 'dark',
+      sidebarWidth: 280,
+      autoDownloadUpdates: false,
+    });
+
+    writePreference('light');
+    expect(readAutoDownloadUpdates()).toBe(false);
+    expect(readPreference()).toBe('light');
+    expect(readSidebarWidth()).toBe(280);
+  });
+
+  it.each([
+    ['a string', 'false'],
+    ['a number', 0],
+    ['null', null],
+  ])('falls back to true and warns when the value is %s', (_name, value) => {
+    fs.writeFileSync(file(), JSON.stringify({ autoDownloadUpdates: value }));
+
+    expect(readAutoDownloadUpdates()).toBe(true);
+    expect(log.warn).toHaveBeenCalled();
   });
 });

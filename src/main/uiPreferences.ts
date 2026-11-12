@@ -105,6 +105,25 @@ export function writeSidebarWidth(width: unknown): number {
   return applied;
 }
 
+// true is the behavior from before the preference existed, and the one that serves a PDV nobody operates.
+export function readAutoDownloadUpdates(): boolean {
+  const value = readStored()?.autoDownloadUpdates;
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (value !== undefined) {
+    logger.warn('preferences: autoDownloadUpdates is not a boolean, using the default');
+  }
+
+  return true;
+}
+
+export function writeAutoDownloadUpdates(value: boolean): void {
+  writeFields({ autoDownloadUpdates: value });
+}
+
 export function resolve(preference: ThemePreference): ResolvedTheme {
   if (preference === 'system') {
     return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';

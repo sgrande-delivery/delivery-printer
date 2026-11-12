@@ -20,6 +20,12 @@ export const INVOKE_CHANNELS = {
   setUiTheme: 'ui:set-theme',
   uiSidebarWidth: 'ui:sidebar-width',
   setUiSidebarWidth: 'ui:set-sidebar-width',
+  updateState: 'update:state',
+  checkForUpdate: 'update:check',
+  downloadUpdate: 'update:download',
+  setAutoDownloadUpdates: 'update:set-auto-download',
+  restartToUpdate: 'update:restart',
+  cancelRestart: 'update:cancel-restart',
 } as const;
 
 // renderer -> main, fire-and-forget (ipcMain.on / ipcRenderer.send)
@@ -36,4 +42,10 @@ export const EVENT_CHANNELS = {
   queueChanged: 'queue:changed',
   beforeQuit: 'app:before-quit',
   uiThemeChanged: 'ui:theme-changed',
+  // Unlike queueChanged, this one carries the WHOLE state in its payload, and the two must not be
+  // "standardized" into one shape. The queue lives in a file, so a payload could be stale and its two
+  // readers (badge and screen) read it again. The update state lives in memory in the main process, is
+  // small and has one consumer, and 'download-progress' fires dozens of times per download: reading again
+  // would cost an IPC round trip per tick.
+  updateChanged: 'update:changed',
 } as const;

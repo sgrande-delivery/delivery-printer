@@ -41,7 +41,7 @@ O renderer **não tem `nodeIntegration`**. Toda capacidade de sistema que a UI p
 
 A `delivery-api`, o `delivery-admin` e o `delivery-client` estão num corte para a **v2**, e **a v1 não acaba nele**: as duas versões atendem produção em paralelo enquanto os restaurantes migram, um a um, sem data para o fim da v1. A API publica as rotas v2 no mesmo deploy da v1, com chave por restaurante (`uses_v2_orders`) decidindo qual caminho serve cada loja; o painel e o app do cliente ficam com **dois apps no ar**, um da `master` (v1) e um da branch v2.
 
-**Este app atende as duas versões sem build próprio, e não é para criar um.** Medido em 2026-10-19 contra a `feature/product-engineering-rebased` da `delivery-api`:
+**Este app atende as duas versões sem build próprio, e não é para criar um.** Medido em 2026-10-19 contra a `feature/product-engineering-rebased` da `delivery-api` — branch que **foi para a `master` de lá em 2026-11-10** ([PR #1473](https://github.com/sgrande-delivery/delivery-api/pull/1473)), de modo que hoje se mede contra `origin/master`:
 
 - **As quatro rotas que este app consome não são versionadas** e respondem para pedido de qualquer versão, porque operam sobre as mesmas tabelas: `GET /orders/{uuid}/print-created`, `GET /orders/{uuid}/print-dispatched`, `PATCH /orders/{uuid}/printed` (`app/Modules/Order/routes/admin-routes.php:35-38`) e `GET /orders/print/list` (`:55`, SQL cru sobre `orders` + `order_status` + `order_printed`).
 - **O id público de um pedido v2 é a coluna `orders.uuid`** — o mesmo `uuid` que este app recebe no socket e usa na URL (`core/Order/V2/Infra/DB/Eloquent/OrderRepository.php:168`, `where('uuid', ...)`). Não há dois espaços de identidade.
