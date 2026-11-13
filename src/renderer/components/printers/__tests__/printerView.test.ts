@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import {
   cardState,
+  defaultUsefulWidth,
   detailLine,
   draftOf,
   drawerTitle,
   isDirty,
+  measureMarks,
   needsToggle,
   nextStation,
   stationChoices,
@@ -54,6 +56,30 @@ describe('detailLine', () => {
 
   it('keeps the real width of an unusual roll', () => {
     expect(detailLine(printer({ paper_width: 58 }))).toContain('bobina 58 mm');
+  });
+
+  it('adds the useful width saved on this machine after the roll, and nothing when automatic', () => {
+    expect(detailLine(printer(), 72)).toBe('Cozinha · 2 cópias · bobina 80 mm · largura útil 72 mm · ativa');
+    expect(detailLine(printer(), null)).toBe('Cozinha · 2 cópias · bobina 80 mm · ativa');
+  });
+});
+
+describe('defaultUsefulWidth', () => {
+  it('starts from the common thermal head of each roll', () => {
+    expect(defaultUsefulWidth(58)).toBe(48);
+    expect(defaultUsefulWidth(80)).toBe(72);
+    expect(defaultUsefulWidth(72)).toBe(72);
+  });
+});
+
+describe('measureMarks', () => {
+  it('offers the 5 mm marks the scale prints, from the lowest width that can be saved', () => {
+    expect(measureMarks(58)).toEqual([40, 45, 50, 55]);
+    expect(measureMarks(80)).toEqual([40, 45, 50, 55, 60, 65, 70, 75, 80]);
+  });
+
+  it('lays a roll that is neither 58 nor 80 out as 80, like the test page does', () => {
+    expect(measureMarks(72)).toEqual(measureMarks(80));
   });
 });
 

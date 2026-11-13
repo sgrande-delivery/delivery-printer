@@ -27,12 +27,16 @@ import {
   toPayload,
   type PrinterDraft,
 } from './printerView';
+import UsefulWidthSection from './UsefulWidthSection';
 import styles from './PrinterDrawer.module.css';
 
 interface PrinterDrawerProps {
   printer: ResolvedPrinter;
   // Every device of this computer: the names the list offers. Empty when none could be read.
   devices: WindowsPrinter[];
+  // Saved on this machine for printer.resolvedDevice (spec 95): not part of the draft, saved at once.
+  usefulWidthMm: number | null;
+  onUsefulWidthChange(deviceName: string, usefulWidthMm: number | null): Promise<void>;
   onClose(): void;
   // The PUT went through but the activation did not: the list is read again, the drawer stays open.
   onChanged(): void;
@@ -60,7 +64,15 @@ function failureMessage(err: unknown): string {
 }
 
 // printer-v2.dc.html:387-436.
-const PrinterDrawer: React.FC<PrinterDrawerProps> = ({ printer, devices, onClose, onChanged, onSaved }) => {
+const PrinterDrawer: React.FC<PrinterDrawerProps> = ({
+  printer,
+  devices,
+  usefulWidthMm,
+  onUsefulWidthChange,
+  onClose,
+  onChanged,
+  onSaved,
+}) => {
   const [original] = useState(() => draftOf(printer));
   const [draft, setDraft] = useState<PrinterDraft>(original);
   const [saving, setSaving] = useState(false);
@@ -314,6 +326,8 @@ const PrinterDrawer: React.FC<PrinterDrawerProps> = ({ printer, devices, onClose
             </div>
             <Switch label="Ativa" checked={draft.activated} onChange={activated => patch({ activated })} />
           </div>
+          {/* Follows the registration as saved, not the draft: the width belongs to the device receipts go to now. */}
+          <UsefulWidthSection printer={printer} usefulWidthMm={usefulWidthMm} onChange={onUsefulWidthChange} />
           {error && (
             <p className={styles.error} role="alert">
               {error}

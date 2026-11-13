@@ -1,5 +1,6 @@
 import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import type { PaperWidth, UpdatePrinterPayload } from 'renderer/services/printers';
+import { USEFUL_WIDTH_MIN_MM } from 'shared/printerGeometry';
 import { stations } from './stations';
 
 // The two rolls of the design (printer-v2.dc.html:420-421), and the only two the API accepts:
@@ -33,15 +34,37 @@ export function stationLabel(station: string | null): string {
   return station ? (stations[station] ?? station) : 'Sem setor';
 }
 
-export function detailLine(printer: ResolvedPrinter): string {
+// `usefulWidthMm` is the one saved on this machine for the device the registration resolves to (spec 95).
+export function detailLine(printer: ResolvedPrinter, usefulWidthMm: number | null = null): string {
   const copies = `${printer.copies} ${printer.copies === 1 ? 'cópia' : 'cópias'}`;
 
   return [
     stationLabel(printer.station),
     copies,
     `bobina ${printer.paper_width} mm`,
+    ...(usefulWidthMm === null ? [] : [`largura útil ${usefulWidthMm} mm`]),
     printer.activated ? 'ativa' : 'desativada',
   ].join(' · ');
+}
+
+// Where the switch starts when the operator turns the adjustment on without measuring: the common thermal
+// heads, 576 dots (72 mm) on an 80 mm roll and 384 dots (48 mm) on a 58 mm one, at 203 dpi. A starting
+// point to check on the test page, not a measure.
+export function defaultUsefulWidth(paperWidth: number): number {
+  return paperWidth === 58 ? 48 : 72;
+}
+
+// The marks the test page's scale prints, every 5 mm up to the roll (spec 89, RN-06), from the lowest width
+// that can be saved. The answer is one of them, saved as read (spec 95, RN-12).
+export function measureMarks(paperWidth: number): number[] {
+  const last = Math.floor(toPaperWidth(paperWidth) / 5) * 5;
+  const marks: number[] = [];
+
+  for (let mark = USEFUL_WIDTH_MIN_MM; mark <= last; mark += 5) {
+    marks.push(mark);
+  }
+
+  return marks;
 }
 
 export function drawerTitle(state: CardState): string {

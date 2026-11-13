@@ -72,6 +72,8 @@ describe('PrinterDrawer', () => {
         { name: 'EPSON TM-T20', displayName: 'EPSON TM-T20', isDefault: false },
         { name: 'Bematech', displayName: 'Bematech', isDefault: true },
       ]);
+    vi.mocked(window.electron.printerPreferences).mockReset().mockResolvedValue({});
+    vi.mocked(window.electron.setPrinterUsefulWidth).mockClear();
   });
 
   describe('the shape of the design', () => {
@@ -646,6 +648,65 @@ describe('PrinterDrawer', () => {
       const proceeded = fireEvent.keyDown(middle, { key: 'Tab' });
 
       expect(proceeded).toBe(true);
+    });
+  });
+  describe('the useful width on this machine (spec 95)', () => {
+    function foundCozinha(): void {
+      vi.mocked(window.electron.listPrinters).mockResolvedValue([
+        { name: 'Cozinha', displayName: 'Cozinha', isDefault: true },
+      ]);
+    }
+
+    it('offers nothing to adjust while the Windows printer of the registration is not found', async () => {
+      renderScreen();
+      const dialog = await openDrawer();
+
+      expect(within(dialog).getByText(/Disponível quando a impressora do Windows/)).toBeInTheDocument();
+      expect(within(dialog).queryByRole('switch', { name: 'Ajustar a largura útil' })).not.toBeInTheDocument();
+    });
+
+    it('saves at once on this computer, outside the draft: nothing to discard and nothing sent to the server', async () => {
+      foundCozinha();
+      renderScreen();
+      fireEvent.click(await screen.findByRole('button', { name: 'Editar' }));
+
+      fireEvent.click(screen.getByRole('switch', { name: 'Ajustar a largura útil' }));
+
+      await waitFor(() => expect(window.electron.setPrinterUsefulWidth).toHaveBeenCalledWith('Cozinha', 72));
+      await screen.findByText('72 mm');
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(screen.queryByText('Descartar as alterações?')).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(updatePrinter).not.toHaveBeenCalled();
+    });
+
+    it('shows on the card the width saved for the device, matched the way the print matches it', async () => {
+      foundCozinha();
+      vi.mocked(window.electron.printerPreferences).mockResolvedValue({ COZINHA: { usefulWidthMm: 70 } });
+      renderScreen();
+
+      expect(
+        await screen.findByText('Cozinha · 2 cópias · bobina 80 mm · largura útil 70 mm · ativa')
+      ).toBeInTheDocument();
+    });
+
+    // The stub of setup.ts answers with the written device only; the real channel answers with the whole map,
+    // folded by the main process. The screen must adopt that answer, not merge into what it had.
+    it('adopts the map the main process answers with', async () => {
+      foundCozinha();
+      vi.mocked(window.electron.printerPreferences).mockResolvedValue({ cozinha: { usefulWidthMm: 70 } });
+      vi.mocked(window.electron.setPrinterUsefulWidth).mockResolvedValueOnce({ Cozinha: { usefulWidthMm: 71 } });
+      renderScreen();
+      fireEvent.click(await screen.findByRole('button', { name: 'Editar' }));
+      await screen.findByText('70 mm');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Aumentar Largura útil' }));
+
+      expect(await screen.findByText('71 mm')).toBeInTheDocument();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(await screen.findByText(/largura útil 71 mm/)).toBeInTheDocument();
     });
   });
 });
