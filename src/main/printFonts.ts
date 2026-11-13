@@ -32,12 +32,18 @@ export function buildPrintFontFacesCss(resolve: (file: string) => string): strin
   ).join('\n');
 }
 
-// The block goes right after the opening <html> tag, never at the start of the
-// string. Anything before <!DOCTYPE html> throws Chromium into quirks mode, and
-// quirks mode changes the metrics of the whole document (margins, height
-// collapsing, width): on an 80 mm roll that is the receipt cropped differently,
-// with no error to explain it.
-export function withPrintFontFaces(html: string, css: string): string {
+// The one injection point of the print HTML, for the font faces and for the useful width of the printer
+// (spec 95, RN-10). The block goes right after the opening <html> tag, never at
+// the start of the string. Anything before <!DOCTYPE html> throws Chromium into
+// quirks mode, and quirks mode changes the metrics of the whole document
+// (margins, height collapsing, width): on an 80 mm roll that is the receipt
+// cropped differently, with no error to explain it. Being first, the block loses
+// to the document's own <style>s by order: a rule that must win says !important.
+export function withPrintStyle(html: string, css: string): string {
+  if (css === '') {
+    return html;
+  }
+
   const style = `<style>${css}</style>`;
 
   const htmlTag = /<html(?:\s[^>]*)?>/i.exec(html);

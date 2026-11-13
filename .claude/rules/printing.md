@@ -8,6 +8,11 @@ paths:
   - "src/main/queue/**"
   - "src/shared/ipcChannels.ts"
   - "src/shared/queueLimits.ts"
+  - "src/main/printGeometry.ts"
+  - "src/main/printFonts.ts"
+  - "src/main/printerInfo.ts"
+  - "src/main/printerPreferences.ts"
+  - "src/shared/printerGeometry.ts"
 ---
 
 # O caminho da impressão
@@ -17,7 +22,12 @@ paths:
 1. O painel (ou a `delivery-api`) emite no socket. O renderer ouve: `printOrder` e `printShipment` no `/order` (`src/renderer/hooks/usePrintingOrder.ts:90` e `:94`), `print_board` e `print_board_billing` no `/board` (`usePrintingBoard.ts:58` e `:54`).
 2. O hook pede o **HTML já renderizado** à `delivery-api`: `api.get<Response[]>(\`orders/${uuid}/${layout}\`)`. A resposta é uma **lista**, um item por impressora — cada um com `content`, `copies` e `device_name`.
 3. O renderer entrega a **resposta inteira de uma vez** à fila do main: `enqueueReceipts` (`src/renderer/services/printQueue.ts`) chama `window.electron.enqueue(...)`, com um `id` novo por item (`uuidv4()`, que também nomeia o arquivo temporário). A fila persiste tudo junto e **deduplica por pedido + tipo** (`already-printed`, `already in the queue`).
-4. O worker da fila (`src/main/queue/print-queue-worker.ts`) imprime pelo `printReceipt` (`src/main/ipc-events/onRawPrint.ts`): grava `os.tmpdir()/<id>.print.html`, abre uma `BrowserWindow` escondida, casa `deviceName` com o nome real da impressora (case-insensitive) e chama `webContents.print({ silent: true, ... })`. **A geometria é decidida pelo `marginType`, num ponto só, e hoje ele é `printableArea`**: a caixa de conteúdo é a área imprimível que o driver declara. `none`, o valor anterior, diagrama sobre a folha física inteira — e na bobina de 80 mm a cabeça alcança ~72 mm, então o comprovante saía cortado à direita (#89). Caminho novo que precise de opção diferente abre a discussão, não acrescenta um segundo `print`. Falha tenta de novo com espera crescente (ver "A fila durável").
+4. O worker da fila (`src/main/queue/print-queue-worker.ts`) imprime pelo `printReceipt` (`src/main/ipc-events/onRawPrint.ts`): grava `os.tmpdir()/<id>.print.html`, abre uma `BrowserWindow` escondida, casa `deviceName` com o nome real da impressora (case-insensitive) e chama `webContents.print({ silent: true, ... })`. **A geometria é decidida num ponto só, `resolvePrintGeometry` (`src/main/printGeometry.ts`), pela impressora de destino** — a que casou com o `deviceName` ou, sem casamento, a marcada `isDefault` (é nela que o Electron imprime). Em vigor, por caso:
+   - **sem largura útil salva para o destino**: `marginType: 'printableArea'`, sem `pageSize` e sem `<style>` de largura — a caixa de conteúdo é a área imprimível que o driver declara (#89). Só é tão boa quanto o driver: o genérico de térmica declara a bobina inteira, e o comprovante continua cortado à direita;
+   - **com largura útil W** (`printer-preferences.json` em `userData`, por dispositivo do Windows, gravada pela tela Impressoras — spec 95): `pageSize: { width: W*1000, height: 297000 }` (micrômetros), margens `custom` 0 e um `<style>` injetado depois do `<html>` com `@page { size: Wmm 297mm }` e `body > * { max-width: Wmm }`, **todos com `!important`**, porque o bloco entra antes dos `<style>` da API e perderia por ordem. Quem garante a largura é o `max-width`; o `pageSize` reforça e resolve a altura. **Limite:** o Chromium pagina na altura do `pageSize`, então comprovante com mais de 297 mm sai em duas páginas — o mesmo papel padrão da maioria dos drivers térmicos, mas driver configurado para "cortar por página" corta no meio;
+   - **sem largura útil, mas o driver expõe nas opções (`media`/`PageSize`) um papel com largura < 40 mm, altura < 50 mm ou 0**: `pageSize` forçado na largura do documento (o último `@page size` do HTML) e margens `custom` 0, contra a "fitinha em branco". Não é verificável daqui se o Windows põe o papel nas opções; quando não põe, o caminho é salvar uma largura útil.
+   
+   Cada impressão registra uma linha `print-geometry` no log (destino, papel exposto, `marginType`, `pageSize`, largura útil, motivo), sem nada do comprovante. `none`, o valor da v3.0.2, diagramava sobre a folha física inteira e não volta. Caminho novo que precise de opção diferente entra como caso em `resolvePrintGeometry`, não como um segundo `print`. Falha tenta de novo com espera crescente (ver "A fila durável").
 5. Só no caminho do pedido, quando o main avisa que o trabalho **imprimiu** (`onJobPrinted`), o renderer marca: `api.patch(\`/orders/${uuid}/printed\`)`.
 
 **Nada disso renderiza layout aqui.** O layout é da `delivery-api`. Se a impressão sai errada, o defeito está quase sempre no HTML que veio, e a verificação é olhar o `content` da resposta — não mexer em componente.

@@ -33,7 +33,7 @@ A frente atravessa os três processos, mas o centro dela é o **main**, e nele u
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
 | 01 | Largura útil por impressora em userData, com o par IPC | [#96](https://github.com/sgrande-delivery/delivery-printer/issues/96) | [`tasks/96-printer-preferences-store.md`](./tasks/96-printer-preferences-store.md) | — | executada |
-| 02 | Geometria de impressão por impressora no printReceipt | [#97](https://github.com/sgrande-delivery/delivery-printer/issues/97) | [`tasks/97-print-geometry-per-printer.md`](./tasks/97-print-geometry-per-printer.md) | 01 | pendente |
+| 02 | Geometria de impressão por impressora no printReceipt | [#97](https://github.com/sgrande-delivery/delivery-printer/issues/97) | [`tasks/97-print-geometry-per-printer.md`](./tasks/97-print-geometry-per-printer.md) | 01 | executada |
 | 03 | Página de teste com a largura útil e página de medição | [#98](https://github.com/sgrande-delivery/delivery-printer/issues/98) | [`tasks/98-test-page-useful-width-and-measure.md`](./tasks/98-test-page-useful-width-and-measure.md) | 02 | pendente |
 | 04 | Largura útil e Medir na tela Impressoras | [#99](https://github.com/sgrande-delivery/delivery-printer/issues/99) | [`tasks/99-printers-screen-useful-width.md`](./tasks/99-printers-screen-useful-width.md) | 01, 03 | pendente |
 
@@ -59,7 +59,8 @@ O que prova é impressão real no PDV, com o instalador da pré-release:
 2. numa impressora com driver correto, sem largura útil: nada muda em relação à v3.1.1;
 3. bobina de 58 em driver que diz 80: largura útil 48 (ou o que a medição der) → comprovante inteiro;
 4. driver com papel curto ("80 x 25"): com largura útil configurada, comprovante inteiro; e conferir no log (`Exportar logs`) se a linha `print-geometry` traz o papel nas opções do driver — é ela que diz se a RN-07 dispara sozinha no Windows;
-5. anotar no relatório, por modelo de driver, o número medido e se o `pageSize` custom foi aceito (o comprovante sai com a altura do conteúdo, sem folha de 297 mm de papel em branco). Se o driver recusar o papel custom e alimentar 297 mm, o `max-width` ainda garante a largura, e a altura vira a próxima conversa.
+5. imprimir um pedido **longo** (mais de 30 cm de comprovante, ou uma conta de mesa cheia) com largura útil configurada: ele sai em duas páginas de 297 mm (decisão pendente 5 da spec); conferir se o driver corta entre elas;
+6. anotar no relatório, por modelo de driver, o número medido e se o `pageSize` custom foi aceito (o comprovante sai com a altura do conteúdo, sem folha de 297 mm de papel em branco). Se o driver recusar o papel custom e alimentar 297 mm, o `max-width` ainda garante a largura, e a altura vira a próxima conversa.
 
 ## Aprendizados que valem para as próximas tasks
 
@@ -68,3 +69,6 @@ O que prova é impressão real no PDV, com o instalador da pré-release:
 - **Chamar `printerPreferenceFor` com o nome da impressora resolvida** (ou a `isDefault`, RN-03), nunca com o `deviceName` cru do payload: o cru pode ser `null` ou um nome que não casa, e aí a largura da padrão não se aplicaria.
 - **Entrada inválida no arquivo gera um `warn` por leitura**, e a task 97 lê a cada impressão: um arquivo editado com erro dá um `warn` por comprovante. Aceito (é o sinal de que o arquivo está errado), mas não é motivo para cache.
 - **Arquivo que existe e não pôde ser lido não é arquivo inválido.** `readJsonObjectFile` separa `unreadable` de `invalid` porque recomeçar de `{}` só é seguro no segundo caso; no primeiro, a escrita apagaria todas as outras impressoras. O `uiPreferences` continua recomeçando nos dois (tema e sidebar não cortam comprovante).
+- **O HTML temporário passou a ser gravado depois do `getPrintersAsync`** (a geometria precisa do destino). Se a listagem rejeitar, não sobra `.print.html` em `%TEMP%`; a fila tenta de novo com o mesmo `id` e sobrescreveria o arquivo de qualquer forma. "Só é removido no caminho de sucesso" continua verdadeiro.
+- **`@page { size: <comprimento> auto }` é descartado pelo parser** — não é forma da gramática de `size`. A API usa essa forma, então o `@page` dela é inerte hoje; o que vale é o `pageSize` e o `max-width`. O injetado aqui usa `Wmm 297mm`, a mesma página do `pageSize`.
+- **Mock de módulo com o critério real:** o `onRawPrint.test.ts` mocka `../printerPreferences` mas monta a resposta com o `findPrinterPreference` de verdade (`await import('shared/printerGeometry')` dentro do `vi.mock`), para que o teste de caixa de letra prove o casamento do produto e não o do mock.
