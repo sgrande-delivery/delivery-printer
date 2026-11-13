@@ -1,6 +1,6 @@
 # Spec — Largura útil por impressora
 
-**Status:** implementada — falta a verificação no PDV (plan, "Verificação da entrega")
+**Status:** entregue — a verificação de papel é no PDV (plan, "Verificação da entrega")
 **Criada em:** 2026-11-13
 **Escopo:** main+renderer
 **Issue:** [#95](https://github.com/sgrande-delivery/delivery-printer/issues/95)

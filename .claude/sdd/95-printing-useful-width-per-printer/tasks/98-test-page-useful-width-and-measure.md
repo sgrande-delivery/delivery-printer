@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main (+ tipos em shared)
 **Depende de:** 97
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 

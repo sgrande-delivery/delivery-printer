@@ -32,10 +32,10 @@ A frente atravessa os três processos, mas o centro dela é o **main**, e nele u
 
 | # | Task | Issue | Arquivo | Depende de | Status |
 |---|------|-------|---------|------------|--------|
-| 01 | Largura útil por impressora em userData, com o par IPC | [#96](https://github.com/sgrande-delivery/delivery-printer/issues/96) | [`tasks/96-printer-preferences-store.md`](./tasks/96-printer-preferences-store.md) | — | executada |
-| 02 | Geometria de impressão por impressora no printReceipt | [#97](https://github.com/sgrande-delivery/delivery-printer/issues/97) | [`tasks/97-print-geometry-per-printer.md`](./tasks/97-print-geometry-per-printer.md) | 01 | executada |
-| 03 | Página de teste com a largura útil e página de medição | [#98](https://github.com/sgrande-delivery/delivery-printer/issues/98) | [`tasks/98-test-page-useful-width-and-measure.md`](./tasks/98-test-page-useful-width-and-measure.md) | 02 | executada |
-| 04 | Largura útil e Medir na tela Impressoras | [#99](https://github.com/sgrande-delivery/delivery-printer/issues/99) | [`tasks/99-printers-screen-useful-width.md`](./tasks/99-printers-screen-useful-width.md) | 01, 03 | executada |
+| 01 | Largura útil por impressora em userData, com o par IPC | [#96](https://github.com/sgrande-delivery/delivery-printer/issues/96) | [`tasks/96-printer-preferences-store.md`](./tasks/96-printer-preferences-store.md) | — | shipped |
+| 02 | Geometria de impressão por impressora no printReceipt | [#97](https://github.com/sgrande-delivery/delivery-printer/issues/97) | [`tasks/97-print-geometry-per-printer.md`](./tasks/97-print-geometry-per-printer.md) | 01 | shipped |
+| 03 | Página de teste com a largura útil e página de medição | [#98](https://github.com/sgrande-delivery/delivery-printer/issues/98) | [`tasks/98-test-page-useful-width-and-measure.md`](./tasks/98-test-page-useful-width-and-measure.md) | 02 | shipped |
+| 04 | Largura útil e Medir na tela Impressoras | [#99](https://github.com/sgrande-delivery/delivery-printer/issues/99) | [`tasks/99-printers-screen-useful-width.md`](./tasks/99-printers-screen-useful-width.md) | 01, 03 | shipped |
 
 Status: `a especificar` → `pendente` → `executada` → `shipped`.
 

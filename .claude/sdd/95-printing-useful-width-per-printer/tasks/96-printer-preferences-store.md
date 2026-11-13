@@ -5,7 +5,7 @@
 **Tipo:** feature
 **Processo:** main+renderer (main, preload, shared)
 **Depende de:** (nenhuma)
-**Status:** executada
+**Status:** shipped
 
 ## Objetivo
 
