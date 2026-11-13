@@ -1,11 +1,10 @@
 import { app, nativeTheme } from 'electron';
-import fs from 'node:fs';
 import path from 'node:path';
-import { describeError } from 'shared/describeError';
 import { clampSidebarWidth } from 'shared/sidebarWidth';
 import { isThemePreference } from 'shared/uiTheme';
 import type { ResolvedTheme, ThemePreference, UiThemeState } from 'shared/uiTheme';
 import { writeFileAtomic } from './atomicFile';
+import { readJsonObject, type JsonObject } from './jsonObjectFile';
 import { logger } from './logger';
 
 export type { ResolvedTheme, ThemePreference };
@@ -18,39 +17,10 @@ function preferencesPath(): string {
   return path.join(app.getPath('userData'), PREFERENCES_FILE);
 }
 
-type Stored = Record<string, unknown>;
+type Stored = JsonObject;
 
-// Never throws and never writes: a preferences file that cannot be read must not stop the app from
-// opening, and a read must not rewrite what it could not understand. null means "nothing usable".
 function readStored(): Stored | null {
-  let raw: string;
-
-  try {
-    raw = fs.readFileSync(preferencesPath(), 'utf8');
-  } catch (err: unknown) {
-    const absent = typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'ENOENT';
-
-    if (!absent) {
-      logger.warn('preferences: could not read the file', describeError(err));
-    }
-
-    return null;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-
-    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-      // TS does not widen `object` to Record<string, unknown>; the guard above is the proof.
-      return parsed as Stored;
-    }
-
-    logger.warn('preferences: the file is not an object');
-  } catch (err: unknown) {
-    logger.warn('preferences: the file is not valid JSON', describeError(err));
-  }
-
-  return null;
+  return readJsonObject(preferencesPath(), 'preferences');
 }
 
 export function readPreference(): ThemePreference {

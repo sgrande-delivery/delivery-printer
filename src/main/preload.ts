@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { EnqueueRequest, EnqueueResult, PrintJobSummary, TestPrintRequest } from 'shared/printQueue';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
+import type { PrinterPreferences } from 'shared/printerGeometry';
 import { EVENT_CHANNELS, INVOKE_CHANNELS, SEND_CHANNELS } from 'shared/ipcChannels';
 import type { UpdateState } from 'shared/appUpdate';
 import { themeFromArgv } from 'shared/uiTheme';
@@ -114,6 +115,14 @@ const electronHandler = {
 
   // Saves and resolves to the width that now applies (clamped): adopt it, not what was asked.
   setUiSidebarWidth: (width: number): Promise<number> => ipcRenderer.invoke(INVOKE_CHANNELS.setUiSidebarWidth, width),
+
+  // Every Windows device with a useful width saved on this machine, keyed by the device name. Never rejects.
+  printerPreferences: (): Promise<PrinterPreferences> => ipcRenderer.invoke(INVOKE_CHANNELS.printerPreferences),
+
+  // null goes back to automatic (the area the driver declares). Resolves to the whole map after the write, which
+  // is what the screen adopts; rejects for a width outside 40–80, and nothing is written then.
+  setPrinterUsefulWidth: (deviceName: string, usefulWidthMm: number | null): Promise<PrinterPreferences> =>
+    ipcRenderer.invoke(INVOKE_CHANNELS.setPrinterUsefulWidth, { deviceName, usefulWidthMm }),
 
   // Only when the resolved light/dark changes, not on every system appearance event.
   onUiThemeChanged: (listener: (resolved: ResolvedTheme) => void): (() => void) => {

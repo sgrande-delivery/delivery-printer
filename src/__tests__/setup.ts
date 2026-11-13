@@ -3,6 +3,8 @@ import { vi } from 'vitest';
 import packageJson from '../../package.json';
 import type { UpdateState } from 'shared/appUpdate';
 import { SIDEBAR_DEFAULT_WIDTH, clampSidebarWidth } from 'shared/sidebarWidth';
+import { isUsefulWidthMm } from 'shared/printerGeometry';
+import type { PrinterPreferences } from 'shared/printerGeometry';
 
 // A coherent state, not {}: an empty object would let a screen pass under a state that the real channel
 // never resolves to (same reasoning as the sidebar width below).
@@ -55,6 +57,18 @@ Object.defineProperty(window, 'electron', {
     // accepted, which is a value the real channel never resolves to.
     uiSidebarWidth: vi.fn().mockResolvedValue(SIDEBAR_DEFAULT_WIDTH),
     setUiSidebarWidth: vi.fn().mockImplementation((width: number) => Promise.resolve(clampSidebarWidth(width))),
+    // Refuses what the main process refuses: a stub that saved 90 would let a screen look right under a value
+    // the real channel rejects. Stateless: it resolves to the map holding only the device just written.
+    printerPreferences: vi.fn().mockResolvedValue({}),
+    setPrinterUsefulWidth: vi
+      .fn()
+      .mockImplementation((deviceName: string, usefulWidthMm: number | null): Promise<PrinterPreferences> => {
+        if (deviceName === '' || (usefulWidthMm !== null && !isUsefulWidthMm(usefulWidthMm))) {
+          return Promise.reject(new Error('invalid useful width request'));
+        }
+
+        return Promise.resolve(usefulWidthMm === null ? {} : { [deviceName]: { usefulWidthMm } });
+      }),
     onUiThemeChanged: vi.fn().mockReturnValue(() => undefined),
     updateState: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),
     checkForUpdate: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),

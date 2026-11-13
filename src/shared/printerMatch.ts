@@ -9,9 +9,13 @@
 //
 // `deviceName` is nullable on purpose: the API sends `device_name: null` for a
 // restaurant with a single printer, and no match means the system default printer.
+export function isSameDeviceName(name: string, deviceName: string | null | undefined): boolean {
+  return name.toLowerCase() === deviceName?.toLowerCase();
+}
+
 export function findPrinterByDeviceName<T extends { name: string }>(
   printers: T[],
   deviceName: string | null | undefined
 ): T | undefined {
-  return printers.find(printer => printer.name.toLowerCase() === deviceName?.toLowerCase());
+  return printers.find(printer => isSameDeviceName(printer.name, deviceName));
 }
