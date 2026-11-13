@@ -65,6 +65,25 @@ Consequência operacional: o nome do check deixou de ser `check` e passou a ser 
 | 5 | **promover** a pré-release a release normal → rollout | dev |
 | 6 | atualizar `delivery_printer_version` no `delivery-admin` | dev |
 
+### O que escrever no corpo da release
+
+**O corpo é público e tem dois leitores**, e o segundo é o que surpreende: além da página da release no GitHub, ele é exibido **dentro do app**, na tela `/updates` (spec 79, RF-10). O `releaseNotesToLines` (`src/shared/releaseNotes.ts`) recebe o corpo **já renderizado em HTML** pelo GitHub, apaga toda tag, decodifica as cinco entidades e corta em **12 linhas** (`MAX_RELEASE_NOTE_LINES`). Daí:
+
+- **negrito, título e link viram texto puro.** `## Impressão` vira a linha `Impressão`, e o `- ` do item de lista desaparece (o `<li>` vira quebra de linha). Não quebra nada — só não decora nada.
+- **O que passar de 12 linhas não existe para o operador.** Parágrafo e item contam um cada.
+- **URL no corpo é texto morto na tela:** não é clicável e não leva a lugar nenhum.
+
+**Quem lê é o dono do restaurante e o operador do PDV**, não o dev. O padrão, medido nas releases `v3.0.1` e `v3.0.2`:
+
+- **pt-BR, e o efeito antes do mecanismo.** "o comprovante saía cortado do lado direito" é o que ele reconhece no papel que tem na mão; `marginType` não lhe diz nada.
+- **Diga como era antes quando a mudança só faz sentido assim** — *"Antes a falha era silenciosa"* (v3.0.1).
+- **Nada de número de PR, número de issue, nome de arquivo, de função ou de chave de configuração.** Isso mora no PR e na spec, que são onde o dev procura.
+- **Seções `##` por tema só quando a release é grande.** A v3.0.1 reescreveu o app e tinha três; a v3.0.2 eram três parágrafos secos, sem nenhuma.
+- **As primeiras linhas são as únicas garantidas.** Ponha na frente o que muda o dia de quem opera.
+- **Sem "Full Changelog" e sem lista de commits.** A v2.6.0 tem, e dentro do app isso é uma linha gasta com uma URL que ninguém clica.
+
+O título da release é `v<version>`, igual à tag.
+
 ### Por que pré-release e não draft
 
 **Draft não dispara workflow.** Documentação do GitHub, literal: *"Workflows are not triggered for the `created`, `edited`, or `deleted` activity types for draft releases."* A segurança do portão vem então de a release ser **pré-release**, que o `GitHubProvider` do electron-updater ignora do mesmo jeito que ignora draft — ele pede `https://github.com/<owner>/<repo>/releases/latest` com `Accept: application/json` e lê o `tag_name`, e essa URL pula draft **e** pré-release.
@@ -129,6 +148,7 @@ As duas juntas, nessa ordem. E antes de qualquer uma: **se a esteira terminou ve
 - [ ] `version` do `package.json` subiu, e é maior que a última tag publicada (`gh release list`)
 - [ ] PR mergeado em `master` com o `ci.yml` verde
 - [ ] release criada com a tag **`v<version>`** e marcada como **pré-release**
+- [ ] corpo da release escrito para quem usa o app, em pt-BR, com o que importa nas primeiras 12 linhas
 - [ ] run do `publish.yml` verde **e com os três arquivos anexados** à pré-release
 - [ ] `.exe` instalado e conferido numa máquina
 - [ ] release promovida (sai da pré-release, vira `Latest`)
