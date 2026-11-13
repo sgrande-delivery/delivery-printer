@@ -9,14 +9,24 @@ import {
 
 describe('resolvePrintGeometry', () => {
   it('forces nothing when no width is saved and the driver exposes no paper', () => {
-    const geometry = resolvePrintGeometry({ usefulWidthMm: null, driverPaper: null, documentWidthMm: 80 });
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: null,
+      driverPaper: null,
+      measurePaperWidthMm: null,
+      documentWidthMm: 80,
+    });
 
     expect(geometry).toEqual({ reason: 'printable-area', margins: { marginType: 'printableArea' }, widthCss: null });
     expect(geometry).not.toHaveProperty('pageSize');
   });
 
   it('lays a useful width out explicitly: W-wide roll page, zero custom margins, a max-width that wins', () => {
-    const geometry = resolvePrintGeometry({ usefulWidthMm: 72, driverPaper: null, documentWidthMm: 80 });
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: 72,
+      driverPaper: null,
+      measurePaperWidthMm: null,
+      documentWidthMm: 80,
+    });
 
     expect(geometry.reason).toBe('useful-width');
     expect(geometry.margins).toEqual({ marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 });
@@ -32,6 +42,7 @@ describe('resolvePrintGeometry', () => {
     const geometry = resolvePrintGeometry({
       usefulWidthMm: 48,
       driverPaper: { widthMm: 80, heightMm: 25 },
+      measurePaperWidthMm: null,
       documentWidthMm: 80,
     });
 
@@ -44,7 +55,12 @@ describe('resolvePrintGeometry', () => {
     ['80 x 0', { widthMm: 80, heightMm: 0 }],
     ['30 x 297', { widthMm: 30, heightMm: 297 }],
   ])('forces the roll page at the document width for a %s paper, with nothing injected', (_case, driverPaper) => {
-    const geometry = resolvePrintGeometry({ usefulWidthMm: null, driverPaper, documentWidthMm: 58 });
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: null,
+      driverPaper,
+      measurePaperWidthMm: null,
+      documentWidthMm: 58,
+    });
 
     expect(geometry.reason).toBe('invalid-driver-paper');
     expect(geometry.margins).toEqual({ marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 });
@@ -52,13 +68,30 @@ describe('resolvePrintGeometry', () => {
     expect(geometry.widthCss).toBeNull();
   });
 
+  // Spec 95, RN-11: measuring through a saved width would make the app cut the scale at the number saved.
+  it('measures over the whole roll, over a saved width and over an invalid paper alike', () => {
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: 72,
+      driverPaper: { widthMm: 80, heightMm: 25 },
+      documentWidthMm: 80,
+      measurePaperWidthMm: 58,
+    });
+
+    expect(geometry).toEqual({
+      reason: 'measure',
+      margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
+      pageSize: { width: 58_000, height: ROLL_PAGE_HEIGHT_MICRONS },
+      widthCss: null,
+    });
+  });
+
   it.each([
     ['80 x 297', { widthMm: 80, heightMm: 297 }],
     ['40 x 50, the limit', { widthMm: 40, heightMm: 50 }],
   ])('trusts a %s paper and keeps the printable area', (_case, driverPaper) => {
-    expect(resolvePrintGeometry({ usefulWidthMm: null, driverPaper, documentWidthMm: 80 }).reason).toBe(
-      'printable-area'
-    );
+    expect(
+      resolvePrintGeometry({ usefulWidthMm: null, driverPaper, measurePaperWidthMm: null, documentWidthMm: 80 }).reason
+    ).toBe('printable-area');
   });
 });
 

@@ -243,6 +243,22 @@ describe('printQueueStore', () => {
     expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('not a print job'));
   });
 
+  // Spec 95: the measuring test page carries the roll it measures on, and the print turns it into a page size,
+  // so a hand-edited value must not reach it.
+  it('keeps the measuring roll of a test page, and discards a job whose roll is not 58 or 80', () => {
+    const measuring = (id: string, roll: unknown): unknown => ({
+      ...job(id, { kind: 'test', orderUuid: undefined }),
+      payload: { content: '<html></html>', copies: 1, deviceName: 'Cozinha', id, measurePaperWidthMm: roll },
+    });
+    const lines = [measuring('m58', 58), measuring('m80', 80), measuring('m72', 72), measuring('text', '80')];
+
+    fs.writeFileSync(file(), lines.map(line => `${JSON.stringify(line)}\n`).join(''));
+
+    const jobs = printQueueStore.list();
+    expect(jobs.map(j => j.id)).toEqual(['m58', 'm80']);
+    expect(jobs.map(j => j.payload.measurePaperWidthMm)).toEqual([58, 80]);
+  });
+
   // The discarded line is a receipt with the customer's data, so only its number
   // is logged. Both branches are covered on purpose: the line that is valid JSON
   // with the wrong shape is the one that carries a whole payload.

@@ -5,6 +5,8 @@ import {
   TEST_PRINT_SCALE_LABEL,
   TEST_PRINT_TITLE,
   testPrintDataLines,
+  testPrintGeometryLine,
+  type TestPrintGeometry,
 } from 'shared/testPrintContent';
 
 // This is the one print layout that lives in this repo, and it is an exception on
@@ -27,13 +29,20 @@ function escapeHtml(text: string): string {
 
 // paper_width is an enum of two cases in the delivery-api, but it arrives here as a
 // number read from the record: anything else is laid out as the wider roll.
-function normalizePaperWidth(paperWidth: number): 58 | 80 {
+export function normalizePaperWidth(paperWidth: number): 58 | 80 {
   return paperWidth === 58 ? 58 : 80;
 }
 
 export const TEST_PRINT_LABEL = 'a página de teste';
 
-export function buildTestPrintPage(request: TestPrintRequest, appVersion: string, now: Date): string {
+export const TEST_MEASURE_LABEL = 'a página de medição';
+
+export function buildTestPrintPage(
+  request: TestPrintRequest,
+  appVersion: string,
+  now: Date,
+  geometry: TestPrintGeometry = { kind: 'auto' }
+): string {
   const width = normalizePaperWidth(request.paperWidth);
   const lines = testPrintDataLines({
     printerName: request.printerName,
@@ -57,6 +66,20 @@ export function buildTestPrintPage(request: TestPrintRequest, appVersion: string
   // The scale is the one thing that must NOT adapt (spec 89, RN-06): fixed millimetres, sibling of the
   // frame, flush to the left edge of the content box. It exists to be cut by the printable edge, and
   // that cut is the number the operator reads — inset it reads shifted, nested the frame cuts it first.
+  //
+  // With a useful width W saved for the printer (spec 95, RN-11) the print is a W-wide page and the frame gets
+  // a ceiling of its own, border-box, so it closes inside W even when the driver refuses the custom paper and
+  // the page falls back to 80mm. The ceiling is !important because printReceipt injects
+  // `body > * { max-width: Wmm !important }` for the same print, and the frame is a child of <body>: an
+  // important rule beats a normal one whatever the specificity, which would leave the frame W wide plus its
+  // 2mm margin. Both important, `.frame` (0,1,0) wins over `body > *` (0,0,1). The scale still does not adapt,
+  // and on a W-wide page it ends at the mark of W: what this page confirms then is the closed frame. Measuring
+  // is the other mode, 'measure': the print ignores the saved width and lays the page over the whole roll, so
+  // the head — not the app — cuts the scale.
+  const frameCeiling =
+    geometry.kind === 'useful-width'
+      ? `\n  .frame { box-sizing: border-box; max-width: calc(${geometry.widthMm}mm - 4mm) !important; }`
+      : '';
   const scaleCells = Array.from(
     { length: Math.floor(width / 5) },
     (_, index) => `<div class="cell">${(index + 1) * 5}</div>`
@@ -70,10 +93,11 @@ export function buildTestPrintPage(request: TestPrintRequest, appVersion: string
   @page { size: ${width}mm auto; margin: 0; }
   html, body { margin: 0; padding: 0; }
   body { max-width: ${width}mm; font-family: monospace; font-size: 12px; color: #000; }
-  .frame { margin: 2mm; border: 2px solid #000; padding: 6px; }
+  .frame { margin: 2mm; border: 2px solid #000; padding: 6px; }${frameCeiling}
   h1 { font-size: 15px; margin: 0 0 6px; text-align: center; }
   p { margin: 2px 0; word-break: break-word; }
   .ruler { margin-top: 8px; border-top: 1px dashed #000; padding-top: 4px; overflow: hidden; white-space: nowrap; }
+  .geometry { font-size: 9px; margin: 0 0 2px; word-break: break-word; }
   .scale-label { font-size: 9px; white-space: nowrap; overflow: hidden; }
   .scale { display: flex; overflow: hidden; }
   .cell { flex: 0 0 5mm; box-sizing: border-box; border-right: 1px solid #000; font-size: 9px; line-height: 1.4; text-align: right; padding-right: 1px; white-space: nowrap; overflow: hidden; }
@@ -86,6 +110,7 @@ ${lines.map(line => `  <p>${escapeHtml(line)}</p>`).join('\n')}
   <div class="ruler">${escapeHtml(TEST_PRINT_COLUMNS)}</div>
   <p>${escapeHtml(TEST_PRINT_NOTE)}</p>
 </div>
+<div class="geometry">${escapeHtml(testPrintGeometryLine(geometry))}</div>
 <div class="scale-label">${escapeHtml(TEST_PRINT_SCALE_LABEL)}</div>
 <div class="scale">${scaleCells.join('')}</div>
 </body>

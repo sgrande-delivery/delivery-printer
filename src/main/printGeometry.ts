@@ -1,7 +1,7 @@
 import type { Margins } from 'electron';
 
 // The one place that decides the geometry of a print (spec 95, RN-09; spec 89, RN-01): printReceipt is the
-// only webContents.print of this repo and the only caller of resolvePrintGeometry. Three cases:
+// only webContents.print of this repo and the only caller of resolvePrintGeometry. Four cases:
 //
 // - No useful width saved for the target printer: 'printableArea', nothing forced (spec 95, RN-04).
 //   The content box is the area the driver declares, and the delivery-api's relative container shrinks into
@@ -22,9 +22,14 @@ import type { Margins } from 'electron';
 //   Windows is not measurable from this repo (on CUPS it carries the destination options); when it does not,
 //   the way out of the blank strip is saving a useful width.
 //
+// - The measuring test page (spec 95, RN-11): the whole roll of the registration, zero margins, nothing
+//   injected, ignoring any saved width — measuring through the saved width would make the app, not the head,
+//   cut the scale, and the operator would read back the number already saved. A forced roll page and not
+//   'printableArea', so it also comes out on the driver whose paper makes the blank strip.
+//
 // Margins in 'custom' are pixels (Electron's Margins); pageSize is microns, at least 353 each way.
 
-export type GeometryReason = 'printable-area' | 'useful-width' | 'invalid-driver-paper';
+export type GeometryReason = 'printable-area' | 'useful-width' | 'invalid-driver-paper' | 'measure';
 
 export type PageSizeMicrons = { width: number; height: number };
 
@@ -72,7 +77,18 @@ export function resolvePrintGeometry(input: {
   usefulWidthMm: number | null;
   driverPaper: DriverPaper | null;
   documentWidthMm: number;
+  // Only the measuring test page: the whole roll, whatever is saved (spec 95, RN-11).
+  measurePaperWidthMm: number | null;
 }): PrintGeometry {
+  if (input.measurePaperWidthMm !== null) {
+    return {
+      reason: 'measure',
+      margins: zeroMargins(),
+      pageSize: rollPage(input.measurePaperWidthMm),
+      widthCss: null,
+    };
+  }
+
   if (input.usefulWidthMm !== null) {
     return {
       reason: 'useful-width',

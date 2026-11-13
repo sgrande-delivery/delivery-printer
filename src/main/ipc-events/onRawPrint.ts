@@ -12,7 +12,13 @@ import { printerPreferenceFor } from '../printerPreferences';
 
 // Shared by the rawPrint channel and by the queue worker. Rejects with the
 // Electron reason when the printer refuses.
-export async function printReceipt({ content, copies, deviceName, id }: PrintPayload): Promise<void> {
+export async function printReceipt({
+  content,
+  copies,
+  deviceName,
+  id,
+  measurePaperWidthMm,
+}: PrintPayload): Promise<void> {
   const win = new BrowserWindow({ show: false });
 
   try {
@@ -25,7 +31,12 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
     const target = printer ?? printers.find(isDefaultPrinter);
     const usefulWidthMm = printerPreferenceFor(target?.name)?.usefulWidthMm ?? null;
     const driverPaper = driverPaperMm(target?.options);
-    const geometry = resolvePrintGeometry({ usefulWidthMm, driverPaper, documentWidthMm: documentWidthMm(content) });
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm,
+      driverPaper,
+      documentWidthMm: documentWidthMm(content),
+      measurePaperWidthMm: measurePaperWidthMm ?? null,
+    });
 
     // One line per print, and nothing of the receipt in it (spec 95, RN-08): without it support cannot tell
     // "the driver lied" from "the HTML is too wide".

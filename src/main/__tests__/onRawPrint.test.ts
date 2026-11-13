@@ -144,6 +144,16 @@ describe('printReceipt', () => {
     );
   });
 
+  it('prints the measuring page over the whole roll even when a useful width is saved', async () => {
+    mocks.usefulWidths = { 'EPSON TM-T20': 72 };
+
+    await printReceipt({ content: API_HTML, copies: 1, deviceName: 'EPSON TM-T20', id: ID, measurePaperWidthMm: 80 });
+
+    expect(mocks.printOptions?.pageSize).toEqual({ width: 80_000, height: 297_000 });
+    expect(mocks.fileAtLoad).not.toContain('body > *');
+    expect(mocks.log.info).toHaveBeenCalledWith('print-geometry', expect.objectContaining({ reason: 'measure' }));
+  });
+
   it('logs the geometry of every print, and nothing of the receipt', async () => {
     mocks.printers = [{ name: 'EPSON TM-T20', options: { media: 'A4', 'printer-location': 'Caixa' } }];
     mocks.usefulWidths = { 'EPSON TM-T20': 72 };
