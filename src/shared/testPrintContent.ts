@@ -8,12 +8,23 @@ export const TEST_PRINT_TITLE = 'TESTE DE IMPRESSÃO';
 // reveals it. Keep every accented letter of Portuguese that a receipt prints in this line.
 export const TEST_PRINT_ACCENTS = 'ÁÉÍÓÚ ÂÊÔ ÃÕ Ç';
 
-// Forty columns, the width of a roll of 80 mm in the default font: a page that breaks this line is
-// laid out wider than the paper.
+// Forty columns, ~70 mm at the 12 px monospace the page prints in (spec 89, RN-07) — more than the
+// frame leaves inside the ~72 mm a thermal head covers on an 80 mm roll (spec 89, "Contexto": 576 dots
+// at 203 dpi), so on a correct printer this line comes out cut. It is a reading scale, not a promise
+// to fit: the last visible column is how many characters that printer gives at this font size.
 export const TEST_PRINT_COLUMNS = '1234567890123456789012345678901234567890';
 
+// The note points the operator at the scale by the name printed above it, so the title is a constant
+// and both uses derive from it. Naming the instrument twice is how the two drift apart, and this file
+// exists to stop that.
+export const TEST_PRINT_SCALE_TITLE = 'Largura impressa (mm)';
+
+export const TEST_PRINT_SCALE_LABEL = `${TEST_PRINT_SCALE_TITLE}:`;
+
 export const TEST_PRINT_NOTE =
-  'A moldura e a régua devem caber no papel sem cortar. Se a régua sai cortada ou quebra em duas linhas, a largura configurada não é a do papel.';
+  'A moldura deve sair fechada nos quatro lados. Se faltar um lado, o driver informa uma área imprimível ' +
+  `maior do que a impressora alcança. Em "${TEST_PRINT_SCALE_TITLE}", a última marca visível é a largura ` +
+  'real. Na régua de números, a última coluna visível indica quantos caracteres cabem.';
 
 export interface TestPrintFields {
   printerName: string;
@@ -35,8 +46,4 @@ export function testPrintDataLines(fields: TestPrintFields): string[] {
     `Versão: ${fields.appVersion}`,
     `Acentos: ${TEST_PRINT_ACCENTS}`,
   ];
-}
-
-export function testPrintWidthRuler(paperWidth: number): string {
-  return `|<-- ${paperWidth} mm -->|`;
 }

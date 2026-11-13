@@ -1,13 +1,7 @@
 import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import { cardState, stationLabel, toPaperWidth } from 'renderer/components/printers/printerView';
 import type { TestPrintRequest } from 'shared/printQueue';
-import {
-  TEST_PRINT_COLUMNS,
-  TEST_PRINT_NOTE,
-  TEST_PRINT_TITLE,
-  testPrintDataLines,
-  testPrintWidthRuler,
-} from 'shared/testPrintContent';
+import { TEST_PRINT_COLUMNS, TEST_PRINT_NOTE, TEST_PRINT_TITLE, testPrintDataLines } from 'shared/testPrintContent';
 
 export type TestStatus =
   { phase: 'idle' } | { phase: 'sending' } | { phase: 'done'; at: string } | { phase: 'failed'; reason: string };
@@ -83,7 +77,7 @@ export function buildPreview(printer: ResolvedPrinter, appVersion: string, now: 
       when: now.toLocaleString('pt-BR'),
       appVersion,
     }),
-    rulers: [testPrintWidthRuler(paperWidth), TEST_PRINT_COLUMNS],
+    rulers: [TEST_PRINT_COLUMNS],
     note: TEST_PRINT_NOTE,
     paperWidth,
   };

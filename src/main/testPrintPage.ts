@@ -2,9 +2,9 @@ import type { TestPrintRequest } from 'shared/printQueue';
 import {
   TEST_PRINT_COLUMNS,
   TEST_PRINT_NOTE,
+  TEST_PRINT_SCALE_LABEL,
   TEST_PRINT_TITLE,
   testPrintDataLines,
-  testPrintWidthRuler,
 } from 'shared/testPrintContent';
 
 // This is the one print layout that lives in this repo, and it is an exception on
@@ -44,15 +44,24 @@ export function buildTestPrintPage(request: TestPrintRequest, appVersion: string
     appVersion,
   });
 
-  // The frame and the ruler are what reveal a wrong width or margin. The frame is inset
-  // by 2mm on purpose: thermal drivers commonly reserve a couple of non-printable
-  // millimetres at each edge, so a frame drawn flush to the paper would lose its side
-  // borders on a correctly configured printer — a diagnostic that cries wolf about the
-  // right printer is worse than none, because it sends the operator chasing the wrong
-  // thing. The inset keeps the signal that matters (a page built for 80mm on 58mm paper
-  // still overflows and cuts) and drops the false alarm. The measured precedent for
-  // `@page { size: Xmm auto; margin: 0 }` is the delivery-api receipt, which prints this
-  // way in every restaurant today.
+  // The content box of this page is the printable area the driver declares (marginType 'printableArea',
+  // see onRawPrint.ts) — on an 80mm roll, the ~72mm the head covers (spec 89, "Contexto": 576 dots at
+  // 203 dpi). Hence a ceiling and not a measure: fixed millimetres overflow it and cut the frame on the
+  // very printer where the receipt just came out right. What the frame reports changed with that: not
+  // whether the configured width matches the paper, but whether the driver told the truth — a missing
+  // border means it declared more than the head reaches. The 2mm inset stays for the old reason: a
+  // driver that reserves a millimetre or two should not cost the frame its side borders. The @page rule
+  // stays too — its `size` is what tells the 58mm roll from the 80mm one, and its `margin: 0` is the
+  // delivery-api receipt's own precedent, ignored while marginType is not 'default' (spec 89, RN-02).
+  //
+  // The scale is the one thing that must NOT adapt (spec 89, RN-06): fixed millimetres, sibling of the
+  // frame, flush to the left edge of the content box. It exists to be cut by the printable edge, and
+  // that cut is the number the operator reads — inset it reads shifted, nested the frame cuts it first.
+  const scaleCells = Array.from(
+    { length: Math.floor(width / 5) },
+    (_, index) => `<div class="cell">${(index + 1) * 5}</div>`
+  );
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -60,21 +69,25 @@ export function buildTestPrintPage(request: TestPrintRequest, appVersion: string
 <style>
   @page { size: ${width}mm auto; margin: 0; }
   html, body { margin: 0; padding: 0; }
-  body { width: ${width}mm; font-family: monospace; font-size: 12px; color: #000; }
-  .frame { box-sizing: border-box; width: calc(${width}mm - 4mm); margin: 2mm; border: 2px solid #000; padding: 6px; }
+  body { max-width: ${width}mm; font-family: monospace; font-size: 12px; color: #000; }
+  .frame { margin: 2mm; border: 2px solid #000; padding: 6px; }
   h1 { font-size: 15px; margin: 0 0 6px; text-align: center; }
   p { margin: 2px 0; word-break: break-word; }
   .ruler { margin-top: 8px; border-top: 1px dashed #000; padding-top: 4px; overflow: hidden; white-space: nowrap; }
+  .scale-label { font-size: 9px; white-space: nowrap; overflow: hidden; }
+  .scale { display: flex; overflow: hidden; }
+  .cell { flex: 0 0 5mm; box-sizing: border-box; border-right: 1px solid #000; font-size: 9px; line-height: 1.4; text-align: right; padding-right: 1px; white-space: nowrap; overflow: hidden; }
 </style>
 </head>
 <body>
 <div class="frame">
   <h1>${escapeHtml(TEST_PRINT_TITLE)}</h1>
 ${lines.map(line => `  <p>${escapeHtml(line)}</p>`).join('\n')}
-  <div class="ruler">${escapeHtml(testPrintWidthRuler(width))}</div>
   <div class="ruler">${escapeHtml(TEST_PRINT_COLUMNS)}</div>
   <p>${escapeHtml(TEST_PRINT_NOTE)}</p>
 </div>
+<div class="scale-label">${escapeHtml(TEST_PRINT_SCALE_LABEL)}</div>
+<div class="scale">${scaleCells.join('')}</div>
 </body>
 </html>`;
 }
