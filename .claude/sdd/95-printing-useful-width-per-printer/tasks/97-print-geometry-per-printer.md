@@ -171,6 +171,8 @@ O mock de `electron` (`:19-37`) passa a aceitar `isDefault` e `options` na lista
 
 **Review (`code-reviewer-typescript`):** aprovado, sem bloqueio; as 7 decisões do implementador aprovadas. Sugestões aplicadas: `driverPaper` na linha de log, `usefulWidthCss` sem `export`, comentários sem histórico de versão e sem narrar, `printFonts.ts`/`printerInfo.ts` no `paths:`, `<style>` vazio não injetado. A altura de 297 mm virou a decisão pendente 5 da spec e o passo 5 da verificação de campo.
 
+**Correção depois do teste real na Cups-PDF** (ver "Teste real" no `plan.md`): o destino sem casamento passou a ser a padrão que o sistema operacional nomeia (`src/main/defaultPrinter.ts`, com `findDefaultPrinter` em `printerInfo.ts`), porque o Electron 43 não traz `isDefault` em runtime; e o `print` passou a receber `deviceName: target?.name` em vez do nome do casamento, porque sem nome o Electron devolveu sucesso sem criar job num processo recém-aberto. O `onListPrinters` usa a mesma padrão para o "(padrão)" da tela. Testes: `defaultPrinter.test.ts` (saída do `reg query` e do `lpstat -d`, cache de 30 s, falha → `null` com um `warn`), `onRawPrint.test.ts` (impressoras sem `isDefault`, como o Electron real; impressão pelo nome da padrão; sem padrão conhecida, `deviceName` `undefined`), `onListPrinters.test.ts` (rótulo pela padrão do sistema). Mutação: voltar ao `isDefault` derruba 2 testes.
+
 ## Branch
 
 `feat/95-printing-useful-width-per-printer`, cortada de `origin/master` (`be947da`) em 2026-11-13. Um commit por task.

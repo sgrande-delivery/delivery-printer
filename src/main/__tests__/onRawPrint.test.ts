@@ -12,12 +12,16 @@ const mocks = vi.hoisted(() => ({
   fileAtLoad: '',
   // The useful width saved on this machine, by device name exactly as the store would match it.
   usefulWidths: {} as Record<string, number>,
+  // What the operating system names as the default printer (defaultPrinter.ts); Electron 43 does not flag it.
+  systemDefault: null as string | null,
   log: { info: vi.fn(), warn: vi.fn() },
 }));
 
 // The logger pulls electron-log/main: replaced so it never loads against the electron
 // stub below (the print itself logs its geometry, and printFonts warns through it).
 vi.mock('../logger', () => ({ logger: mocks.log }));
+
+vi.mock('../defaultPrinter', () => ({ readDefaultPrinterName: async () => mocks.systemDefault }));
 
 // The store is tested on a real file in printerPreferences.test.ts; here only what it answers matters, and the
 // matching criterion is the real shared one.
@@ -71,6 +75,7 @@ describe('printReceipt', () => {
     mocks.printResult = { success: true, reason: '' };
     mocks.printers = [{ name: 'EPSON TM-T20' }];
     mocks.usefulWidths = {};
+    mocks.systemDefault = null;
     mocks.close.mockClear();
     mocks.log.info.mockClear();
     mocks.log.warn.mockClear();
@@ -118,18 +123,46 @@ describe('printReceipt', () => {
     expect(mocks.printOptions?.pageSize).toEqual({ width: 70_000, height: 297_000 });
   });
 
+  // The shape Electron 43 really returns: no isDefault on any printer (measured on Linux/CUPS). The default is the
+  // one the operating system names, and it is what the API's device_name null prints on.
+  // Printed BY NAME on the default it resolved: leaving the device empty was measured to queue nothing at all on a
+  // fresh process (Linux/CUPS) while the callback said success, and the name is the one Electron itself listed.
   it.each([null, 'Unknown printer'])(
-    'uses the useful width of the system default printer for %s, still leaving the choice to Electron',
+    'prints %s on the system default printer, by name, in its useful width',
     async deviceName => {
-      mocks.printers = [{ name: 'EPSON TM-T20' }, { name: 'Cozinha', isDefault: true }];
+      mocks.printers = [{ name: 'EPSON TM-T20' }, { name: 'Cozinha' }];
+      mocks.systemDefault = 'COZINHA';
       mocks.usefulWidths = { 'EPSON TM-T20': 72, Cozinha: 48 };
 
       await printReceipt({ content: API_HTML, copies: 1, deviceName, id: ID });
 
       expect(mocks.printOptions?.pageSize).toEqual({ width: 48_000, height: 297_000 });
-      expect(mocks.printOptions).toHaveProperty('deviceName', undefined);
+      expect(mocks.printOptions?.deviceName).toBe('Cozinha');
     }
   );
+
+  it('forces nothing when the operating system names no default, or one that is not installed', async () => {
+    mocks.printers = [{ name: 'EPSON TM-T20' }];
+    mocks.usefulWidths = { 'EPSON TM-T20': 72 };
+
+    for (const systemDefault of [null, 'Microsoft Print to PDF']) {
+      mocks.systemDefault = systemDefault;
+      await printReceipt({ content: API_HTML, copies: 1, deviceName: null, id: ID });
+
+      expect(mocks.printOptions?.margins).toEqual({ marginType: 'printableArea' });
+      expect(mocks.printOptions).not.toHaveProperty('pageSize');
+    }
+  });
+
+  it('still takes a printer the platform flags as default, before asking the system', async () => {
+    mocks.printers = [{ name: 'EPSON TM-T20' }, { name: 'Cozinha', isDefault: true }];
+    mocks.systemDefault = 'EPSON TM-T20';
+    mocks.usefulWidths = { 'EPSON TM-T20': 72, Cozinha: 48 };
+
+    await printReceipt({ content: API_HTML, copies: 1, deviceName: null, id: ID });
+
+    expect(mocks.printOptions?.pageSize).toEqual({ width: 48_000, height: 297_000 });
+  });
 
   it('forces the roll page when the driver exposes a paper too short for a receipt, and warns', async () => {
     mocks.printers = [{ name: 'EPSON TM-T20', options: { media: 'oe_roll-80_80x25mm' } }];
@@ -186,11 +219,17 @@ describe('printReceipt', () => {
     expect(mocks.printOptions?.deviceName).toBe('EPSON TM-T20');
   });
 
-  it.each([null, 'Unknown printer'])('falls back to the system default printer for %s', async deviceName => {
-    await printReceipt({ content: '<html></html>', copies: 1, deviceName, id: ID });
+  // Only when the system names no installed default: then Electron picks one by itself, as before spec 95.
+  it.each([null, 'Unknown printer'])(
+    'leaves the choice to Electron for %s when the system names no installed default',
+    async deviceName => {
+      mocks.systemDefault = null;
 
-    expect(mocks.printOptions).toHaveProperty('deviceName', undefined);
-  });
+      await printReceipt({ content: '<html></html>', copies: 1, deviceName, id: ID });
+
+      expect(mocks.printOptions).toHaveProperty('deviceName', undefined);
+    }
+  );
 
   it('writes <id>.print.html in tmpdir with the font faces injected, and removes it on success', async () => {
     await printReceipt({ content: '<!DOCTYPE html><html><body>x</body></html>', copies: 1, deviceName: null, id: ID });

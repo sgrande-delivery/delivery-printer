@@ -1,6 +1,7 @@
 import type { IpcMainInvokeEvent } from 'electron';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
 import { describeError } from 'shared/describeError';
+import { readDefaultPrinterName } from '../defaultPrinter';
 import { logger } from '../logger';
 import { isDefaultPrinter } from '../printerInfo';
 
@@ -11,13 +12,15 @@ import { isDefaultPrinter } from '../printerInfo';
 export async function onListPrinters(event: IpcMainInvokeEvent): Promise<WindowsPrinter[]> {
   try {
     const printers = await event.sender.getPrintersAsync();
+    // Electron 43 does not flag the default (printerInfo.ts): only asked when no printer came flagged.
+    const systemDefault = printers.some(printer => isDefaultPrinter(printer)) ? null : await readDefaultPrinterName();
 
     // No dedupe: printers.name has no unique index, two printers may share a name.
     return printers
       .map(printer => ({
         name: printer.name,
         displayName: printer.displayName || printer.name,
-        isDefault: isDefaultPrinter(printer),
+        isDefault: isDefaultPrinter(printer, systemDefault),
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.name.localeCompare(b.name));
   } catch (err) {

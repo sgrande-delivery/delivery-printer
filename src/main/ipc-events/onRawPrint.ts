@@ -7,7 +7,7 @@ import { findPrinterByDeviceName } from 'shared/printerMatch';
 import { logger } from '../logger';
 import { getPrintFontFacesCss, withPrintStyle } from '../printFonts';
 import { documentWidthMm, driverMediaOptions, driverPaperMm, resolvePrintGeometry } from '../printGeometry';
-import { isDefaultPrinter } from '../printerInfo';
+import { findDefaultPrinter } from '../printerInfo';
 import { printerPreferenceFor } from '../printerPreferences';
 
 // Shared by the rawPrint channel and by the queue worker. Rejects with the
@@ -28,7 +28,7 @@ export async function printReceipt({
     const printer = findPrinterByDeviceName(printers, deviceName);
     // Where the receipt really comes out: no match is the system default, and its useful width is the one that
     // applies (spec 95, RN-03) — the single-printer restaurant gets device_name null from the API.
-    const target = printer ?? printers.find(isDefaultPrinter);
+    const target = printer ?? (await findDefaultPrinter(printers));
     const usefulWidthMm = printerPreferenceFor(target?.name)?.usefulWidthMm ?? null;
     const driverPaper = driverPaperMm(target?.options);
     const geometry = resolvePrintGeometry({
@@ -68,9 +68,10 @@ export async function printReceipt({
       win.webContents.print(
         {
           silent: true,
-          // The match, not the target: with no match Electron picks the system default by itself, and the
-          // option stays the one it always was.
-          deviceName: printer?.name,
+          // The target, named: the printer the geometry was decided for. Leaving it to Electron when the API sent
+          // no device was measured to queue nothing at all on a fresh process (Linux/CUPS, spec 95) while the
+          // callback still said success. Undefined only when the system named no installed default either.
+          deviceName: target?.name,
           color: false,
           collate: false,
           copies,
