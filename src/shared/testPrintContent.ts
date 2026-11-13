@@ -47,3 +47,28 @@ export function testPrintDataLines(fields: TestPrintFields): string[] {
     `Acentos: ${TEST_PRINT_ACCENTS}`,
   ];
 }
+
+// What the page says about the geometry it was printed with (spec 95, RN-11), so that support reads on the
+// paper which one came out. Outside the frame, next to the scale, which the preview of the test screen does not
+// draw: only the paper carries it. Short on purpose: it prints at 9 px and wraps to fit 48 mm.
+export type TestPrintGeometry =
+  // No useful width saved for the device: the area the driver declares.
+  | { kind: 'auto' }
+  // No device resolved: the page goes to the system default, whose geometry the screen does not know.
+  | { kind: 'default-printer' }
+  | { kind: 'useful-width'; widthMm: number }
+  // The measuring page: over the whole roll, ignoring any useful width, so the head cuts the scale.
+  | { kind: 'measure'; paperWidthMm: 58 | 80 };
+
+export function testPrintGeometryLine(geometry: TestPrintGeometry): string {
+  switch (geometry.kind) {
+    case 'auto':
+      return 'Geometria: automática (área do driver)';
+    case 'default-printer':
+      return 'Geometria: a da impressora padrão do Windows';
+    case 'useful-width':
+      return `Geometria: largura útil de ${geometry.widthMm} mm, desta máquina`;
+    case 'measure':
+      return `Geometria: medição na bobina de ${geometry.paperWidthMm} mm`;
+  }
+}

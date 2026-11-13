@@ -46,7 +46,11 @@ export function isPrintJob(value: unknown): value is PrintJob {
     typeof payload.content === 'string' &&
     typeof payload.copies === 'number' &&
     (payload.deviceName === null || typeof payload.deviceName === 'string') &&
-    typeof payload.id === 'string'
+    typeof payload.id === 'string' &&
+    // A hand-edited value here would reach the print as a page size.
+    (payload.measurePaperWidthMm === undefined ||
+      payload.measurePaperWidthMm === 58 ||
+      payload.measurePaperWidthMm === 80)
   );
 }
 

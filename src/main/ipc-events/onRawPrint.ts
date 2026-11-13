@@ -4,20 +4,63 @@ import os from 'os';
 import fs from 'fs';
 import type { PrintPayload } from 'shared/printQueue';
 import { findPrinterByDeviceName } from 'shared/printerMatch';
-import { getPrintFontFacesCss, withPrintFontFaces } from '../printFonts';
+import { logger } from '../logger';
+import { getPrintFontFacesCss, withPrintStyle } from '../printFonts';
+import { documentWidthMm, driverMediaOptions, driverPaperMm, resolvePrintGeometry } from '../printGeometry';
+import { findDefaultPrinter } from '../printerInfo';
+import { printerPreferenceFor } from '../printerPreferences';
 
 // Shared by the rawPrint channel and by the queue worker. Rejects with the
 // Electron reason when the printer refuses.
-export async function printReceipt({ content, copies, deviceName, id }: PrintPayload): Promise<void> {
+export async function printReceipt({
+  content,
+  copies,
+  deviceName,
+  id,
+  measurePaperWidthMm,
+}: PrintPayload): Promise<void> {
   const win = new BrowserWindow({ show: false });
 
   try {
     const file = path.join(os.tmpdir(), `${id}.print.html`);
 
-    fs.writeFileSync(file, withPrintFontFaces(content, getPrintFontFacesCss(app)));
-
     const printers = await win.webContents.getPrintersAsync();
     const printer = findPrinterByDeviceName(printers, deviceName);
+    // Where the receipt really comes out: no match is the system default, and its useful width is the one that
+    // applies (spec 95, RN-03) — the single-printer restaurant gets device_name null from the API.
+    const target = printer ?? (await findDefaultPrinter(printers));
+    const usefulWidthMm = printerPreferenceFor(target?.name)?.usefulWidthMm ?? null;
+    const driverPaper = driverPaperMm(target?.options);
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm,
+      driverPaper,
+      documentWidthMm: documentWidthMm(content),
+      measurePaperWidthMm: measurePaperWidthMm ?? null,
+    });
+
+    // One line per print, and nothing of the receipt in it (spec 95, RN-08): without it support cannot tell
+    // "the driver lied" from "the HTML is too wide".
+    logger.info('print-geometry', {
+      device: target?.name ?? null,
+      matched: printer !== undefined,
+      driverMedia: driverMediaOptions(target?.options),
+      driverPaper,
+      marginType: geometry.margins.marginType,
+      pageSize: geometry.pageSize ?? null,
+      usefulWidthMm,
+      reason: geometry.reason,
+    });
+
+    if (geometry.reason === 'invalid-driver-paper') {
+      logger.warn('print-geometry: the driver declares an invalid paper, forcing pageSize', {
+        device: target?.name ?? null,
+        driverPaper,
+      });
+    }
+
+    const css = [getPrintFontFacesCss(app), geometry.widthCss].filter(Boolean).join('\n');
+
+    fs.writeFileSync(file, withPrintStyle(content, css));
 
     await win.webContents.loadFile(file);
 
@@ -25,19 +68,15 @@ export async function printReceipt({ content, copies, deviceName, id }: PrintPay
       win.webContents.print(
         {
           silent: true,
-          deviceName: printer?.name,
+          // The target, named: the printer the geometry was decided for. Leaving it to Electron when the API sent
+          // no device was measured to queue nothing at all on a fresh process (Linux/CUPS, spec 95) while the
+          // callback still said success. Undefined only when the system named no installed default either.
+          deviceName: target?.name,
           color: false,
           collate: false,
           copies,
-          // 'none' lays the page out over the whole sheet, including the strip the printer
-          // cannot reach: on an 80 mm roll the head covers ~72 mm and the receipt was cut on
-          // the right. 'printableArea' makes the content box the area the driver declares, and
-          // the API's relative container (max-width: Xmm; width: 100%) shrinks into it, so the
-          // document it renders needs no change — Chromium ignores the HTML's @page margin for
-          // any type but 'default' (spec 89, RN-02; not measurable from this repo).
-          margins: {
-            marginType: 'printableArea',
-          },
+          margins: geometry.margins,
+          ...(geometry.pageSize && { pageSize: geometry.pageSize }),
         },
         (success, reason) => {
           if (success) {

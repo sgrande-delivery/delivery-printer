@@ -1,13 +1,9 @@
 import type { IpcMainInvokeEvent } from 'electron';
 import type { WindowsPrinter } from 'shared/windowsPrinter';
 import { describeError } from 'shared/describeError';
+import { readDefaultPrinterName } from '../defaultPrinter';
 import { logger } from '../logger';
-
-// `isDefault` is filled in by Electron at runtime but is not in the PrinterInfo
-// typings of Electron 43, so it is read through narrowing, not trusted by type.
-function readIsDefault(printer: object): boolean {
-  return 'isDefault' in printer && printer.isDefault === true;
-}
+import { isDefaultPrinter } from '../printerInfo';
 
 // Asks the webContents that made the call (the main window) instead of creating a
 // hidden BrowserWindow: listing printers needs no page, only a webContents. Never
@@ -16,13 +12,15 @@ function readIsDefault(printer: object): boolean {
 export async function onListPrinters(event: IpcMainInvokeEvent): Promise<WindowsPrinter[]> {
   try {
     const printers = await event.sender.getPrintersAsync();
+    // Electron 43 does not flag the default (printerInfo.ts): only asked when no printer came flagged.
+    const systemDefault = printers.some(printer => isDefaultPrinter(printer)) ? null : await readDefaultPrinterName();
 
     // No dedupe: printers.name has no unique index, two printers may share a name.
     return printers
       .map(printer => ({
         name: printer.name,
         displayName: printer.displayName || printer.name,
-        isDefault: readIsDefault(printer),
+        isDefault: isDefaultPrinter(printer, systemDefault),
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.name.localeCompare(b.name));
   } catch (err) {

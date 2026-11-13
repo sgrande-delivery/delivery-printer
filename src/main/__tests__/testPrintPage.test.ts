@@ -109,3 +109,74 @@ describe('buildTestPrintPage', () => {
     expect(html).toContain('<p>Acentos: ÁÉÍÓÚ ÂÊÔ ÃÕ Ç</p>');
   });
 });
+
+describe('buildTestPrintPage geometry (spec 95)', () => {
+  // The same regex anchor spec 89 settled on: the frame is the block up to the first closing </div> at the
+  // start of a line, so a missing anchor cannot silently widen it to the whole document.
+  function frameOf(html: string): string {
+    const frame = html.match(/<div class="frame">[\s\S]*?\n<\/div>/);
+
+    expect(frame).not.toBeNull();
+
+    return frame?.[0] ?? '';
+  }
+
+  function scaleMarks(html: string): string[] {
+    return Array.from(html.matchAll(/<div class="cell">(\d+)<\/div>/g), match => match[1]);
+  }
+
+  it('says automatic when called without a geometry, and puts no ceiling on the frame', () => {
+    const html = buildTestPrintPage(request, '2.7.0', now);
+
+    expect(html).toContain('<div class="geometry">Geometria: automática (área do driver)</div>');
+    expect(html).not.toMatch(/\.frame \{[^}]*max-width/);
+  });
+
+  it('closes the frame inside a useful width, border-box, counting the 2mm margins', () => {
+    const html = buildTestPrintPage(request, '2.7.0', now, { kind: 'useful-width', widthMm: 72 });
+
+    // !important: printReceipt injects `body > * { max-width: Wmm !important }` for the same print, and a
+    // normal rule here would lose to it in the cascade, leaving the frame W wide plus its margin.
+    expect(html).toMatch(/\.frame \{ box-sizing: border-box; max-width: calc\(72mm - 4mm\) !important; \}/);
+    expect(html).toContain('Geometria: largura útil de 72 mm, desta máquina');
+  });
+
+  // Spec 89, RN-06: the scale is the one thing that never adapts, in every mode.
+  it.each([
+    ['automatic', { kind: 'auto' } as const],
+    ['useful width', { kind: 'useful-width', widthMm: 72 } as const],
+    ['measure', { kind: 'measure', paperWidthMm: 80 } as const],
+  ])('keeps the scale in fixed millimetres over the whole roll, outside the frame (%s)', (_mode, geometry) => {
+    const html = buildTestPrintPage(request, '2.7.0', now, geometry);
+
+    expect(scaleMarks(html)).toHaveLength(16);
+    expect(scaleMarks(html).at(-1)).toBe('80');
+    expect(frameOf(html)).not.toContain('class="cell"');
+  });
+
+  it('labels the measuring page, with no ceiling on the frame', () => {
+    const html = buildTestPrintPage({ ...request, paperWidth: 58 }, '2.7.0', now, {
+      kind: 'measure',
+      paperWidthMm: 58,
+    });
+
+    expect(html).toContain('Geometria: medição na bobina de 58 mm');
+    expect(html).not.toMatch(/\.frame \{[^}]*max-width/);
+    expect(scaleMarks(html).at(-1)).toBe('55');
+  });
+
+  it('says the system default decides when no device was resolved', () => {
+    const html = buildTestPrintPage({ ...request, deviceName: null }, '2.7.0', now, { kind: 'default-printer' });
+
+    expect(html).toContain('Geometria: a da impressora padrão do Windows');
+  });
+
+  // The preview of /print-test compares the lines inside the frame: the geometry line has to stay out of it.
+  it('prints the geometry line outside the frame, before the scale', () => {
+    const html = buildTestPrintPage(request, '2.7.0', now, { kind: 'useful-width', widthMm: 72 });
+
+    expect(frameOf(html)).not.toContain('Geometria:');
+    expect(html.indexOf('class="geometry"')).toBeLessThan(html.indexOf('class="scale-label"'));
+    expect(html.indexOf('class="geometry"')).toBeGreaterThan(html.indexOf(frameOf(html)));
+  });
+});

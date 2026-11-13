@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import Icon from 'renderer/base/Icon';
+import { usePrinterPreferences } from 'renderer/hooks/usePrinterPreferences';
 import { usePrinters } from 'renderer/hooks/usePrinters';
+import type { ResolvedPrinter } from 'renderer/hooks/usePrinters';
 import { useMessaging } from 'renderer/providers/messaging';
+import { findPrinterPreference } from 'shared/printerGeometry';
 import PrinterDrawer from './PrinterDrawer';
 import PrinterList from './PrinterList';
 import PrintersNotice from './PrintersNotice';
@@ -14,6 +17,10 @@ const Printers: React.FC = () => {
   const { handleOpen } = useMessaging();
   const [editingId, setEditingId] = useState<number | null>(null);
   const editing = printers.find(printer => printer.id === editingId) ?? null;
+  const { preferences, setUsefulWidth } = usePrinterPreferences();
+  // By the device the registration resolves to, with the same criterion the print uses (spec 95, RN-02).
+  const usefulWidthFor = (printer: ResolvedPrinter): number | null =>
+    findPrinterPreference(preferences, printer.resolvedDevice)?.usefulWidthMm ?? null;
 
   // The list is shared with the sidebar and was loaded when the shell opened: coming here reads it
   // again, because the operator may have changed Windows since. Not a second request on first entry.
@@ -47,7 +54,12 @@ const Printers: React.FC = () => {
               impressora padrão sem aviso. Corrija escolhendo da lista desta máquina.
             </div>
           </div>
-          <PrinterList printers={printers} devicesRead={devicesRead} onEdit={printer => setEditingId(printer.id)} />
+          <PrinterList
+            printers={printers}
+            devicesRead={devicesRead}
+            usefulWidthFor={usefulWidthFor}
+            onEdit={printer => setEditingId(printer.id)}
+          />
         </>
       )}
       {devices.length > 0 && (
@@ -68,6 +80,8 @@ const Printers: React.FC = () => {
         <PrinterDrawer
           printer={editing}
           devices={devices}
+          usefulWidthMm={usefulWidthFor(editing)}
+          onUsefulWidthChange={setUsefulWidth}
           onClose={() => setEditingId(null)}
           onChanged={refresh}
           onSaved={() => {

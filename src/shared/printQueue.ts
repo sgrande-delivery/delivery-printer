@@ -11,6 +11,9 @@ export type PrintPayload = {
   copies: number;
   deviceName: string | null;
   id: string;
+  // Only the measuring test page sets it: lays the page out over the whole roll and ignores the useful width
+  // saved for the printer, so the head, not the app, is what cuts the scale (spec 95, RN-11).
+  measurePaperWidthMm?: 58 | 80;
 };
 
 export type PrintJob = {
@@ -69,4 +72,6 @@ export type TestPrintRequest = {
   paperWidth: number;
   // The Windows device the screen resolved for this printer.
   deviceName: string | null;
+  // 'measure' prints the measuring page (spec 95, RF-06); absent is the ordinary test page.
+  purpose?: 'check' | 'measure';
 };

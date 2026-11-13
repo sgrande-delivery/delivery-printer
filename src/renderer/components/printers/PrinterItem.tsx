@@ -16,11 +16,13 @@ interface PrinterItemProps {
   // False when the list of this computer's printers came back empty: then "not found"
   // would be a claim the screen did not measure, so the card stays neutral.
   devicesRead: boolean;
+  // Saved on this machine for printer.resolvedDevice; null is automatic.
+  usefulWidthMm: number | null;
   onEdit(printer: ResolvedPrinter): void;
 }
 
 // printer-v2.dc.html:263-274.
-const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devicesRead, onEdit }) => {
+const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devicesRead, usefulWidthMm, onEdit }) => {
   // Not in any dependency array: handleOpen changes identity whenever the snackbar opens.
   const { handleOpen } = useMessaging();
   const [testing, setTesting] = useState(false);
@@ -77,7 +79,7 @@ const PrinterItem: React.FC<PrinterItemProps> = ({ printer, devicesRead, onEdit 
             </Chip>
           )}
         </div>
-        <div className={styles.detail}>{detailLine(printer)}</div>
+        <div className={styles.detail}>{detailLine(printer, usefulWidthMm)}</div>
       </div>
       <IconButton
         size="small"

@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({ warn: vi.fn() }));
 // electron-log/main needs the real electron, so the logger is replaced here.
 vi.mock('../logger', () => ({ logger: { warn: mocks.warn } }));
 
-import { PRINT_FONT_FACES, buildPrintFontFacesCss, loadPrintFontFacesCss, withPrintFontFaces } from '../printFonts';
+import { PRINT_FONT_FACES, buildPrintFontFacesCss, loadPrintFontFacesCss, withPrintStyle } from '../printFonts';
 
 const FONTS_DIR = path.resolve(__dirname, '../../../assets/fonts');
 
@@ -84,9 +84,9 @@ describe('buildPrintFontFacesCss', () => {
   });
 });
 
-describe('withPrintFontFaces', () => {
+describe('withPrintStyle', () => {
   it('keeps the doctype first and puts the block right after <html> (RN-05)', () => {
-    const result = withPrintFontFaces(API_HTML, FACES);
+    const result = withPrintStyle(API_HTML, FACES);
 
     expect(result.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(result.indexOf('<style>@font-face')).toBe(result.indexOf('<html>') + '<html>'.length);
@@ -96,7 +96,7 @@ describe('withPrintFontFaces', () => {
     'puts the block right after an opening %s, doctype first (RN-05)',
     openTag => {
       const html = `<!DOCTYPE html>\n${openTag}<head></head><body>x</body></html>`;
-      const result = withPrintFontFaces(html, FACES);
+      const result = withPrintStyle(html, FACES);
 
       expect(result.startsWith('<!DOCTYPE html>')).toBe(true);
       expect(result.indexOf('<style>@font-face')).toBe(result.indexOf(openTag) + openTag.length);
@@ -106,14 +106,14 @@ describe('withPrintFontFaces', () => {
   );
 
   it('is additive: the original HTML stays whole', () => {
-    const result = withPrintFontFaces(API_HTML, FACES);
+    const result = withPrintStyle(API_HTML, FACES);
 
     expect(result.replace(`<style>${FACES}</style>`, '')).toBe(API_HTML);
   });
 
   it('enters before <body> when there is no <html>, doctype still first', () => {
     const html = '<!DOCTYPE html>\n<style>a{}</style><body>x</body>';
-    const result = withPrintFontFaces(html, FACES);
+    const result = withPrintStyle(html, FACES);
 
     expect(result.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(result.indexOf('<style>@font-face')).toBe(result.indexOf('<body>') - `<style>${FACES}</style>`.length);
@@ -122,10 +122,15 @@ describe('withPrintFontFaces', () => {
 
   it('appends at the end when there is neither <html> nor <body>', () => {
     const html = '<!DOCTYPE html>\n<p>x</p>';
-    const result = withPrintFontFaces(html, FACES);
+    const result = withPrintStyle(html, FACES);
 
     expect(result.startsWith('<!DOCTYPE html>')).toBe(true);
     expect(result).toBe(`${html}<style>${FACES}</style>`);
+  });
+
+  // The fonts failed (the cache holds '') and no useful width applies: the document goes out as the API sent it.
+  it('injects nothing when there is no css', () => {
+    expect(withPrintStyle(API_HTML, '')).toBe(API_HTML);
   });
 });
 
