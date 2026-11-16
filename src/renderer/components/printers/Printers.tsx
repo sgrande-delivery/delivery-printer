@@ -17,10 +17,12 @@ const Printers: React.FC = () => {
   const { handleOpen } = useMessaging();
   const [editingId, setEditingId] = useState<number | null>(null);
   const editing = printers.find(printer => printer.id === editingId) ?? null;
-  const { preferences, setUsefulWidth } = usePrinterPreferences();
+  const { preferences, setUsefulWidth, setPageHeight } = usePrinterPreferences();
   // By the device the registration resolves to, with the same criterion the print uses (spec 95, RN-02).
   const usefulWidthFor = (printer: ResolvedPrinter): number | null =>
     findPrinterPreference(preferences, printer.resolvedDevice)?.usefulWidthMm ?? null;
+  const pageHeightFor = (printer: ResolvedPrinter): number | null =>
+    findPrinterPreference(preferences, printer.resolvedDevice)?.pageHeightMm ?? null;
 
   // The list is shared with the sidebar and was loaded when the shell opened: coming here reads it
   // again, because the operator may have changed Windows since. Not a second request on first entry.
@@ -82,6 +84,8 @@ const Printers: React.FC = () => {
           devices={devices}
           usefulWidthMm={usefulWidthFor(editing)}
           onUsefulWidthChange={setUsefulWidth}
+          pageHeightMm={pageHeightFor(editing)}
+          onPageHeightChange={setPageHeight}
           onClose={() => setEditingId(null)}
           onChanged={refresh}
           onSaved={() => {

@@ -22,6 +22,7 @@ export const INVOKE_CHANNELS = {
   setUiSidebarWidth: 'ui:set-sidebar-width',
   printerPreferences: 'printer:preferences',
   setPrinterUsefulWidth: 'printer:set-useful-width',
+  setPrinterPageHeight: 'printer:set-page-height',
   updateState: 'update:state',
   checkForUpdate: 'update:check',
   downloadUpdate: 'update:download',

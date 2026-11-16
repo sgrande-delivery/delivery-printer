@@ -17,6 +17,7 @@ import {
   writePrinterPageHeight,
   writePrinterUsefulWidth,
 } from '../printerPreferences';
+import { onSetPrinterPageHeight } from '../ipc-events/onSetPrinterPageHeight';
 import { onSetPrinterUsefulWidth } from '../ipc-events/onSetPrinterUsefulWidth';
 import { onPrinterPreferences } from '../ipc-events/onPrinterPreferences';
 
@@ -260,6 +261,39 @@ describe('printer preferences channels', () => {
     expect(() => onSetPrinterUsefulWidth(event, request)).toThrow('invalid useful width request');
     expect(fs.existsSync(file())).toBe(false);
     expect(log.error).not.toHaveBeenCalled();
+  });
+
+  it('saves a page height through its own channel and the read channel returns it', () => {
+    onSetPrinterUsefulWidth(event, { deviceName: 'EPSON TM-T20', usefulWidthMm: 72 });
+
+    expect(onSetPrinterPageHeight(event, { deviceName: 'EPSON TM-T20', pageHeightMm: 3000 })).toEqual({
+      'EPSON TM-T20': { usefulWidthMm: 72, pageHeightMm: 3000 },
+    });
+    expect(onPrinterPreferences()).toEqual({ 'EPSON TM-T20': { usefulWidthMm: 72, pageHeightMm: 3000 } });
+  });
+
+  it.each([
+    ['nothing', undefined],
+    ['an empty object', {}],
+    ['a numeric device name', { deviceName: 7, pageHeightMm: 3000 }],
+    ['a height as text', { deviceName: 'EPSON TM-T20', pageHeightMm: '3000' }],
+    ['a missing height', { deviceName: 'EPSON TM-T20' }],
+    ['a height out of range', { deviceName: 'EPSON TM-T20', pageHeightMm: 4000 }],
+    ['an empty device name', { deviceName: '', pageHeightMm: 3000 }],
+  ])('refuses %s as a page height request without writing', (_case, request) => {
+    expect(() => onSetPrinterPageHeight(event, request)).toThrow('invalid page height request');
+    expect(fs.existsSync(file())).toBe(false);
+    expect(log.error).not.toHaveBeenCalled();
+  });
+
+  it('logs and rethrows a page height write that failed', () => {
+    onSetPrinterUsefulWidth(event, { deviceName: 'EPSON TM-T20', usefulWidthMm: 72 });
+
+    expect(() => onSetPrinterPageHeight(event, { deviceName: 'Cozinha', pageHeightMm: 3000 })).toThrow();
+    expect(log.error).toHaveBeenCalledWith(
+      'printer-preferences: could not save the page height',
+      expect.objectContaining({ deviceName: 'Cozinha', pageHeightMm: 3000 })
+    );
   });
 
   it('logs and rethrows a write that failed', () => {

@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 import packageJson from '../../package.json';
 import type { UpdateState } from 'shared/appUpdate';
 import { SIDEBAR_DEFAULT_WIDTH, clampSidebarWidth } from 'shared/sidebarWidth';
-import { isUsefulWidthMm } from 'shared/printerGeometry';
+import { isPageHeightMm, isUsefulWidthMm } from 'shared/printerGeometry';
 import type { PrinterPreferences } from 'shared/printerGeometry';
 
 // A coherent state, not {}: an empty object would let a screen pass under a state that the real channel
@@ -68,6 +68,18 @@ Object.defineProperty(window, 'electron', {
         }
 
         return Promise.resolve(usefulWidthMm === null ? {} : { [deviceName]: { usefulWidthMm } });
+      }),
+    setPrinterPageHeight: vi
+      .fn()
+      .mockImplementation((deviceName: string, pageHeightMm: number | null): Promise<PrinterPreferences> => {
+        if (deviceName === '' || (pageHeightMm !== null && !isPageHeightMm(pageHeightMm))) {
+          return Promise.reject(new Error('invalid page height request'));
+        }
+
+        // A altura só existe dentro de uma entrada com largura, como no main: o dublê devolve as duas.
+        return Promise.resolve({
+          [deviceName]: pageHeightMm === null ? { usefulWidthMm: 72 } : { usefulWidthMm: 72, pageHeightMm },
+        });
       }),
     onUiThemeChanged: vi.fn().mockReturnValue(() => undefined),
     updateState: vi.fn().mockImplementation(() => Promise.resolve(idleUpdateState())),

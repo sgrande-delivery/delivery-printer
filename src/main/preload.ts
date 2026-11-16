@@ -123,6 +123,8 @@ const electronHandler = {
   // is what the screen adopts; rejects for a width outside 40–80, and nothing is written then.
   setPrinterUsefulWidth: (deviceName: string, usefulWidthMm: number | null): Promise<PrinterPreferences> =>
     ipcRenderer.invoke(INVOKE_CHANNELS.setPrinterUsefulWidth, { deviceName, usefulWidthMm }),
+  setPrinterPageHeight: (deviceName: string, pageHeightMm: number | null): Promise<PrinterPreferences> =>
+    ipcRenderer.invoke(INVOKE_CHANNELS.setPrinterPageHeight, { deviceName, pageHeightMm }),
 
   // Only when the resolved light/dark changes, not on every system appearance event.
   onUiThemeChanged: (listener: (resolved: ResolvedTheme) => void): (() => void) => {
