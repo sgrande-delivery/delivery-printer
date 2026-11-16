@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import path from 'node:path';
 import { isSameDeviceName } from 'shared/printerMatch';
-import { findPrinterPreference, isUsefulWidthMm } from 'shared/printerGeometry';
+import { findPrinterPreference, isPageHeightMm, isUsefulWidthMm } from 'shared/printerGeometry';
 import type { PrinterPreference, PrinterPreferences } from 'shared/printerGeometry';
 import { writeFileAtomic } from './atomicFile';
 import { isJsonObject, readJsonObject, readJsonObjectFile, type JsonObject } from './jsonObjectFile';
@@ -28,7 +28,13 @@ function validDevices(devices: JsonObject, onInvalid?: InvalidEntry): PrinterPre
 
     // An empty key can only come from a hand edit, and it would match a print with an empty device name.
     if (deviceName !== '' && isUsefulWidthMm(width)) {
-      result[deviceName] = { usefulWidthMm: width };
+      const height = isJsonObject(entry) ? entry.pageHeightMm : undefined;
+
+      // Altura ilegível derruba só o campo (spec 101, RN-03): derrubar a entrada deixaria a impressora
+      // automática e devolveria o corte à direita que a largura útil conserta.
+      result[deviceName] = isPageHeightMm(height)
+        ? { usefulWidthMm: width, pageHeightMm: height }
+        : { usefulWidthMm: width };
     } else {
       onInvalid?.(deviceName, entry);
     }
@@ -64,13 +70,11 @@ export function readPrinterPreferences(): PrinterPreferences {
 // would erase every other printer, which is a receipt cut again with nothing on screen to say why. One that was
 // read but is not JSON is started over — the write is the only way out of it.
 // Resolves to the map that now applies, which is what the screen adopts.
-export function writePrinterUsefulWidth(deviceName: string, usefulWidthMm: number | null): PrinterPreferences {
+// O read-modify-write que os dois writers compartilham: `mutate` recebe o que já estava gravado para este
+// dispositivo (sob qualquer grafia) e devolve a entrada nova, ou null para remover.
+function writeDeviceEntry(deviceName: string, mutate: (previous: JsonObject) => JsonObject | null): PrinterPreferences {
   if (deviceName === '') {
     throw new Error(`${SCOPE}: the device name is empty`);
-  }
-
-  if (usefulWidthMm !== null && !isUsefulWidthMm(usefulWidthMm)) {
-    throw new Error(`${SCOPE}: useful width out of range: ${String(usefulWidthMm)}`);
   }
 
   const read = readJsonObjectFile(preferencesPath(), SCOPE);
@@ -92,14 +96,49 @@ export function writePrinterUsefulWidth(deviceName: string, usefulWidthMm: numbe
     }
   }
 
-  if (usefulWidthMm !== null) {
-    devices[deviceName] = { ...previous, usefulWidthMm };
+  const next = mutate(previous);
+
+  if (next !== null) {
+    devices[deviceName] = next;
   }
 
   // Indented, unlike ui-preferences.json: support reads and edits this one by hand on the PDV.
   writeFileAtomic(preferencesPath(), `${JSON.stringify({ ...stored, devices }, null, 2)}\n`);
 
   return validDevices(devices);
+}
+
+export function writePrinterUsefulWidth(deviceName: string, usefulWidthMm: number | null): PrinterPreferences {
+  if (usefulWidthMm !== null && !isUsefulWidthMm(usefulWidthMm)) {
+    throw new Error(`${SCOPE}: useful width out of range: ${String(usefulWidthMm)}`);
+  }
+
+  // Sem largura, a entrada sai inteira: é ela que faz a entrada existir, e a altura sozinha não muda nada
+  // (spec 101, RN-01).
+  return writeDeviceEntry(deviceName, previous => (usefulWidthMm === null ? null : { ...previous, usefulWidthMm }));
+}
+
+// A altura só existe dentro de uma entrada que já tem largura útil (spec 101, RN-01): sem ela a geometria não
+// é explícita e a altura não teria efeito, então gravá-la seria configuração que não configura nada.
+export function writePrinterPageHeight(deviceName: string, pageHeightMm: number | null): PrinterPreferences {
+  if (pageHeightMm !== null && !isPageHeightMm(pageHeightMm)) {
+    throw new Error(`${SCOPE}: page height out of range: ${String(pageHeightMm)}`);
+  }
+
+  return writeDeviceEntry(deviceName, previous => {
+    if (!isUsefulWidthMm(previous.usefulWidthMm)) {
+      throw new Error(`${SCOPE}: no useful width saved for this device; nothing to apply the height to`);
+    }
+
+    if (pageHeightMm === null) {
+      const next = { ...previous };
+      delete next.pageHeightMm;
+
+      return next;
+    }
+
+    return { ...previous, pageHeightMm };
+  });
 }
 
 // Read on every call, no cache: the file is tiny, and a width saved on the screen applies to the next receipt

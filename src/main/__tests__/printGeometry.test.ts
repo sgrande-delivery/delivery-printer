@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ROLL_PAGE_HEIGHT_MICRONS,
-  documentWidthMm,
-  driverMediaOptions,
-  driverPaperMm,
-  resolvePrintGeometry,
-} from '../printGeometry';
+import { DEFAULT_PAGE_HEIGHT_MM } from 'shared/printerGeometry';
+import { documentWidthMm, driverMediaOptions, driverPaperMm, resolvePrintGeometry } from '../printGeometry';
 
 describe('resolvePrintGeometry', () => {
   it('forces nothing when no width is saved and the driver exposes no paper', () => {
@@ -30,7 +25,7 @@ describe('resolvePrintGeometry', () => {
 
     expect(geometry.reason).toBe('useful-width');
     expect(geometry.margins).toEqual({ marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 });
-    expect(geometry.pageSize).toEqual({ width: 72_000, height: ROLL_PAGE_HEIGHT_MICRONS });
+    expect(geometry.pageSize).toEqual({ width: 72_000, height: DEFAULT_PAGE_HEIGHT_MM * 1000 });
     // !important on each rule: the block is injected before the API's own <style>s and would lose by order.
     expect(geometry.widthCss).toContain('body > * { max-width: 72mm !important; }');
     // The same page the pageSize option asks for, in a form the `size` grammar accepts.
@@ -47,7 +42,7 @@ describe('resolvePrintGeometry', () => {
     });
 
     expect(geometry.reason).toBe('useful-width');
-    expect(geometry.pageSize).toEqual({ width: 48_000, height: ROLL_PAGE_HEIGHT_MICRONS });
+    expect(geometry.pageSize).toEqual({ width: 48_000, height: DEFAULT_PAGE_HEIGHT_MM * 1000 });
   });
 
   it.each([
@@ -64,7 +59,7 @@ describe('resolvePrintGeometry', () => {
 
     expect(geometry.reason).toBe('invalid-driver-paper');
     expect(geometry.margins).toEqual({ marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 });
-    expect(geometry.pageSize).toEqual({ width: 58_000, height: ROLL_PAGE_HEIGHT_MICRONS });
+    expect(geometry.pageSize).toEqual({ width: 58_000, height: DEFAULT_PAGE_HEIGHT_MM * 1000 });
     expect(geometry.widthCss).toBeNull();
   });
 
@@ -80,9 +75,76 @@ describe('resolvePrintGeometry', () => {
     expect(geometry).toEqual({
       reason: 'measure',
       margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 },
-      pageSize: { width: 58_000, height: ROLL_PAGE_HEIGHT_MICRONS },
+      pageSize: { width: 58_000, height: DEFAULT_PAGE_HEIGHT_MM * 1000 },
       widthCss: null,
+      pageHeightMm: 297,
+      pageHeightSource: 'default',
     });
+  });
+
+  // Spec 101, RF-01: os três degraus da altura, que é o que faz o comprovante longo sair inteiro.
+  it('lets the saved height win over the driver, and says the same height in the injected @page', () => {
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: 72,
+      driverPaper: { widthMm: 80, heightMm: 3276 },
+      documentWidthMm: 80,
+      measurePaperWidthMm: null,
+      pageHeightMm: 3000,
+    });
+
+    expect(geometry.pageSize).toEqual({ width: 72_000, height: 3_000_000 });
+    expect(geometry.pageHeightMm).toBe(3000);
+    expect(geometry.pageHeightSource).toBe('preference');
+    // As duas divergindo é o bug seguinte: o @page é o que vale quando o driver recusa o papel personalizado.
+    expect(geometry.widthCss).toContain('size: 72mm 3000mm !important');
+  });
+
+  it('takes the height from the long roll the driver exposes when nothing is saved', () => {
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: 72,
+      driverPaper: { widthMm: 80, heightMm: 3276 },
+      documentWidthMm: 80,
+      measurePaperWidthMm: null,
+      pageHeightMm: null,
+    });
+
+    expect(geometry.pageSize).toEqual({ width: 72_000, height: 3_276_000 });
+    expect(geometry.pageHeightSource).toBe('driver');
+    expect(geometry.widthCss).toContain('size: 72mm 3276mm !important');
+  });
+
+  it.each([
+    ['o papel padrão de 297 mm', { widthMm: 80, heightMm: 297 }],
+    ['um papel de 25 mm, que é a fitinha em branco', { widthMm: 80, heightMm: 25 }],
+    ['um papel de altura 0', { widthMm: 80, heightMm: 0 }],
+    ['nenhum papel', null],
+  ])('cai no padrão de 297 mm com %s e nada salvo', (_case, driverPaper) => {
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: 72,
+      driverPaper,
+      documentWidthMm: 80,
+      measurePaperWidthMm: null,
+      pageHeightMm: null,
+    });
+
+    expect(geometry.pageSize).toEqual({ width: 72_000, height: 297_000 });
+    expect(geometry.pageHeightSource).toBe('default');
+  });
+
+  // Spec 101, RN-02: uma régua de poucos centímetros numa página de 3 m avançaria a bobina inteira.
+  it('measures at 297 mm even with a 3000 mm height saved', () => {
+    const geometry = resolvePrintGeometry({
+      usefulWidthMm: 72,
+      driverPaper: { widthMm: 80, heightMm: 3276 },
+      documentWidthMm: 80,
+      measurePaperWidthMm: 80,
+      pageHeightMm: 3000,
+    });
+
+    expect(geometry.reason).toBe('measure');
+    expect(geometry.pageSize).toEqual({ width: 80_000, height: 297_000 });
+    expect(geometry.pageHeightMm).toBe(297);
+    expect(geometry.pageHeightSource).toBe('default');
   });
 
   it.each([

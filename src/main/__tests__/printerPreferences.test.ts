@@ -14,6 +14,7 @@ import {
   PRINTER_PREFERENCES_FILE,
   printerPreferenceFor,
   readPrinterPreferences,
+  writePrinterPageHeight,
   writePrinterUsefulWidth,
 } from '../printerPreferences';
 import { onSetPrinterUsefulWidth } from '../ipc-events/onSetPrinterUsefulWidth';
@@ -171,6 +172,54 @@ describe('printer preferences file', () => {
 
     expect(() => writePrinterUsefulWidth(deviceName, width)).toThrow();
     expect(fs.readFileSync(file(), 'utf8')).toBe(before);
+  });
+
+  // Spec 101
+  it('carries a saved page height through the round-trip', () => {
+    writePrinterUsefulWidth('EPSON TM-T20', 72);
+
+    expect(writePrinterPageHeight('EPSON TM-T20', 3000)).toEqual({
+      'EPSON TM-T20': { usefulWidthMm: 72, pageHeightMm: 3000 },
+    });
+    expect(printerPreferenceFor('epson tm-t20')).toEqual({ usefulWidthMm: 72, pageHeightMm: 3000 });
+    expect(writePrinterPageHeight('EPSON TM-T20', null)).toEqual({ 'EPSON TM-T20': { usefulWidthMm: 72 } });
+  });
+
+  // Spec 101, RN-03: derrubar a entrada deixaria a impressora automática e devolveria o corte à direita.
+  it.each([
+    ['below the range', 296],
+    ['above the range', 3001],
+    ['a fraction', 500.5],
+    ['text', 'alta'],
+  ])('drops a page height %s on read and keeps the useful width', (_case, height) => {
+    writeRaw(JSON.stringify({ devices: { 'EPSON TM-T20': { usefulWidthMm: 72, pageHeightMm: height } } }));
+
+    expect(readPrinterPreferences()).toEqual({ 'EPSON TM-T20': { usefulWidthMm: 72 } });
+  });
+
+  it.each([
+    ['below the range', 296],
+    ['above the range', 3001],
+    ['a fraction', 500.5],
+  ])('refuses to write a page height %s and does not touch the file', (_case, height) => {
+    writePrinterUsefulWidth('EPSON TM-T20', 72);
+    const before = fs.readFileSync(file(), 'utf8');
+
+    expect(() => writePrinterPageHeight('EPSON TM-T20', height)).toThrow('out of range');
+    expect(fs.readFileSync(file(), 'utf8')).toBe(before);
+  });
+
+  // Spec 101, RN-01: sem largura útil a geometria não é explícita e a altura não teria efeito nenhum.
+  it('refuses a page height for a device with no useful width saved', () => {
+    expect(() => writePrinterPageHeight('EPSON TM-T20', 3000)).toThrow('no useful width');
+  });
+
+  it('takes the whole entry out when the useful width goes, height and all', () => {
+    writePrinterUsefulWidth('EPSON TM-T20', 72);
+    writePrinterPageHeight('EPSON TM-T20', 3000);
+
+    expect(writePrinterUsefulWidth('EPSON TM-T20', null)).toEqual({});
+    expect(readRaw()).toEqual({ devices: {} });
   });
 
   it('finds the preference of a device the way the print matches it', () => {
