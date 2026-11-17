@@ -1,4 +1,5 @@
 import type { Margins } from 'electron';
+import { DEFAULT_PAGE_HEIGHT_MM } from 'shared/printerGeometry';
 
 // The one place that decides the geometry of a print (spec 95, RN-09; spec 89, RN-01): printReceipt is the
 // only webContents.print of this repo and the only caller of resolvePrintGeometry. Four cases:
@@ -31,6 +32,10 @@ import type { Margins } from 'electron';
 
 export type GeometryReason = 'printable-area' | 'useful-width' | 'invalid-driver-paper' | 'measure';
 
+// De onde saiu a altura da página forçada (spec 101, RF-06): do PDV, é o que separa "o driver expôs a bobina"
+// de "alguém salvou a altura" e de "caiu no padrão".
+export type PageHeightSource = 'preference' | 'driver' | 'default';
+
 export type PageSizeMicrons = { width: number; height: number };
 
 export type PrintGeometry = {
@@ -40,15 +45,12 @@ export type PrintGeometry = {
   // The CSS to inject after <html>, or null when nothing is injected.
   widthCss: string | null;
   reason: GeometryReason;
+  // The height of the forced page, and where it came from. Both for the log; absent with no forced page.
+  pageHeightMm?: number;
+  pageHeightSource?: PageHeightSource;
 };
 
 export type DriverPaper = { widthMm: number; heightMm: number };
-
-// The height of a forced roll page. A continuous roll has no sheet to fill, but Chromium still paginates at this
-// height: a receipt longer than 297 mm comes out as two pages, which a driver set to "cut per page" cuts in two.
-// 297 mm is the default paper of most thermal drivers of the fleet ("80 x 297"), so for them nothing changes;
-// a driver whose default is a long roll ("80 x 3276") would. Measured on the PDV, not here (spec 95, plan).
-export const ROLL_PAGE_HEIGHT_MICRONS = 297_000;
 
 const MIN_DRIVER_PAPER_WIDTH_MM = 40;
 const MIN_DRIVER_PAPER_HEIGHT_MM = 50;
@@ -58,15 +60,40 @@ function zeroMargins(): Margins {
   return { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 };
 }
 
-function rollPage(widthMm: number): PageSizeMicrons {
-  return { width: Math.round(widthMm * 1000), height: ROLL_PAGE_HEIGHT_MICRONS };
+function rollPage(widthMm: number, heightMm: number): PageSizeMicrons {
+  return { width: Math.round(widthMm * 1000), height: Math.round(heightMm * 1000) };
 }
 
-function usefulWidthCss(widthMm: number): string {
+// A mesma altura do `pageSize` (spec 101, RF-04): as duas divergindo é o bug seguinte, porque o `@page` é o que
+// vale quando o driver recusa o papel personalizado.
+function usefulWidthCss(widthMm: number, heightMm: number): string {
   return (
-    `@page { size: ${widthMm}mm ${ROLL_PAGE_HEIGHT_MICRONS / 1000}mm !important; margin: 0 !important; } ` +
+    `@page { size: ${widthMm}mm ${heightMm}mm !important; margin: 0 !important; } ` +
     `body > * { max-width: ${widthMm}mm !important; }`
   );
+}
+
+/**
+ * Três degraus (spec 101, RF-01): a altura salva para esta impressora; senão a do papel que o driver declara,
+ * quando ela é válida e mais alta que o padrão — é o que conserta a bobina de 3 m sem ninguém configurar;
+ * senão o padrão de 297 mm, o comportamento da 3.2.0.
+ *
+ * O papel que `isInvalidDriverPaper` recusa nunca entra no degrau 2: uma altura de 0 ou de 25 mm é justamente
+ * a que produz a "fitinha em branco" (spec 95, RN-07).
+ */
+function resolvePageHeight(
+  pageHeightMm: number | null,
+  driverPaper: DriverPaper | null
+): { heightMm: number; source: PageHeightSource } {
+  if (pageHeightMm !== null) {
+    return { heightMm: pageHeightMm, source: 'preference' };
+  }
+
+  if (driverPaper !== null && !isInvalidDriverPaper(driverPaper) && driverPaper.heightMm > DEFAULT_PAGE_HEIGHT_MM) {
+    return { heightMm: driverPaper.heightMm, source: 'driver' };
+  }
+
+  return { heightMm: DEFAULT_PAGE_HEIGHT_MM, source: 'default' };
 }
 
 function isInvalidDriverPaper({ widthMm, heightMm }: DriverPaper): boolean {
@@ -79,22 +106,32 @@ export function resolvePrintGeometry(input: {
   documentWidthMm: number;
   // Only the measuring test page: the whole roll, whatever is saved (spec 95, RN-11).
   measurePaperWidthMm: number | null;
+  // A altura salva para a impressora de destino; null é automática (spec 101).
+  pageHeightMm?: number | null;
 }): PrintGeometry {
+  // A página de medição não herda altura nenhuma (spec 101, RN-02): é uma escala de poucos centímetros, e uma
+  // página de 3 m faria o driver avançar a bobina inteira para medir a régua.
   if (input.measurePaperWidthMm !== null) {
     return {
       reason: 'measure',
       margins: zeroMargins(),
-      pageSize: rollPage(input.measurePaperWidthMm),
+      pageSize: rollPage(input.measurePaperWidthMm, DEFAULT_PAGE_HEIGHT_MM),
       widthCss: null,
+      pageHeightMm: DEFAULT_PAGE_HEIGHT_MM,
+      pageHeightSource: 'default',
     };
   }
+
+  const height = resolvePageHeight(input.pageHeightMm ?? null, input.driverPaper);
 
   if (input.usefulWidthMm !== null) {
     return {
       reason: 'useful-width',
       margins: zeroMargins(),
-      pageSize: rollPage(input.usefulWidthMm),
-      widthCss: usefulWidthCss(input.usefulWidthMm),
+      pageSize: rollPage(input.usefulWidthMm, height.heightMm),
+      widthCss: usefulWidthCss(input.usefulWidthMm, height.heightMm),
+      pageHeightMm: height.heightMm,
+      pageHeightSource: height.source,
     };
   }
 
@@ -102,8 +139,10 @@ export function resolvePrintGeometry(input: {
     return {
       reason: 'invalid-driver-paper',
       margins: zeroMargins(),
-      pageSize: rollPage(input.documentWidthMm),
+      pageSize: rollPage(input.documentWidthMm, height.heightMm),
       widthCss: null,
+      pageHeightMm: height.heightMm,
+      pageHeightSource: height.source,
     };
   }
 

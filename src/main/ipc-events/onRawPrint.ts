@@ -29,13 +29,15 @@ export async function printReceipt({
     // Where the receipt really comes out: no match is the system default, and its useful width is the one that
     // applies (spec 95, RN-03) — the single-printer restaurant gets device_name null from the API.
     const target = printer ?? (await findDefaultPrinter(printers));
-    const usefulWidthMm = printerPreferenceFor(target?.name)?.usefulWidthMm ?? null;
+    const preference = printerPreferenceFor(target?.name);
+    const usefulWidthMm = preference?.usefulWidthMm ?? null;
     const driverPaper = driverPaperMm(target?.options);
     const geometry = resolvePrintGeometry({
       usefulWidthMm,
       driverPaper,
       documentWidthMm: documentWidthMm(content),
       measurePaperWidthMm: measurePaperWidthMm ?? null,
+      pageHeightMm: preference?.pageHeightMm ?? null,
     });
 
     // One line per print, and nothing of the receipt in it (spec 95, RN-08): without it support cannot tell
@@ -48,6 +50,8 @@ export async function printReceipt({
       marginType: geometry.margins.marginType,
       pageSize: geometry.pageSize ?? null,
       usefulWidthMm,
+      pageHeightMm: geometry.pageHeightMm ?? null,
+      pageHeightSource: geometry.pageHeightSource ?? null,
       reason: geometry.reason,
     });
 

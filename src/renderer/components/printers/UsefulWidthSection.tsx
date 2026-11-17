@@ -9,6 +9,7 @@ import { useMessaging } from 'renderer/providers/messaging';
 import { log } from 'renderer/services/log';
 import { USEFUL_WIDTH_MAX_MM, USEFUL_WIDTH_MIN_MM } from 'shared/printerGeometry';
 import { TEST_PRINT_SCALE_TITLE } from 'shared/testPrintContent';
+import PageHeightField from './PageHeightField';
 import { defaultUsefulWidth, measureMarks, stationLabel } from './printerView';
 import styles from './UsefulWidthSection.module.css';
 
@@ -16,13 +17,22 @@ interface UsefulWidthSectionProps {
   printer: ResolvedPrinter;
   // Saved on this machine for printer.resolvedDevice; null is automatic.
   usefulWidthMm: number | null;
+  // A altura da página forçada, salva para o mesmo dispositivo; null é automática (spec 101).
+  pageHeightMm: number | null;
   onChange(deviceName: string, usefulWidthMm: number | null): Promise<void>;
+  onPageHeightChange(deviceName: string, pageHeightMm: number | null): Promise<void>;
 }
 
 // The part of the printer drawer that is about THIS computer, not the registration (spec 95, RF-07). Every
 // change is saved at once, through its own channel, and is not part of the drawer's draft: the drawer's button
 // says "Salvar no servidor", and this never goes to the server.
-const UsefulWidthSection: React.FC<UsefulWidthSectionProps> = ({ printer, usefulWidthMm, onChange }) => {
+const UsefulWidthSection: React.FC<UsefulWidthSectionProps> = ({
+  printer,
+  usefulWidthMm,
+  pageHeightMm,
+  onChange,
+  onPageHeightChange,
+}) => {
   // Not in any dependency array: handleOpen changes identity whenever the snackbar opens.
   const { handleOpen } = useMessaging();
   // Only the page being queued blocks anything: the writes reach the main process in order and each is atomic,
@@ -97,6 +107,15 @@ const UsefulWidthSection: React.FC<UsefulWidthSectionProps> = ({ printer, useful
     }
   };
 
+  const saveHeight = async (next: number | null): Promise<void> => {
+    try {
+      await onPageHeightChange(device, next);
+    } catch (err: unknown) {
+      log.error('save page height failed', err);
+      handleOpen('Não foi possível salvar a altura da página neste computador.');
+    }
+  };
+
   const adjusted = usefulWidthMm !== null;
 
   return (
@@ -130,6 +149,7 @@ const UsefulWidthSection: React.FC<UsefulWidthSectionProps> = ({ printer, useful
           onChange={next => void save(next)}
         />
       )}
+      {adjusted && <PageHeightField pageHeightMm={pageHeightMm} onChange={next => void saveHeight(next)} />}
       <div className={styles.actions}>
         <Button size={34} variant="outlined" disabled={sending} onClick={() => void send('measure')}>
           Medir

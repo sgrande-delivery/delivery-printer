@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   fileAtLoad: '',
   // The useful width saved on this machine, by device name exactly as the store would match it.
   usefulWidths: {} as Record<string, number>,
+  // A altura da página salva para o mesmo dispositivo (spec 101); ausente é automática.
+  pageHeights: {} as Record<string, number>,
   // What the operating system names as the default printer (defaultPrinter.ts); Electron 43 does not flag it.
   systemDefault: null as string | null,
   log: { info: vi.fn(), warn: vi.fn() },
@@ -31,7 +33,14 @@ vi.mock('../printerPreferences', async () => {
   return {
     printerPreferenceFor: (deviceName: string | null | undefined) =>
       findPrinterPreference(
-        Object.fromEntries(Object.entries(mocks.usefulWidths).map(([name, mm]) => [name, { usefulWidthMm: mm }])),
+        Object.fromEntries(
+          Object.entries(mocks.usefulWidths).map(([name, mm]) => [
+            name,
+            mocks.pageHeights[name] === undefined
+              ? { usefulWidthMm: mm }
+              : { usefulWidthMm: mm, pageHeightMm: mocks.pageHeights[name] },
+          ])
+        ),
         deviceName
       ),
   };
@@ -75,6 +84,7 @@ describe('printReceipt', () => {
     mocks.printResult = { success: true, reason: '' };
     mocks.printers = [{ name: 'EPSON TM-T20' }];
     mocks.usefulWidths = {};
+    mocks.pageHeights = {};
     mocks.systemDefault = null;
     mocks.close.mockClear();
     mocks.log.info.mockClear();
@@ -187,6 +197,34 @@ describe('printReceipt', () => {
     expect(mocks.log.info).toHaveBeenCalledWith('print-geometry', expect.objectContaining({ reason: 'measure' }));
   });
 
+  // Spec 101: o número salvo no PDV chega ao `print`, e o `@page` injetado diz a mesma altura.
+  it('prints on the page height saved for the target printer', async () => {
+    mocks.usefulWidths = { 'EPSON TM-T20': 72 };
+    mocks.pageHeights = { 'EPSON TM-T20': 3000 };
+
+    await printReceipt({ content: API_HTML, copies: 1, deviceName: 'EPSON TM-T20', id: ID });
+
+    expect(mocks.printOptions?.pageSize).toEqual({ width: 72_000, height: 3_000_000 });
+    expect(mocks.fileAtLoad).toContain('size: 72mm 3000mm !important');
+    expect(mocks.log.info).toHaveBeenCalledWith(
+      'print-geometry',
+      expect.objectContaining({ pageHeightMm: 3000, pageHeightSource: 'preference' })
+    );
+  });
+
+  it('takes the page height from the long roll the driver exposes when nothing is saved', async () => {
+    mocks.printers = [{ name: 'EPSON TM-T20', options: { media: 'oe_roll-80_80x3276mm' } }];
+    mocks.usefulWidths = { 'EPSON TM-T20': 72 };
+
+    await printReceipt({ content: API_HTML, copies: 1, deviceName: 'EPSON TM-T20', id: ID });
+
+    expect(mocks.printOptions?.pageSize).toEqual({ width: 72_000, height: 3_276_000 });
+    expect(mocks.log.info).toHaveBeenCalledWith(
+      'print-geometry',
+      expect.objectContaining({ pageHeightSource: 'driver' })
+    );
+  });
+
   it('logs the geometry of every print, and nothing of the receipt', async () => {
     mocks.printers = [{ name: 'EPSON TM-T20', options: { media: 'A4', 'printer-location': 'Caixa' } }];
     mocks.usefulWidths = { 'EPSON TM-T20': 72 };
@@ -202,6 +240,8 @@ describe('printReceipt', () => {
       marginType: 'custom',
       pageSize: { width: 72_000, height: 297_000 },
       usefulWidthMm: 72,
+      pageHeightMm: 297,
+      pageHeightSource: 'default',
       reason: 'useful-width',
     });
     expect(JSON.stringify(mocks.log.info.mock.calls)).not.toContain('PEDIDO');

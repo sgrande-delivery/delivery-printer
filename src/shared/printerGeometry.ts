@@ -11,11 +11,27 @@ import { isSameDeviceName } from './printerMatch';
 export const USEFUL_WIDTH_MIN_MM = 40;
 export const USEFUL_WIDTH_MAX_MM = 80;
 
-export type PrinterPreference = { usefulWidthMm: number };
+// A altura da página que o app força quando a geometria é explícita (spec 101). 297 é o papel padrão da
+// maioria dos drivers do parque e o valor de até a 3.2.0; 3000 cobre a bobina de 3 m do relato com folga.
+// O piso é 297 porque abaixo dele a mudança só criaria corte novo, e fora da faixa é recusado, nunca
+// ajustado: altura ajustada em silêncio é comprovante cortado em silêncio (RN-04).
+export const PAGE_HEIGHT_MIN_MM = 297;
+export const PAGE_HEIGHT_MAX_MM = 3000;
+export const DEFAULT_PAGE_HEIGHT_MM = 297;
+
+// `pageHeightMm` é opcional: quem faz a entrada existir é a largura útil, e uma altura ilegível derruba só o
+// campo (RN-03) — derrubar a entrada deixaria a impressora automática e devolveria o corte à direita.
+export type PrinterPreference = { usefulWidthMm: number; pageHeightMm?: number };
 
 // Keyed by the Windows device name, as Windows reports it: a physical fact of this machine, not of a
 // registration in the API (two registrations pointing to one device share it).
 export type PrinterPreferences = Record<string, PrinterPreference>;
+
+export function isPageHeightMm(value: unknown): value is number {
+  return (
+    typeof value === 'number' && Number.isInteger(value) && value >= PAGE_HEIGHT_MIN_MM && value <= PAGE_HEIGHT_MAX_MM
+  );
+}
 
 export function isUsefulWidthMm(value: unknown): value is number {
   return (

@@ -9,6 +9,9 @@ interface PrinterPreferencesState {
   // process folds another spelling of the same device into one entry, and only its answer says so. Rejects
   // when the write fails, so the caller can say it.
   setUsefulWidth(deviceName: string, usefulWidthMm: number | null): Promise<void>;
+  // A altura da página forçada; null é automática (spec 101). Rejeita quando o dispositivo não tem largura
+  // salva, porque aí não há geometria explícita em que a altura valha.
+  setPageHeight(deviceName: string, pageHeightMm: number | null): Promise<void>;
 }
 
 // One screen reads this (the printers screen), so no shared store.
@@ -44,5 +47,12 @@ export function usePrinterPreferences(): PrinterPreferencesState {
     setPreferences(next);
   }, []);
 
-  return { preferences, setUsefulWidth };
+  const setPageHeight = useCallback(async (deviceName: string, pageHeightMm: number | null): Promise<void> => {
+    const next = await window.electron.setPrinterPageHeight(deviceName, pageHeightMm);
+
+    wrote.current = true;
+    setPreferences(next);
+  }, []);
+
+  return { preferences, setUsefulWidth, setPageHeight };
 }

@@ -22,20 +22,23 @@ const found: ResolvedPrinter = {
 };
 
 function renderSection(
-  props: Partial<{ printer: ResolvedPrinter; usefulWidthMm: number | null }> = {},
-  onChange = vi.fn().mockResolvedValue(undefined)
-): { onChange: typeof onChange; container: HTMLElement } {
+  props: Partial<{ printer: ResolvedPrinter; usefulWidthMm: number | null; pageHeightMm: number | null }> = {},
+  onChange = vi.fn().mockResolvedValue(undefined),
+  onPageHeightChange = vi.fn().mockResolvedValue(undefined)
+): { onChange: typeof onChange; onPageHeightChange: typeof onPageHeightChange; container: HTMLElement } {
   const { container } = render(
     <MessagingProvider>
       <UsefulWidthSection
         printer={props.printer ?? found}
         usefulWidthMm={props.usefulWidthMm ?? null}
+        pageHeightMm={props.pageHeightMm ?? null}
         onChange={onChange}
+        onPageHeightChange={onPageHeightChange}
       />
     </MessagingProvider>
   );
 
-  return { onChange, container };
+  return { onChange, onPageHeightChange, container };
 }
 
 describe('UsefulWidthSection', () => {
@@ -175,7 +178,7 @@ describe('UsefulWidthSection', () => {
     const question = await screen.findByRole('group', QUESTION);
 
     expect(container.querySelector('section')).toHaveClass(styles.root);
-    expect(screen.getByRole('switch').parentElement).toHaveClass(styles.row);
+    expect(screen.getByRole('switch', { name: 'Ajustar a largura útil' }).parentElement).toHaveClass(styles.row);
     expect(screen.getByText('Ajustar a largura útil').parentElement).toHaveClass(styles.rowText);
     expect(screen.getByRole('button', { name: 'Medir' }).parentElement).toHaveClass(styles.actions);
     expect(question).toHaveClass(styles.question);

@@ -37,6 +37,9 @@ interface PrinterDrawerProps {
   // Saved on this machine for printer.resolvedDevice (spec 95): not part of the draft, saved at once.
   usefulWidthMm: number | null;
   onUsefulWidthChange(deviceName: string, usefulWidthMm: number | null): Promise<void>;
+  // Idem, para a altura da página forçada (spec 101): null é automática.
+  pageHeightMm: number | null;
+  onPageHeightChange(deviceName: string, pageHeightMm: number | null): Promise<void>;
   onClose(): void;
   // The PUT went through but the activation did not: the list is read again, the drawer stays open.
   onChanged(): void;
@@ -69,6 +72,8 @@ const PrinterDrawer: React.FC<PrinterDrawerProps> = ({
   devices,
   usefulWidthMm,
   onUsefulWidthChange,
+  pageHeightMm,
+  onPageHeightChange,
   onClose,
   onChanged,
   onSaved,
@@ -327,7 +332,13 @@ const PrinterDrawer: React.FC<PrinterDrawerProps> = ({
             <Switch label="Ativa" checked={draft.activated} onChange={activated => patch({ activated })} />
           </div>
           {/* Follows the registration as saved, not the draft: the width belongs to the device receipts go to now. */}
-          <UsefulWidthSection printer={printer} usefulWidthMm={usefulWidthMm} onChange={onUsefulWidthChange} />
+          <UsefulWidthSection
+            printer={printer}
+            usefulWidthMm={usefulWidthMm}
+            pageHeightMm={pageHeightMm}
+            onChange={onUsefulWidthChange}
+            onPageHeightChange={onPageHeightChange}
+          />
           {error && (
             <p className={styles.error} role="alert">
               {error}
