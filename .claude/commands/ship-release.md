@@ -1,5 +1,5 @@
 ---
-description: Ship de uma spec SDD rumo a release — push da branch da spec (feat/<issue>-<slug>, um commit por task já feito pelo /execute) e um PR contra master, com a versão do package.json conferida. NÃO cria tag nem release: merge em master não publica nada, e quem dispara a esteira é o dev criando a release como pré-release. Promover a pré-release é o que entrega a atualização aos PDVs. Chamava-se /ship até a 3.3.1; renomeado porque o Claude Code passou a trazer um /ship nativo, que sombreava este e o deixava inalcançável.
+description: Ship de uma spec SDD rumo a release — push da branch da spec (feat/<issue>-<slug>, um commit por task já feito pelo /execute) e um PR contra master, com a versão do package.json conferida. NÃO cria tag nem release: merge em master não publica nada, e quem dispara a esteira é o dev criando a release como pré-release. Promover a pré-release é o que entrega a atualização aos PDVs. Chamava-se /ship; renomeado porque o Claude Code passou a trazer um /ship nativo, que sombreava este e o deixava inalcançável pelo nome.
 argument-hint: [<feature> | <feature>/<id> | <id> | PRINTER-XXX | caminho do arquivo da task]
 ---
 
