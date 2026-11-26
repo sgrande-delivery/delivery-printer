@@ -22,6 +22,8 @@ O renderer **não tem `nodeIntegration`**. Toda capacidade de sistema que a UI p
 
 **A impressão não é renderizada aqui.** A `delivery-api` devolve HTML pronto (`GET orders/:uuid/print-created`), e o main grava num arquivo temporário e manda para a impressora via `webContents.print` (`src/main/ipc-events/onRawPrint.ts`). Não existe layout de impressão em React neste repo, e não deve voltar a existir: a abordagem antiga (`printing-layouts/`, 18 arquivos) foi removida porque estava morta.
 
+**A resposta pode trazer mais de uma via, e desde a feature `delivery-api#1819` isso não depende mais de o pedido ter produtos de impressoras diferentes: um produto pode pertencer a um CONJUNTO de impressoras** (até 10), e aí ele aparece numa via por impressora do conjunto. Daqui nada muda — a fila já manda a resposta inteira numa chamada, um item por entrada, mesmo com `device_name` repetido (`src/renderer/services/printQueue.ts`, e o teste em `__tests__/printQueue.test.ts` prende esse comportamento). O que cresce é o **volume**: um produto em três impressoras triplica as vias daquele item. Se aparecer relato de "imprimiu três vezes", a primeira pergunta é quantas impressoras o produto tem no cadastro, não se a fila duplicou.
+
 ## As aplicações da plataforma
 
 **O canônico é o repo na organização `sgrande-delivery`**, não o nome do diretório clonado nem a URL do remoto:
@@ -157,7 +159,7 @@ O trabalho é organizado por **feature**, não por task solta. Cada feature vive
 
 1. `/create-spec` escreve spec e plan **e materializa todas as tasks**: abre a issue de cada uma, vincula como sub-issue da feature e escreve o arquivo.
 2. `/execute <feature>` roda **todas as tasks da spec em sequência**, na branch da spec, com **um commit por task**, e exibe a tabela de situação a cada etapa.
-3. `/ship <feature>` faz push e abre o PR contra `master`. O merge **não publica**: quem dispara a esteira é o dev criando a release como pré-release, e é o `/ship` que lhe diz, no relatório, os passos que restam (ver "Condições de release"). `/ship-pr <feature>` é o mesmo sem nada de versão, para PR contra branch que não é `master`.
+3. `/ship-release <feature>` faz push e abre o PR contra `master`. O merge **não publica**: quem dispara a esteira é o dev criando a release como pré-release, e é o `/ship-release` que lhe diz, no relatório, os passos que restam (ver "Condições de release"). `/ship-pr <feature>` é o mesmo sem nada de versão, para PR contra branch que não é `master`.
 
 O `/create-task` acrescenta ou refaz uma task numa spec que já existe. Fora do ciclo, `/report-bug` e `/request-feature` abrem issue a partir do relato do tester ou do pedido do dev.
 
@@ -165,7 +167,7 @@ O `/create-task` acrescenta ou refaz uma task numa spec que já existe. Fora do 
 
 **Status da task**, na tabela do `plan.md`: `a especificar` → `pendente` → `executada` → `shipped`.
 
-**Subagentes locais** (`.claude/agents/`): `printer-agent` implementa, `test-writer-typescript` reforça a rede de teste quando a invariante merece, `code-reviewer-typescript` revisa contra os modos de falha desta base, `git-agent` faz commit/push/PR. O `/execute`, o `/ship` e o `/ship-pr` os orquestram — não invocar direto.
+**Subagentes locais** (`.claude/agents/`): `printer-agent` implementa, `test-writer-typescript` reforça a rede de teste quando a invariante merece, `code-reviewer-typescript` revisa contra os modos de falha desta base, `git-agent` faz commit/push/PR. O `/execute`, o `/ship-release` e o `/ship-pr` os orquestram — não invocar direto.
 
 Onde escrever o quê:
 
@@ -173,7 +175,7 @@ Onde escrever o quê:
 - **`plan.md`** — como a feature se encaixa na arquitetura, e a seção **"Aprendizados que valem para as próximas tasks"**
 - **`tasks/*.md`** — a unidade de execução: mudanças com `arquivo:linha`, testes, critérios verificáveis
 
-**Tasks legadas:** `.claude/tasks/PRINTER-XXX-<slug>.md`, com frontmatter YAML (`id`, `status`, `issues`), são anteriores ao fluxo SDD e **ficam onde estão**. `/execute PRINTER-XXX` e `/ship PRINTER-XXX` continuam resolvendo lá, com uma branch por task (`task/<id>-<slug>`). A `PRINTER-001` vive hoje na branch `origin/docs/add-printer-001-task`, não em `master`.
+**Tasks legadas:** `.claude/tasks/PRINTER-XXX-<slug>.md`, com frontmatter YAML (`id`, `status`, `issues`), são anteriores ao fluxo SDD e **ficam onde estão**. `/execute PRINTER-XXX` e `/ship-release PRINTER-XXX` continuam resolvendo lá, com uma branch por task (`task/<id>-<slug>`). A `PRINTER-001` vive hoje na branch `origin/docs/add-printer-001-task`, não em `master`.
 
 ### Contrato cross-repo não bloqueia implementação
 
@@ -186,9 +188,9 @@ Feature que atravessa repos tem **spec nos dois lados**, e cada uma carrega o co
 
 ### Base e branch da execução
 
-**Uma branch por spec:** `feat/<issue>-<slug>`, com o mesmo nome da pasta SDD. Todas as tasks da spec rodam nela, em sequência, com um commit local por task. Push e PR (um por spec) são do `/ship`/`/ship-pr`. Mudança pontual fora de spec usa `chore/…`, `fix/…` ou `docs/…`.
+**Uma branch por spec:** `feat/<issue>-<slug>`, com o mesmo nome da pasta SDD. Todas as tasks da spec rodam nela, em sequência, com um commit local por task. Push e PR (um por spec) são do `/ship-release`/`/ship-pr`. Mudança pontual fora de spec usa `chore/…`, `fix/…` ou `docs/…`.
 
-Ao criar a branch, o `/execute` **sempre** roda `git fetch origin` e pergunta de qual base cortar, **uma vez por spec** — `origin/master` é o default aqui, porque este repo não tem branch de integração. Depois registra a base na linha `**Branch de trabalho:**` do `plan.md`, com a data; é esse registro que o `/ship` lê.
+Ao criar a branch, o `/execute` **sempre** roda `git fetch origin` e pergunta de qual base cortar, **uma vez por spec** — `origin/master` é o default aqui, porque este repo não tem branch de integração. Depois registra a base na linha `**Branch de trabalho:**` do `plan.md`, com a data; é esse registro que o `/ship-release` lê.
 
 **`master` publica.** Diferente dos outros repos da casa, aqui não existe branch de integração que absorva trabalho pela metade: o que entra em `master` vira release. Por isso cada commit da spec tem de compilar e passar sozinho — e por isso o PR existe mesmo quando o dev é o único revisor.
 
