@@ -22,6 +22,8 @@ O renderer **não tem `nodeIntegration`**. Toda capacidade de sistema que a UI p
 
 **A impressão não é renderizada aqui.** A `delivery-api` devolve HTML pronto (`GET orders/:uuid/print-created`), e o main grava num arquivo temporário e manda para a impressora via `webContents.print` (`src/main/ipc-events/onRawPrint.ts`). Não existe layout de impressão em React neste repo, e não deve voltar a existir: a abordagem antiga (`printing-layouts/`, 18 arquivos) foi removida porque estava morta.
 
+**A resposta pode trazer mais de uma via, e desde a feature `delivery-api#1819` isso não depende mais de o pedido ter produtos de impressoras diferentes: um produto pode pertencer a um CONJUNTO de impressoras** (até 10), e aí ele aparece numa via por impressora do conjunto. Daqui nada muda — a fila já manda a resposta inteira numa chamada, um item por entrada, mesmo com `device_name` repetido (`src/renderer/services/printQueue.ts`, e o teste em `__tests__/printQueue.test.ts` prende esse comportamento). O que cresce é o **volume**: um produto em três impressoras triplica as vias daquele item. Se aparecer relato de "imprimiu três vezes", a primeira pergunta é quantas impressoras o produto tem no cadastro, não se a fila duplicou.
+
 ## As aplicações da plataforma
 
 **O canônico é o repo na organização `sgrande-delivery`**, não o nome do diretório clonado nem a URL do remoto:
