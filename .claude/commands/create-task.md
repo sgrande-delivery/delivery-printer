@@ -114,7 +114,7 @@ Fluxo:
    `feat/<issue-da-feature>-<slug-da-feature>`, a branch da spec, com um commit por task. Base sugerida: `origin/master`.
    ```
 
-   A branch é **da spec, não da task**: todas as tasks rodam nela, em sequência, e o `/ship` abre um PR só. A base aqui é **sugestão**: o `/execute` pergunta ao dev de qual branch cortar — **uma vez por spec** — e reescreve esta seção com a base escolhida e a data, igual à linha `**Branch de trabalho:**` do `plan.md`. Task legada (`PRINTER-XXX`) continua com branch própria, `task/<id>-<slug>`.
+   A branch é **da spec, não da task**: todas as tasks rodam nela, em sequência, e o `/ship-release` abre um PR só. A base aqui é **sugestão**: o `/execute` pergunta ao dev de qual branch cortar — **uma vez por spec** — e reescreve esta seção com a base escolhida e a data, igual à linha `**Branch de trabalho:**` do `plan.md`. Task legada (`PRINTER-XXX`) continua com branch própria, `task/<id>-<slug>`.
 
    **Regras de qualidade:**
    - Critérios **verificáveis**: "o comprovante sai uma vez quando o componente remonta e o evento é emitido uma vez", não "não duplica mais"
@@ -134,7 +134,7 @@ Fluxo:
 **Não fazer:**
 
 - Não abrir issue quando o dev disser que já tem ou que não quer — nesse caso, pedir o número ou seguir com numeração local
-- Não commitar — os artefatos SDD sobem com o `/ship`
+- Não commitar — os artefatos SDD sobem com o `/ship-release`
 - Não inventar seções fora do template — o que não couber vai em "Contexto"
 - Não deixar Objetivo genérico ("implementar conforme a spec") nem Contexto vazio
 - Não tratar como task deste repo algo que depende de endpoint ou evento inexistente em outro repo sem registrar a dependência — a task de lá é aberta lá, e esta fica bloqueada até o contrato estar no ar

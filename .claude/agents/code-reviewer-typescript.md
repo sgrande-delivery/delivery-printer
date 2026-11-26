@@ -151,5 +151,5 @@ O `/execute` pede **julgamento explícito sobre as decisões que o implementador
 - Não inventar regra de estilo que o Prettier já resolve
 - Não reescrever arquitetura por preferência — bloquear com o motivo e devolver ao `printer-agent`
 - Não declarar aprovado com erro novo de `tsc`, erro de `eslint` ou teste vermelho
-- Não commitar nada — quem commita a task é o `/execute`; push e PR são do `/ship`
+- Não commitar nada — quem commita a task é o `/execute`; push e PR são do `/ship-release`
 - Não tratar como achado desta task o que veio de task já commitada na mesma branch, nem o aviso de `Login.tsx:23` que já estava na base

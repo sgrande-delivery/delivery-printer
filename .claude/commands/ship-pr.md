@@ -7,9 +7,9 @@ O trabalho **$ARGUMENTS** foi aprovado por mim após testes locais. Prossiga com
 
 Este comando faz **só** commits + push + PR. Não toca na versão, não cria tag, não cria release, nunca fecha issue à mão.
 
-> **Quando usar este e não o `/ship`.** Neste repo o `/ship` também termina no PR — a diferença é o alvo. `master` **publica no merge**: a esteira builda e cria o release draft, e o `/ship` cuida de conferir a versão do `package.json` e de dizer ao dev o que resta fazer. Este comando é para PR que **não** mira `master`: a branch de outra spec de que esta depende, ou uma branch de trabalho que ainda vai ser consolidada. Nesses casos não há versão a conferir e nada é publicado.
+> **Quando usar este e não o `/ship-release`.** Neste repo o `/ship-release` também termina no PR — a diferença é o alvo. `master` **publica no merge**: a esteira builda e cria o release draft, e o `/ship-release` cuida de conferir a versão do `package.json` e de dizer ao dev o que resta fazer. Este comando é para PR que **não** mira `master`: a branch de outra spec de que esta depende, ou uma branch de trabalho que ainda vai ser consolidada. Nesses casos não há versão a conferir e nada é publicado.
 
-> **A base do PR é sempre perguntada — nunca presumida.** É a única decisão que este comando não pode tomar sozinho: abrir contra a branch errada faz o diff carregar trabalho alheio, ou aponta o merge para um lugar onde o código ainda não deveria entrar. A pergunta acontece **antes** de qualquer commit. E se a resposta for `master`, **use o `/ship`** — ele tem o passo da versão e o aviso do que acontece no merge.
+> **A base do PR é sempre perguntada — nunca presumida.** É a única decisão que este comando não pode tomar sozinho: abrir contra a branch errada faz o diff carregar trabalho alheio, ou aponta o merge para um lugar onde o código ainda não deveria entrar. A pergunta acontece **antes** de qualquer commit. E se a resposta for `master`, **use o `/ship-release`** — ele tem o passo da versão e o aviso do que acontece no merge.
 
 Fluxo:
 
@@ -35,7 +35,7 @@ Fluxo:
      git branch -r --sort=-committerdate | head -12
      ```
 
-   - **Perguntar e confirmar sempre.** Se a base for `master`, parar e dizer que o comando certo é o `/ship`
+   - **Perguntar e confirmar sempre.** Se a base for `master`, parar e dizer que o comando certo é o `/ship-release`
    - Confirmar que `origin/<base_branch>` existe. Se não existir, parar e avisar
 
 3. **Delegar ao `git-agent` em duas etapas** — ele não pergunta ao dev, então toda confirmação acontece aqui.
@@ -102,11 +102,11 @@ Fluxo:
 
    Depois das tabelas, em texto corrido: se `closingIssuesReferences` voltou vazio e por quê, o estado SDD atualizado, a branch em que a sessão ficou, e explicitamente:
 
-   > **Próximos passos**: este ship **não tocou na versão e não gerou release**, e nada foi publicado. O PR mira `<base_branch>` — quando mergeado, o código entra nessa branch. A publicação só acontece quando o trabalho chegar a `master`, pelo `/ship` da entrega que consolidar a frente.
+   > **Próximos passos**: este ship **não tocou na versão e não gerou release**, e nada foi publicado. O PR mira `<base_branch>` — quando mergeado, o código entra nessa branch. A publicação só acontece quando o trabalho chegar a `master`, pelo `/ship-release` da entrega que consolidar a frente.
 
 **Não fazer:**
 
-- Não abrir PR contra `master` por aqui — esse caminho é o `/ship`
+- Não abrir PR contra `master` por aqui — esse caminho é o `/ship-release`
 - Não tocar na `version` do `package.json`
 - Não criar tag nem release
 - Não abrir um PR por task: o PR é da spec

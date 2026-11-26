@@ -1,5 +1,5 @@
 ---
-description: Executa as tasks de uma spec SDD em sequência, na branch da spec (feat/<issue>-<slug>), com um commit local por task. Lê spec e plan, pergunta a base uma vez por spec e delega cada task aos subagentes printer-agent → code-reviewer-typescript → test-writer-typescript, exibindo a tabela de situação a cada etapa. Não faz push nem PR (isso é do /ship ou do /ship-pr).
+description: Executa as tasks de uma spec SDD em sequência, na branch da spec (feat/<issue>-<slug>), com um commit local por task. Lê spec e plan, pergunta a base uma vez por spec e delega cada task aos subagentes printer-agent → code-reviewer-typescript → test-writer-typescript, exibindo a tabela de situação a cada etapa. Não faz push nem PR (isso é do /ship-release ou do /ship-pr).
 argument-hint: [<feature> | <feature>/<id> | <id> | PRINTER-XXX | caminho do arquivo da task]
 ---
 
@@ -9,7 +9,7 @@ Execute a implementação de: **$ARGUMENTS**
 
 - **A unidade de execução é a spec.** `/execute <feature>` roda **todas** as tasks `pendente` da spec, em sequência, na ordem da tabela do `plan.md` e respeitando "Depende de". Não para entre uma task e outra para pedir confirmação: só para em bloqueio real (review que não converge, bug que o test-writer reporta, endpoint da `delivery-api` que ainda não existe, decisão de produto).
 - **Uma branch por spec:** `feat/<issue>-<slug>`, com o mesmo nome da pasta SDD. Todas as tasks da spec rodam nela.
-- **Um commit por task**, local e sem push, feito quando a task fecha o ciclo implementação → review → testes → review dos testes → verificação própria. Push e PR são do `/ship` (ou do `/ship-pr`), **um PR por spec**.
+- **Um commit por task**, local e sem push, feito quando a task fecha o ciclo implementação → review → testes → review dos testes → verificação própria. Push e PR são do `/ship-release` (ou do `/ship-pr`), **um PR por spec**.
 - **A tabela de situação** é exibida ao dev a cada mudança de etapa.
 
 `/execute <feature>/<id>` ou `/execute <id>` roda **só aquela task**, na mesma branch da spec. As tasks legadas (`PRINTER-XXX`) não têm spec, então continuam com uma branch por task (`task/<id>-<slug>`).
@@ -75,7 +75,7 @@ No modo spec, reler o `plan.md` antes de **cada** task, porque a anterior pode t
       - na linha `**Branch de trabalho:**` do `plan.md`: `` `feat/<issue>-<slug>`, cortada de `<base>` em <YYYY-MM-DD> ``;
       - na seção `## Branch` de cada task, a mesma linha.
 
-      É esse registro que o `/ship` e o `/ship-pr` leem para saber contra qual branch abrir o PR.
+      É esse registro que o `/ship-release` e o `/ship-pr` leem para saber contra qual branch abrir o PR.
 
 3. **Baseline, uma vez por spec e antes da primeira delegação.**
 
@@ -150,7 +150,7 @@ A coluna "Situação" diz em uma linha **o que está acontecendo agora**. O dev 
 
 ## Relatório final
 
-- A tabela final e a branch, pronta para o `/ship <feature>`.
+- A tabela final e a branch, pronta para o `/ship-release <feature>`.
 - Arquivos criados e modificados **por task**, separando implementação de testes.
 - Canais IPC criados/alterados (com o par conferido por `grep`), eventos de socket, telas e rotas novas, com o caminho de navegação até elas.
 - `npm run typecheck`, `npm run lint` e `npm test` com **baseline antes e depois**, **verificados por você**. Se o número de falhas ou avisos subiu, dizer qual e por quê.
@@ -158,12 +158,12 @@ A coluna "Situação" diz em uma linha **o que está acontecendo agora**. O dev 
 - Variáveis de ambiente novas — e a confirmação de que entraram nos cinco pontos.
 - Se a entrega depende de contrato de outro repo (`delivery-api`, `delivery-socket-api`, `delivery-admin`), dizer o que precisa estar no ar antes.
 - Se a entrega encosta em empacotamento: o resultado da inspeção do asar, ou que ela não foi feita.
-- Próximo passo: o dev testa manualmente e roda `/ship <feature>`.
+- Próximo passo: o dev testa manualmente e roda `/ship-release <feature>`.
 
 **Importante:**
 - O commit local por task é esperado.
-- Push, PR, tag e release **não**: push é do `/ship`, e tag/release são do electron-builder no merge em `master`.
-- Ao terminar, deixe a branch da spec em check-out: é nela que o `/ship` roda.
+- Push, PR, tag e release **não**: push é do `/ship-release`, e tag/release são do electron-builder no merge em `master`.
+- Ao terminar, deixe a branch da spec em check-out: é nela que o `/ship-release` roda.
 
 ## Sobre o ambiente
 

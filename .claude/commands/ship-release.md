@@ -1,5 +1,5 @@
 ---
-description: Ship de uma spec SDD — push da branch da spec (feat/<issue>-<slug>, um commit por task já feito pelo /execute) e um PR contra master, com a versão do package.json conferida. NÃO cria tag nem release: merge em master não publica nada, e quem dispara a esteira é o dev criando a release como pré-release. Promover a pré-release é o que entrega a atualização aos PDVs.
+description: Ship de uma spec SDD rumo a release — push da branch da spec (feat/<issue>-<slug>, um commit por task já feito pelo /execute) e um PR contra master, com a versão do package.json conferida. NÃO cria tag nem release: merge em master não publica nada, e quem dispara a esteira é o dev criando a release como pré-release. Promover a pré-release é o que entrega a atualização aos PDVs. Chamava-se /ship até a 3.3.1; renomeado porque o Claude Code passou a trazer um /ship nativo, que sombreava este e o deixava inalcançável.
 argument-hint: [<feature> | <feature>/<id> | <id> | PRINTER-XXX | caminho do arquivo da task]
 ---
 
@@ -7,7 +7,7 @@ O trabalho **$ARGUMENTS** foi aprovado por mim após testes locais. Prossiga com
 
 > **Como a publicação acontece aqui.** O `.github/workflows/publish.yml` roda no evento **`release: [published]`** — **push em `master` não publica nada**. Quem checa PR e `master` é o `ci.yml`. O dev cria a release com a tag `v<version>` marcada como **PRÉ-RELEASE** (draft não dispara workflow nenhum no GitHub), a esteira confere tag × `package.json`, builda e anexa os três arquivos, e **promover a pré-release é o que entrega a atualização** — o electron-updater pede `/releases/latest`, que ignora draft e pré-release. O fluxo completo, com as armadilhas, está em `.claude/rules/autoupdate.md`.
 
-> **Logo: `/ship` aqui termina no PR.** Não existe tag para criar nem release para criar. Quem cria a tag é o GitHub, quando o dev cria a release; quem anexa os assets é a esteira; quem promove é o dev, depois de instalar o `.exe`. Se algo pedir `git tag` ou `gh release create`, está errado.
+> **Logo: `/ship-release` aqui termina no PR.** Não existe tag para criar nem release para criar. Quem cria a tag é o GitHub, quando o dev cria a release; quem anexa os assets é a esteira; quem promove é o dev, depois de instalar o `.exe`. Se algo pedir `git tag` ou `gh release create`, está errado.
 
 > **Onde este comando roda.** O `/execute` deixa o trabalho na branch da spec, `feat/<issue>-<slug>`, com um commit por task. Confirme com `git branch --show-current`; se a branch não existir ou não tiver os commits das tasks, é sinal de que a spec não foi executada por este fluxo, e aí vale perguntar em vez de supor.
 
