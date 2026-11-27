@@ -157,7 +157,7 @@ O trabalho é organizado por **feature**, não por task solta. Cada feature vive
 
 **O ciclo:**
 
-1. `/create-spec` escreve spec e plan **e materializa todas as tasks**: abre a issue de cada uma, vincula como sub-issue da feature e escreve o arquivo.
+1. `/create-spec` escreve spec e plan **e materializa todas as tasks**: abre a issue de cada uma, vincula como sub-issue da feature e escreve o arquivo, numa worktree isolada, abrindo o PR de docs da spec contra a `master`.
 2. `/execute <feature>` roda **todas as tasks da spec em sequência**, na branch da spec, com **um commit por task**, e exibe a tabela de situação a cada etapa.
 3. `/ship-release <feature>` faz push e abre o PR contra `master`. O merge **não publica**: quem dispara a esteira é o dev criando a release como pré-release, e é o `/ship-release` que lhe diz, no relatório, os passos que restam (ver "Condições de release"). `/ship-pr <feature>` é o mesmo sem nada de versão, para PR contra branch que não é `master`.
 
